@@ -1,0 +1,70 @@
+[project]
+name = "rabbitmq-management-sdk"
+version = "0.1.0"
+description = "Python SDK for the RabbitMQ Management HTTP API to manage queues, exchanges, bindings, users, and policies."
+readme = "README.md"
+authors = [
+    { name = "xeno", email = "52781411+brianmori@users.noreply.github.com" }
+]
+license = "Apache-2.0"
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration",
+]
+keywords = [
+    "rabbitmq",
+    "rabbitmq management api",
+    "rabbitmq http api",
+    "rabbitmq admin",
+    "rabbitmq management",
+    "rabbitmq provisioning",
+]
+
+requires-python = ">=3.14"
+dependencies = [
+    "pydantic>=2.12.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/brianmori/rabbitmq-management-sdk"
+Documentation = "https://brianmori.github.io/rabbitmq-management-sdk"
+Repository = "https://github.com/brianmori/rabbitmq-management-sdk"
+Issues = "https://github.com/brianmori/rabbitmq-management-sdk/issues"
+
+[build-system]
+requires = ["uv_build>=0.11.1,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.2,<1.0.0",
+    "pytest>=9.0.0,<10.0.0",
+    "pytest-cov>=7.1.0,<8.0.0",
+    "mypy>=1.19.1,<2.0.0",
+    "pip-audit>=2.10.0,<3.0.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.uv.workspace]
+members = [
+    "rabbitmq-management-sdk",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "unit: Unit tests (fast, no I/O)",
+    "integration: Integration tests with mocked HTTP (fast, no real I/O)",
+    "live: Live tests against a real RabbitMQ instance (slow, requires Docker)",
+]
