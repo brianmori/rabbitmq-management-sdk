@@ -48,6 +48,7 @@ dev = [
     "mypy>=1.19.1,<2.0.0",
     "pip-audit>=2.10.0,<3.0.0",
     "httpx>=0.28.1,<1.0.0",
+    "python-dotenv>=1.2.2,<2.0.0",
 ]
 
 [tool.ruff]
@@ -102,3 +103,4 @@ markers = [
     "integration: Integration tests with mocked HTTP (fast, no real I/O)",
     "live: Live tests against a real RabbitMQ instance (slow, requires Docker)",
 ]
+env_files = [".env"]

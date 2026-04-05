@@ -1,5 +1,6 @@
 """Abstract HTTP http_adapter protocol."""
 
+import json as _json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
@@ -13,6 +14,8 @@ class HttpResponse:
     headers: dict[str, str]
     body: bytes
 
+    def json(self) -> dict[str, Any]:
+        return _json.loads(self.body)
 
 @runtime_checkable
 class HttpAdapter(Protocol):
