@@ -1,7 +1,11 @@
-"""Abstract HTTP transport protocol."""
+"""Abstract HTTP http_adapter protocol."""
 
 from dataclasses import dataclass
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from types import TracebackType
+
 
 @dataclass(frozen=True)
 class HttpResponse:
@@ -9,9 +13,10 @@ class HttpResponse:
     headers: dict[str, str]
     body: bytes
 
+
 @runtime_checkable
 class HttpAdapter(Protocol):
-    """Protocol defining the HTTP transport interface."""
+    """Protocol defining the HTTP http_adapter interface."""
 
     def request(
             self,

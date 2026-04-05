@@ -1,5 +1,5 @@
 class TransportError(Exception):
-    """Base exception for all transport errors."""
+    """Base exception for all http_adapter errors."""
 
 
 class TransportTimeoutError(TransportError):

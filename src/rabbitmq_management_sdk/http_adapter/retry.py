@@ -1,10 +1,17 @@
 from asyncio import sleep
-from types import TracebackType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from rabbitmq_management_sdk.transport import HttpAdapter, TransportTimeoutError, TransportConnectionError, \
-    HttpResponse, TransportError
-from rabbitmq_management_sdk.transport.config import BackoffStrategy, ExponentialBackoffWithJitter
+if TYPE_CHECKING:
+    from types import TracebackType
+
+from rabbitmq_management_sdk.http_adapter import (
+    HttpAdapter,
+    HttpResponse,
+    TransportConnectionError,
+    TransportError,
+    TransportTimeoutError,
+)
+from rabbitmq_management_sdk.http_adapter.config import BackoffStrategy, ExponentialBackoffWithJitter
 
 _DEFAULT_RETRYABLE: tuple[type[TransportError], ...] = (
     TransportTimeoutError,
@@ -26,11 +33,15 @@ class RetryTransport:
         self._backoff = backoff_strategy or ExponentialBackoffWithJitter()
         self._retryable_exceptions = retryable_exceptions
 
-    def request(self, method: str, path: str,
-                *,
-                params: dict[str, Any] | None = None,
-                json: dict[str, Any] | None = None,
-                headers: dict[str, str] | None = None) -> HttpResponse:
+    def request(
+            self,
+            method: str,
+            path: str,
+            *,
+            params: dict[str, Any] | None = None,
+            json: dict[str, Any] | None = None,
+            headers: dict[str, str] | None = None,
+    ) -> HttpResponse:
 
         last_exc: TransportError | None = None
         for attempt in range(self._max_attempts):

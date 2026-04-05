@@ -1,12 +1,18 @@
-from types import TracebackType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
-import ssl
 
-from rabbitmq_management_sdk.transport import HttpResponse, TransportTimeoutError, TransportConnectionError, \
-    TransportResponseError
-from rabbitmq_management_sdk.transport.config import TimeoutConfig
+from rabbitmq_management_sdk.http_adapter import (
+    HttpResponse,
+    TransportConnectionError,
+    TransportResponseError,
+    TransportTimeoutError,
+)
+from rabbitmq_management_sdk.http_adapter.config import TimeoutConfig
+
+if TYPE_CHECKING:
+    import ssl
+    from types import TracebackType
 
 
 class HttpxAdapter:
@@ -72,20 +78,14 @@ class HttpxAdapter:
             raise TransportResponseError(
                 f"HTTP {e.response.status_code}: {method.upper()} {path}",
                 status_code=e.response.status_code,
-                response_body=e.response.content
+                response_body=e.response.content,
             ) from e
         except httpx.TimeoutException as e:
-            raise TransportTimeoutError(
-                f"Request timed out: {method.upper()} {path}"
-            ) from e
+            raise TransportTimeoutError(f"Request timed out: {method.upper()} {path}") from e
         except httpx.NetworkError as e:
-            raise TransportConnectionError(
-                f"Network error: {method.upper()} {path}"
-            ) from e
+            raise TransportConnectionError(f"Network error: {method.upper()} {path}") from e
         except httpx.HTTPError as e:
-            raise TransportResponseError(
-                f"HTTP error: {method.upper()} {path}"
-            ) from e
+            raise TransportResponseError(f"HTTP error: {method.upper()} {path}") from e
 
     def close(self) -> None:
         self._client.close()

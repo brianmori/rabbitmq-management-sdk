@@ -1,5 +1,7 @@
+import random
 from dataclasses import dataclass
 from typing import Protocol
+
 
 @dataclass(frozen=True)
 class TimeoutConfig:
@@ -8,19 +10,24 @@ class TimeoutConfig:
     write: float = 30.0
     pool: float = 5.0
 
+
 class BackoffStrategy(Protocol):
     def wait_time(self, attempt: int) -> float: ...
 
+
 @dataclass(frozen=True)
 class NoBackoff:
-    def wait_time(self, attempt: int) -> float:
+    def wait_time(self, _attempt: int) -> float:
         return 0.0
+
 
 @dataclass(frozen=True)
 class ConstantBackoff:
     wait: float = 1.0
-    def wait_time(self, attempt: int) -> float:
+
+    def wait_time(self, _attempt: int) -> float:
         return self.wait
+
 
 @dataclass(frozen=True)
 class ExponentialBackoff:
@@ -30,6 +37,7 @@ class ExponentialBackoff:
     def wait_time(self, attempt: int) -> float:
         return min(self.factor * (2 ** attempt), self.max_wait)
 
+
 @dataclass(frozen=True)
 class ExponentialBackoffWithJitter:
     factor: float = 0.5
@@ -38,6 +46,3 @@ class ExponentialBackoffWithJitter:
     def wait_time(self, attempt: int) -> float:
         cap = min(self.factor * (2 ** attempt), self.max_wait)
         return random.uniform(0, cap)
-
-
-

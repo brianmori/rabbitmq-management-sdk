@@ -1,9 +1,12 @@
 import ssl
+from typing import TYPE_CHECKING
 
-from rabbitmq_management_sdk.transport.base import HttpAdapter
-from rabbitmq_management_sdk.transport.config import BackoffStrategy, TimeoutConfig, ExponentialBackoffWithJitter
-from rabbitmq_management_sdk.transport.httpx import HttpxAdapter
-from rabbitmq_management_sdk.transport.retry import RetryTransport
+from rabbitmq_management_sdk.http_adapter.config import BackoffStrategy, ExponentialBackoffWithJitter, TimeoutConfig
+from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.http_adapter.retry import RetryTransport
+
+if TYPE_CHECKING:
+    from rabbitmq_management_sdk.http_adapter.base import HttpAdapter
 
 
 def create_adapter(
@@ -14,16 +17,23 @@ def create_adapter(
         ssl_context: ssl.SSLContext | None = None,
         max_redirects: int = 5,
         max_retries: int = 0,
-        backoff_strategy: BackoffStrategy = ExponentialBackoffWithJitter(),
+        backoff_strategy: BackoffStrategy | None = None,
 ) -> HttpAdapter:
-    transport = HttpxAdapter(base_url=base_url,
-                             timeout=timeout,
-                             default_headers=default_headers,
-                             ssl_context=ssl_context,
-                             max_redirects=max_redirects)
+    transport = HttpxAdapter(
+        base_url=base_url,
+        timeout=timeout,
+        default_headers=default_headers,
+        ssl_context=ssl_context,
+        max_redirects=max_redirects,
+    )
 
-    return RetryTransport(transport, backoff_strategy=backoff_strategy,
-                          max_attempts=max_retries) if max_retries > 0 else transport
+    return (
+        RetryTransport(
+            transport, backoff_strategy=backoff_strategy or ExponentialBackoffWithJitter(), max_attempts=max_retries
+        )
+        if max_retries > 0
+        else transport
+    )
 
 
 def create_ssl_context(

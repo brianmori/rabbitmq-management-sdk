@@ -36,7 +36,7 @@ jobs:
 
       - name: Lint and Format Check
         run: |
-          uv run ruff check src/ tests/
+          uv run ruff check --output-format github src/ tests/
           uv run ruff format --check src/ tests/
 
       - name: Type Check

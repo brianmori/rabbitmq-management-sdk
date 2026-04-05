@@ -1,13 +1,13 @@
 import httpx
 import pytest
 
-from rabbitmq_management_sdk.transport.httpx import HttpxAdapter
+from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
 
 
 @pytest.mark.integration
-def test_create_queue_success():
+def test_create_queue_success() -> None:
     # 1. Setup Mock Handler
-    def handler(request):
+    def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(201, json={"status": "created"}, headers={"Content-Type": "application/json"})
 
     # 2. Inject MockTransport into your Adapter
