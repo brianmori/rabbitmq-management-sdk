@@ -28,6 +28,7 @@ keywords = [
 requires-python = ">=3.14"
 dependencies = [
     "pydantic>=2.12.5",
+    "httpx>=0.28.1,<1.0.0",
 ]
 
 [project.urls]
@@ -47,14 +48,47 @@ dev = [
     "pytest-cov>=7.1.0,<8.0.0",
     "mypy>=1.19.1,<2.0.0",
     "pip-audit>=2.10.0,<3.0.0",
+    "python-dotenv>=1.2.2,<2.0.0",
 ]
 
 [tool.ruff]
-line-length = 88
+line-length = 120
 target-version = "py314"
+src = ["src", "tests"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["rabbitmq_management_sdk"]
+
+[tool.ruff.lint.pylint]
+max-args = 8
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "I", # isort
+    "B", # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking  — moves pure-annotation imports into TYPE_CHECKING blocks
+    "ANN", # flake8-annotations     — enforces type hint coverage
+    "PTH", # flake8-use-pathlib     — prefers pathlib over os.path
+    "RUF", # ruff-specific rules
+    "PL", # pylint
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["PLR2004"]
 
 [tool.uv.workspace]
 members = [
@@ -62,9 +96,17 @@ members = [
 ]
 
 [tool.pytest.ini_options]
+pythonpath = ["src"]
 testpaths = ["tests"]
 markers = [
     "unit: Unit tests (fast, no I/O)",
     "integration: Integration tests with mocked HTTP (fast, no real I/O)",
     "live: Live tests against a real RabbitMQ instance (slow, requires Docker)",
 ]
+env_files = [".env"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+files = ["src", "tests"]
+ignore_missing_imports = true
