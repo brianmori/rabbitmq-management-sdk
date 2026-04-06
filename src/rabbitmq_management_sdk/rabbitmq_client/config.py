@@ -30,7 +30,7 @@ class Config(BaseModel):
     username: str | None = Field(description="RabbitMQ management user.")
     password: SecretStr | None = Field(description="Password for the management user.")
 
-    ssl_context: SSLConfig = Field(
+    ssl_context: SSLConfig | None = Field(
         default=None,
         description="TLS settings. When None the connection uses plain HTTP.",
     )
@@ -63,6 +63,6 @@ class Config(BaseModel):
         return f"{scheme}://{self.host}:{self.port}/api"
 
     @model_validator(mode="after")
-    def validate(self) -> None:
+    def validate(self) -> Config:
         # check if basic auth and mtls are both set, which is not allowed
-        pass
+        return self

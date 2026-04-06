@@ -1,4 +1,4 @@
-from asyncio import sleep
+from time import sleep
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:

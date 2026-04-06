@@ -1,9 +1,9 @@
 import logging
 from typing import TYPE_CHECKING
 
-from http_adapter import HttpAdapter, HttpResponse, factory
-from http_adapter.config import BasicAuthentication
-from rabbitmq_client.utils import create_ssl_context
+from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse, factory
+from rabbitmq_management_sdk.http_adapter.config import BasicAuthentication
+from rabbitmq_management_sdk.rabbitmq_client.utils import create_ssl_context
 
 if TYPE_CHECKING:
     import ssl

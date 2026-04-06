@@ -587,12 +587,12 @@ name = "rabbitmq-management-sdk"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx" },
     { name = "pydantic" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "mypy" },
     { name = "pip-audit" },
     { name = "pytest" },
@@ -602,11 +602,13 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = ">=2.12.5" }]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1,<1.0.0" },
+    { name = "pydantic", specifier = ">=2.12.5" },
+]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx", specifier = ">=0.28.1,<1.0.0" },
     { name = "mypy", specifier = ">=1.19.1,<2.0.0" },
     { name = "pip-audit", specifier = ">=2.10.0,<3.0.0" },
     { name = "pytest", specifier = ">=9.0.0,<10.0.0" },

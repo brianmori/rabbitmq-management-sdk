@@ -12,7 +12,7 @@ def test_create_queue_success() -> None:
 
     # 2. Inject MockTransport into your Adapter
     mock_transport = httpx.MockTransport(handler)
-    adapter = HttpxAdapter(base_url="http://localhost:15672", transport=mock_transport)
+    adapter = HttpxAdapter(host="localhost", port=15672, transport=mock_transport)
 
     # 3. Test the high-level request
     response = adapter.request("PUT", "/api/queues/%2f/my-queue", json={"durable": True})
