@@ -104,3 +104,9 @@ markers = [
     "live: Live tests against a real RabbitMQ instance (slow, requires Docker)",
 ]
 env_files = [".env"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+files = ["src", "tests"]
+ignore_missing_imports = true

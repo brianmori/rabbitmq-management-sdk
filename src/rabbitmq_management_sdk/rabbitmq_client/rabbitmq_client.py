@@ -41,4 +41,7 @@ class RabbitMQClient:
 
     def get_version(self) -> str:
         hr: HttpResponse = self._ha.request(method="GET", path="/api/overview")
-        return hr.json()["rabbitmq_version"]
+        rabbitmq_version = hr.json().get("rabbitmq_version")
+        if not isinstance(rabbitmq_version, str):
+            raise ValueError(f"The version returned is not a string, got {type(rabbitmq_version)}")
+        return rabbitmq_version

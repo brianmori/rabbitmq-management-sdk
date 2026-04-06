@@ -6,6 +6,7 @@ default:
 check:
     uv run ruff check
     uv run ruff format --check
+    uv run mypy
 
 # Auto-fix everything
 fix:
@@ -19,6 +20,10 @@ test:
 # Run live RabbitMQ tests
 test-live:
     uv run pytest -m live
+
+# Mypy check
+typecheck:
+    uv run mypy .
 
 # Build the library for distribution
 build:

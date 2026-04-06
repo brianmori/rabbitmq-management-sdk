@@ -48,7 +48,7 @@ class ExponentialBackoff:
     max_wait: float = 60.0
 
     def wait_time(self, attempt: int) -> float:
-        return min(self.factor * (2**attempt), self.max_wait)
+        return float(min(self.factor * pow(2, attempt), self.max_wait))
 
 
 @dataclass(frozen=True)

@@ -28,7 +28,7 @@ class Config(BaseModel):
     )
 
     username: str | None = Field(description="RabbitMQ management user.")
-    password: SecretStr | None = Field(description="Password for the management user.")
+    password: SecretStr | str | None = Field(description="Password for the management user.")
 
     ssl_context: SSLConfig | None = Field(
         default=None,
@@ -42,8 +42,8 @@ class Config(BaseModel):
         ),
     )
 
-    @computed_field
     @property
+    @computed_field
     def vhost(self) -> str:
         """The automatically encoded vhost for API calls."""
         return quote(self.raw_virtual_host, safe="")
@@ -63,6 +63,6 @@ class Config(BaseModel):
         return f"{scheme}://{self.host}:{self.port}/api"
 
     @model_validator(mode="after")
-    def validate(self) -> Config:
+    def validate_config(self) -> Config:
         # check if basic auth and mtls are both set, which is not allowed
         return self

@@ -2,20 +2,21 @@
 
 import json as _json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from types import TracebackType
 
 
 @dataclass(frozen=True)
 class HttpResponse:
     status_code: int
-    headers: dict[str, str]
+    headers: Mapping[str, str]
     body: bytes
 
     def json(self) -> dict[str, Any]:
-        return _json.loads(self.body)
+        return cast("dict[str, Any]", _json.loads(self.body))
 
 
 @runtime_checkable

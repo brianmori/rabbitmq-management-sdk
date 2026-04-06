@@ -43,7 +43,7 @@ class RetryTransport:
         headers: dict[str, str] | None = None,
     ) -> HttpResponse:
 
-        last_exc: TransportError | None = None
+        last_exc: TransportError = TransportError("Request failed for an unknown reason")
         for attempt in range(self._max_attempts):
             try:
                 return self._transport.request(method=method, path=path, params=params, json=json, headers=headers)
