@@ -57,13 +57,13 @@ class HttpxAdapter:
         )
 
     def request(
-            self,
-            method: str,
-            path: str,
-            *,
-            params: dict[str, Any] | None = None,
-            json: dict[str, Any] | None = None,
-            headers: dict[str, str] | None = None,
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> HttpResponse:
 
         try:
@@ -100,9 +100,9 @@ class HttpxAdapter:
         return self
 
     def __exit__(
-            self,
-            exc_type: type[BaseException] | None,
-            exc_val: BaseException | None,
-            exc_tb: TracebackType | None,
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         self.close()

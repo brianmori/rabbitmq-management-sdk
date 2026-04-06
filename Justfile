@@ -4,13 +4,13 @@ default:
 
 # Lint and format check
 check:
-    uv run ruff check .
-    uv run ruff format --check .
+    uv run ruff check
+    uv run ruff format --check
 
 # Auto-fix everything
 fix:
-    uv run ruff check --fix .
-    uv run ruff format .
+    uv run ruff check --fix --show-fixes
+    uv run ruff format
 
 # Run non-live tests
 test:

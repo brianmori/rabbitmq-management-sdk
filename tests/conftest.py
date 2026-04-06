@@ -34,6 +34,11 @@ def rabbitmq_client(rabbit_config: RabbitSettings) -> RabbitMQClient:
     # os.getenv returns None if the variable isn't set,
     # or you can provide a default like 'guest' for local dev.
 
-    config = Config(host=rabbit_config.host, username=rabbit_config.username, password=rabbit_config.password)
+    config = Config(
+        host=rabbit_config.host,
+        port=rabbit_config.port,
+        username=rabbit_config.username,
+        password=rabbit_config.password,
+    )
 
     return RabbitMQClient(config)

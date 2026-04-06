@@ -40,6 +40,5 @@ class RabbitMQClient:
         )
 
     def get_version(self) -> str:
-        with self._ha:
-            hr: HttpResponse = self._ha.request(method="GET", path="/api/overview")
-            return hr.json()["rabbitmq_version"]
+        hr: HttpResponse = self._ha.request(method="GET", path="/api/overview")
+        return hr.json()["rabbitmq_version"]

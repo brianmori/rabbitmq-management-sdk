@@ -21,12 +21,12 @@ _DEFAULT_RETRYABLE: tuple[type[TransportError], ...] = (
 
 class RetryTransport:
     def __init__(
-            self,
-            transport: HttpAdapter,
-            *,
-            max_attempts: int = 3,
-            backoff_strategy: BackoffStrategy | None = None,
-            retryable_exceptions: tuple[type[TransportError], ...] = _DEFAULT_RETRYABLE,
+        self,
+        transport: HttpAdapter,
+        *,
+        max_attempts: int = 3,
+        backoff_strategy: BackoffStrategy | None = None,
+        retryable_exceptions: tuple[type[TransportError], ...] = _DEFAULT_RETRYABLE,
     ) -> None:
         self._transport = transport
         self._max_attempts = max_attempts
@@ -34,13 +34,13 @@ class RetryTransport:
         self._retryable_exceptions = retryable_exceptions
 
     def request(
-            self,
-            method: str,
-            path: str,
-            *,
-            params: dict[str, Any] | None = None,
-            json: dict[str, Any] | None = None,
-            headers: dict[str, str] | None = None,
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> HttpResponse:
 
         last_exc: TransportError | None = None
@@ -62,9 +62,9 @@ class RetryTransport:
         return self
 
     def __exit__(
-            self,
-            exc_type: type[BaseException] | None,
-            exc_val: BaseException | None,
-            exc_tb: TracebackType | None,
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         self.close()
