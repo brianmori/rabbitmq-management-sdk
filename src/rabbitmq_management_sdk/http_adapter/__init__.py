@@ -1,7 +1,7 @@
 from .base import HttpAdapter, HttpResponse
 from .config import ConstantBackoff, ExponentialBackoff, ExponentialBackoffWithJitter, NoBackoff
 from .exceptions import TransportConnectionError, TransportError, TransportResponseError, TransportTimeoutError
-from .factory import create_adapter, create_ssl_context
+from .factory import create_adapter
 
 __all__ = [
     "ConstantBackoff",
@@ -15,5 +15,4 @@ __all__ = [
     "TransportResponseError",
     "TransportTimeoutError",
     "create_adapter",
-    "create_ssl_context",
 ]

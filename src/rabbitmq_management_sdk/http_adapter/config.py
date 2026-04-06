@@ -11,7 +11,6 @@ class TimeoutConfig:
     write: float = 30.0
     pool: float = 5.0
 
-
 @dataclass(frozen=True)
 class BasicAuthentication:
     username: str

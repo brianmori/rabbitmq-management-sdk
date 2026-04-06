@@ -24,15 +24,21 @@ class HttpxAdapter:
     """
 
     def __init__(
-            self,
-            base_url: str,
-            *,
-            timeout: TimeoutConfig | None = None,
-            default_headers: dict[str, str] | None = None,
-            ssl_context: ssl.SSLContext | None = None,
-            max_redirects: int = 5,
-            transport: httpx.BaseTransport | None = None,
+        self,
+        host: str,
+        *,
+        port: int,
+        timeout: TimeoutConfig | None = None,
+        default_headers: dict[str, str] | None = None,
+        ssl_context: ssl.SSLContext | None = None,
+        max_redirects: int = 5,
+        transport: httpx.BaseTransport | None = None,
     ) -> None:
+
+        scheme = "http"
+        if ssl_context:
+            scheme = "https"
+        base_url = f"{scheme}://{host}:{port}"
 
         to = timeout or TimeoutConfig()
         self._client = httpx.Client(

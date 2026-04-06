@@ -7,15 +7,21 @@ from rabbitmq_management_sdk.http_adapter.config import BasicAuthentication
 
 if TYPE_CHECKING:
     from conftest import RabbitSettings
+    from rabbitmq_client.rabbitmq_client import RabbitMQClient
 
 
 @pytest.mark.live
-def test_rabbitmq_overview(rc: RabbitSettings) -> None:
+def test_basic_rabbitmq_overview(rabbit_config: RabbitSettings) -> None:
 
-    ba: BasicAuthentication = BasicAuthentication(username=rc.username, password=rc.password)
+    ba: BasicAuthentication = BasicAuthentication(username=rabbit_config.username, password=rabbit_config.password)
     ha: HttpAdapter = factory.create_adapter(
-        f"{rc.scheme}://{rc.host}:{rc.port}", default_headers={"Authorization": ba.auth_header}
+        host=rabbit_config.host, port=rabbit_config.port, default_headers={"Authorization": ba.auth_header}
     )
     hr: HttpResponse = ha.request(method="GET", path="/api/overview")
-
     assert hr.status_code == 200
+
+
+@pytest.mark.live
+def test_rabbitmq_overview(rabbitmq_client: RabbitMQClient) -> None:
+    version = rabbitmq_client.get_version()
+    assert version.startswith("4.")
