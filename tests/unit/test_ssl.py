@@ -1,8 +1,9 @@
 import ssl
 
 import pytest
-from client import utils
-from client.config import SSLConfig
+
+from rabbitmq_management_sdk.client import utils
+from rabbitmq_management_sdk.client.config import SSLConfig
 
 
 @pytest.mark.unit
