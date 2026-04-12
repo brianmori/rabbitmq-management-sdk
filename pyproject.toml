@@ -104,6 +104,7 @@ markers = [
     "live: Live tests against a real RabbitMQ instance (slow, requires Docker)",
 ]
 env_files = [".env"]
+addopts = "--import-mode=importlib"
 
 [tool.mypy]
 python_version = "3.14"
