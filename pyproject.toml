@@ -110,3 +110,4 @@ python_version = "3.14"
 strict = true
 files = ["src", "tests"]
 ignore_missing_imports = true
+plugins = ["pydantic.mypy"]

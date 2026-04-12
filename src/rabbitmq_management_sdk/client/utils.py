@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 if TYPE_CHECKING:
-    from rabbitmq_client.config import SSLConfig
+    from rabbitmq_management_sdk.client.config import SSLConfig
 
 
 def encode_vhost(vhost: str) -> str:
@@ -22,6 +22,16 @@ def encode_vhost(vhost: str) -> str:
 
 
 def create_ssl_context(sc: SSLConfig) -> ssl.SSLContext:
+    """Creates a SSL context for the RabbitMQ Management API.
+
+    TLS Version defaults to TLSv1.2 and hostname verification is enabled.
+
+    Args:
+        sc: SSL configuration for the client.
+
+    Returns:
+        An SSL context configured with the provided SSL settings.
+    """
     ctx = ssl.create_default_context(cafile=sc.ca_bundle)
     ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     ctx.check_hostname = True

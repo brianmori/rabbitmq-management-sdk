@@ -4,8 +4,8 @@ from dataclasses import dataclass
 import pytest
 from dotenv import find_dotenv, load_dotenv
 
-from rabbitmq_management_sdk.rabbitmq_client.config import Config
-from rabbitmq_management_sdk.rabbitmq_client.rabbitmq_client import RabbitMQClient
+from rabbitmq_management_sdk.client.config import Config
+from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
 
 load_dotenv(find_dotenv())
 
