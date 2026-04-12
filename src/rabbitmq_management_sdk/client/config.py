@@ -88,7 +88,7 @@ class Config(BaseModel):
 
     @model_validator(mode="after")
     def validate_config(self) -> Config:
-        has_basic_auth = self.username is not None or self.password is not None
+        has_basic_auth = self.username is not None and self.password is not None
         has_mtls = self.ssl_context is not None and self.ssl_context.client_cert is not None
 
         if not (has_basic_auth or has_mtls):

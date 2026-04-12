@@ -32,8 +32,12 @@ def create_ssl_context(sc: SSLConfig) -> ssl.SSLContext:
     Returns:
         An SSL context configured with the provided SSL settings.
     """
-    ctx = ssl.create_default_context(cafile=sc.ca_bundle)
-    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+    ctx = ssl.create_default_context(
+        purpose=ssl.Purpose.SERVER_AUTH,
+        cafile=sc.ca_bundle,
+    )
+    ctx.verify_mode = ssl.CERT_REQUIRED
+    ctx.minimum_version = sc.min_version
     ctx.check_hostname = True
 
     if not sc.verify:

@@ -21,7 +21,6 @@ class QueueManagerV4:
         return Queue(**data)
 
     def create(self, name: str, request: QueueRequest) -> None:
-
         self._ha.request(
             method=HTTPMethod.PUT, path=f"/api/queues/{self._vhost}/{name}", json=self._to_http_payload(request)
         )
@@ -37,7 +36,7 @@ class QueueManagerV4:
             A dictionary with keys "durable", "auto_delete",
             and "arguments" that can be sent as JSON in an HTTP request.
         """
-        return {
+        data = {
             "durable": request.durable,
             "auto_delete": request.auto_delete,
             "arguments": request.arguments.model_dump(
@@ -47,4 +46,8 @@ class QueueManagerV4:
                 # When strict is False, defaults are excluded to avoid
                 # errors on queues created without explicit x-arguments.
             ),
+            "x-queue-type": request.arguments.queue_type,
         }
+        # I reassign the queue_type as it has default value
+        # and stripped by model_dump in compatibility mode
+        return data

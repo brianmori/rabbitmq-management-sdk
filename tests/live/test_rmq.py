@@ -2,7 +2,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from rabbitmq_management_sdk.domains.v4.queues.schemas.queue_request import ClassicQueueRequest, QueueRequest
+from rabbitmq_management_sdk.domains.v4.queues.schemas.queue_request import (
+    ClassicQueueRequest,
+    QueueRequest,
+    QuorumQueueRequest,
+)
 from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse, factory
 from rabbitmq_management_sdk.http_adapter.config import BasicAuthentication
 
@@ -33,10 +37,20 @@ def test_rabbitmq_overview(rabbitmq_client: RabbitMQClient) -> None:
 
 # Queue creation and retrieval test
 @pytest.mark.live
-def test_create_destroy_classic_queue(rabbitmq_client: RabbitMQClient) -> None:
+def test_create_destroy_classic_queue(rabbitmq_client_compatibility: RabbitMQClient) -> None:
     queue_name = "test_classic_queue"
     queue_req = QueueRequest(durable=True, auto_delete=False, arguments=ClassicQueueRequest())
-    rabbitmq_client.queues.create(queue_name, queue_req)
-    queue = rabbitmq_client.queues.get(queue_name)
-    #    rabbitmq_client.queues.delete(queue_name)
-    assert queue.name == queue_name
+    rabbitmq_client_compatibility.queues.create(queue_name, queue_req)
+    queue = rabbitmq_client_compatibility.queues.get(queue_name)
+    assert queue.state == "running"
+    rabbitmq_client_compatibility.queues.delete(queue_name)
+
+
+@pytest.mark.live
+def test_create_destroy_quorum_queue(rabbitmq_client_strict: RabbitMQClient) -> None:
+    queue_name = "test_quorum_queue"
+    queue_req = QueueRequest(durable=True, auto_delete=False, arguments=QuorumQueueRequest())
+    rabbitmq_client_strict.queues.create(queue_name, queue_req)
+    queue = rabbitmq_client_strict.queues.get(queue_name)
+    assert queue.state == "running"
+    rabbitmq_client_strict.queues.delete(queue_name)

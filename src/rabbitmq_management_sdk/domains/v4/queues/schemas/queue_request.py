@@ -40,7 +40,7 @@ class ClassicQueueRequest(RabbitMQBase):
     message_ttl: int | None = Field(None, alias="x-message-ttl")
     max_length: int | None = Field(None, alias="x-max-length")
     max_length_bytes: int | None = Field(None, alias="x-max-length-bytes")
-    overflow: Overflow | None = Field(None, alias="x-overflow")
+    overflow: Overflow | None = Field(Overflow.DROP_HEAD, alias="x-overflow")
     dead_letter_exchange: str | None = Field(None, alias="x-dead-letter-exchange")
     dead_letter_routing_key: str | None = Field(None, alias="x-dead-letter-routing-key")
     single_active_consumer: bool | None = Field(None, alias="x-single-active-consumer")
@@ -65,8 +65,10 @@ class QuorumQueueRequest(RabbitMQBase):
     delivery_limit: int | None = Field(None, alias="x-delivery-limit")
     dead_letter_exchange: str | None = Field(None, alias="x-dead-letter-exchange")
     dead_letter_routing_key: str | None = Field(None, alias="x-dead-letter-routing-key")
-    dead_letter_strategy: DeadLetterStrategy | None = Field(None, alias="x-dead-letter-strategy")
-    overflow: Overflow | None = Field(None, alias="x-overflow")
+    dead_letter_strategy: DeadLetterStrategy | None = Field(
+        DeadLetterStrategy.AT_MOST_ONCE, alias="x-dead-letter-strategy"
+    )
+    overflow: Overflow | None = Field(Overflow.DROP_HEAD, alias="x-overflow")
     single_active_consumer: bool | None = Field(None, alias="x-single-active-consumer")
     max_length: int | None = Field(None, alias="x-max-length")
     initial_cluster_size: int | None = Field(None, alias="x-initial-cluster-size")
