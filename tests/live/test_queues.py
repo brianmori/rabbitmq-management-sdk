@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 @pytest.mark.live
 def test_basic_rabbitmq_overview(rabbit_config: RabbitSettings) -> None:
-
     ba: BasicAuthentication = BasicAuthentication(username=rabbit_config.username, password=rabbit_config.password)
     ha: HttpAdapter = factory.create_adapter(
         host=rabbit_config.host, port=rabbit_config.port, default_headers={"Authorization": ba.auth_header}
@@ -28,10 +27,10 @@ def test_basic_rabbitmq_overview(rabbit_config: RabbitSettings) -> None:
 
 # Test to verify connection is not closed after a request
 @pytest.mark.live
-def test_rabbitmq_overview(rabbitmq_client: RabbitMQClient) -> None:
-    version = rabbitmq_client._get_version()
-    version = rabbitmq_client._get_version()
-    version = rabbitmq_client._get_version()
+def test_rabbitmq_overview(rabbitmq_client_compatibility: RabbitMQClient) -> None:
+    version = rabbitmq_client_compatibility._get_version()
+    version = rabbitmq_client_compatibility._get_version()
+    version = rabbitmq_client_compatibility._get_version()
     assert version.major == 4
 
 

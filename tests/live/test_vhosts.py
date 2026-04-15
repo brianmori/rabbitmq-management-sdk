@@ -1,0 +1,58 @@
+from typing import TYPE_CHECKING
+
+import pytest
+from domains.v4.admin.schemas.enums import VhostLimitName
+
+from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_request import VhostLimitRequest, VhostRequest
+
+if TYPE_CHECKING:
+    from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
+    from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_response import VhostResponse
+
+
+@pytest.mark.live
+def test_get_vhosts(rabbitmq_client_compatibility: RabbitMQClient) -> None:
+    admin_service = rabbitmq_client_compatibility.admin
+    vhosts: list[VhostResponse] = admin_service.get_all_vhosts()
+    assert len(vhosts) > 0
+
+
+@pytest.mark.live
+def test_create_delete_vhost(rabbitmq_client_compatibility: RabbitMQClient) -> None:
+    vhost_service = rabbitmq_client_compatibility.admin
+    vhost_name = "test-vhost"
+
+    # Create a new vhost
+    vhost_request = VhostRequest(description="Test Vhost", tags=["test"])
+    vhost_service.create_vhost(vhost_name, vhost_request)
+
+    # Verify the vhost was created
+    vhosts_created: list[VhostResponse] = vhost_service.get_all_vhosts()
+    assert any(v.name == vhost_name for v in vhosts_created)
+
+    # Delete the vhost
+    vhost_service.delete_vhost(vhost_name)
+
+    # Verify the vhost was deleted
+    vhosts_del: list[VhostResponse] = vhost_service.get_all_vhosts()
+    assert not any(v.name == vhost_name for v in vhosts_del)
+
+
+@pytest.mark.live
+def test_get_vhost(rabbitmq_client_compatibility: RabbitMQClient) -> None:
+    vhost_service = rabbitmq_client_compatibility.admin
+    vhost_name = "test-vhost"
+    vhost_service.create_vhost(vhost_name, VhostRequest())
+    vhost = vhost_service.get_vhost(vhost_name)
+    assert vhost.name == vhost_name
+    assert vhost.description == "Test Vhost"
+    assert vhost.tags == ["test"]
+
+
+@pytest.mark.live
+def test_apply_vhost_limit(rabbitmq_client_compatibility: RabbitMQClient) -> None:
+    vhost_service = rabbitmq_client_compatibility.admin
+    vhost_name = "test-vhost"
+    vhost_service.create_vhost(vhost_name, VhostRequest())
+    vlr = VhostLimitRequest(value=50)
+    vhost_service.apply_vhost_limit(vhost_name, VhostLimitName.MAX_CONNECTIONS, vlr)
