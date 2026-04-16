@@ -2,8 +2,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from rabbitmq_management_sdk.domains.v4.admin.schemas.enums import VhostLimitName
-from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_request import VhostLimitRequest, VhostRequest
+from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_request import (
+    VhostLimitName,
+    VhostLimitRequest,
+    VhostRequest,
+)
 
 if TYPE_CHECKING:
     from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
@@ -47,16 +50,16 @@ def test_apply_vhost_limit(rabbitmq_client_compatibility: RabbitMQClient) -> Non
     vhost_service = rabbitmq_client_compatibility.admin
     vhost_name = "test-vhost"
     vhost_service.create_vhost(vhost_name, VhostRequest())
-    vlr = VhostLimitRequest(value=0)
+
+    vlr = VhostLimitRequest(value=3)
     vhost_service.apply_vhost_limit(vhost_name, VhostLimitName.MAX_CONNECTIONS, vlr)
     vhost_service.apply_vhost_limit(vhost_name, VhostLimitName.MAX_QUEUES, vlr)
-    vhosts: list[VhostLimitResponse] = vhost_service.get_vhost_limits(vhost_name)
-    assert any(vhost.name == VhostLimitName.MAX_CONNECTIONS and vhost.value == 0 for vhost in vhosts)
-    assert any(vhost.name == VhostLimitName.MAX_QUEUES and vhost.value == 0 for vhost in vhosts)
+
+    vhosts_lim_single: VhostLimitResponse = vhost_service.get_vhost_limits(vhost_name)
+
+    assert vhosts_lim_single.value.max_connections == 3
+    assert vhosts_lim_single.value.max_queues == 3
+
+    vhosts_lim_all: list[VhostLimitResponse] = vhost_service.get_all_vhosts_limits()
+    assert len(vhosts_lim_all) == 1
     vhost_service.delete_vhost(vhost_name)
-
-
-@pytest.mark.live
-def test_get_all_vhosts_limits(rabbitmq_client_compatibility: RabbitMQClient) -> None:
-    admin_service = rabbitmq_client_compatibility.admin
-    vhosts: list[VhostLimitResponse] = admin_service.get_all_vhosts_limits()

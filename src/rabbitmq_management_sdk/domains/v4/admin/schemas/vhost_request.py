@@ -1,9 +1,17 @@
 # domains/v4/vhost/schemas/vhost_request.py
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import Field
 
 from rabbitmq_management_sdk.domains.base import RabbitMQBase
+
+
+class VhostLimitName(StrEnum):
+    """Valid vhost limit names accepted by the RabbitMQ Management API."""
+
+    MAX_CONNECTIONS = "max-connections"
+    MAX_QUEUES = "max-queues"
 
 
 class VhostRequest(RabbitMQBase):

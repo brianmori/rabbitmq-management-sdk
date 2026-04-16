@@ -1,12 +1,9 @@
 # domains/v4/vhost/schemas/vhost_response.py
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from pydantic import Field
 
 from rabbitmq_management_sdk.domains.base import RabbitMQBase
-
-if TYPE_CHECKING:
-    from rabbitmq_management_sdk.domains.v4.admin.schemas.enums import VhostLimitName
 
 
 class VhostResponse(RabbitMQBase):
@@ -18,6 +15,11 @@ class VhostResponse(RabbitMQBase):
     cluster_state: dict[str, str] | None = None
 
 
+class VhostLimitValues(RabbitMQBase):
+    max_connections: int | None = Field(alias="max-connections", default=None)
+    max_queues: int | None = Field(alias="max-queues", default=None)
+
+
 class VhostLimitResponse(RabbitMQBase):
     """A single vhost limit as returned by the Management API.
 
@@ -27,8 +29,8 @@ class VhostLimitResponse(RabbitMQBase):
 
     Example:
         >>> {"vhost": "production", "limit": "max-connections", "value": 100}
+        {'vhost': 'test-vhost','value': {'max-connections': 3, 'max-queues': 3}}
     """
 
     vhost: str
-    name: VhostLimitName
-    value: int
+    value: VhostLimitValues
