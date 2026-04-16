@@ -2,10 +2,9 @@ import logging
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
-from domains.v4.admin.services import AdminManagerV4
-
 from rabbitmq_management_sdk.client.config import RabbitMQMajorVersion, RabbitMQVersion
 from rabbitmq_management_sdk.client.utils import create_ssl_context
+from rabbitmq_management_sdk.domains.v4.admin.services import AdminManagerV4
 from rabbitmq_management_sdk.domains.v4.queues.services import QueueManagerV4
 from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse, TransportError, factory
 from rabbitmq_management_sdk.http_adapter.config import BasicAuthentication

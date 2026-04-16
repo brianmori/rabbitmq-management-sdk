@@ -6,7 +6,7 @@ from pydantic import Field
 from rabbitmq_management_sdk.domains.base import RabbitMQBase
 
 if TYPE_CHECKING:
-    from domains.v4.admin.schemas.enums import VhostLimitName
+    from rabbitmq_management_sdk.domains.v4.admin.schemas.enums import VhostLimitName
 
 
 class VhostResponse(RabbitMQBase):
@@ -30,5 +30,5 @@ class VhostLimitResponse(RabbitMQBase):
     """
 
     vhost: str
-    limit: VhostLimitName
+    name: VhostLimitName
     value: int

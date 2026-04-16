@@ -1,12 +1,12 @@
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
-from domains.v4.admin.schemas.vhost_response import VhostLimitResponse, VhostResponse
+from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_response import VhostLimitResponse, VhostResponse
 
 if TYPE_CHECKING:
-    from domains.v4.admin.schemas.enums import VhostLimitName
-    from domains.v4.admin.schemas.vhost_request import VhostLimitRequest, VhostRequest
-    from http_adapter import HttpAdapter
+    from rabbitmq_management_sdk.domains.v4.admin.schemas.enums import VhostLimitName
+    from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_request import VhostLimitRequest, VhostRequest
+    from rabbitmq_management_sdk.http_adapter import HttpAdapter
 
 
 class AdminManagerV4:
@@ -38,9 +38,9 @@ class AdminManagerV4:
         data = (self._ha.request(method=HTTPMethod.GET, path="/api/vhost-limits")).json()
         return [VhostLimitResponse.model_validate(vhost) for vhost in data]
 
-    def get_vhost_limits(self, vhost: str) -> VhostLimitResponse:
+    def get_vhost_limits(self, vhost: str) -> list[VhostLimitResponse]:
         data = (self._ha.request(method=HTTPMethod.GET, path=f"/api/vhost-limits/{vhost}")).json()
-        return VhostLimitResponse.model_validate(data)
+        return [VhostLimitResponse.model_validate(vhost) for vhost in data]
 
     def apply_vhost_limit(self, vhost: str, limit_name: VhostLimitName, request: VhostLimitRequest) -> None:
         self._ha.request(
@@ -49,5 +49,5 @@ class AdminManagerV4:
             json=request.model_dump(exclude_none=True),
         )
 
-    def delete_vhost_limit(self, vhost: str, name: str) -> None:
-        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/vhost-limits/{vhost}/{name}")
+    def delete_vhost_limit(self, vhost: str, limit_name: VhostLimitName) -> None:
+        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/vhost-limits/{vhost}/{limit_name}")

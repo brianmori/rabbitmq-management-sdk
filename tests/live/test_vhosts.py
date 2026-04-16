@@ -1,20 +1,13 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from domains.v4.admin.schemas.enums import VhostLimitName
 
+from rabbitmq_management_sdk.domains.v4.admin.schemas.enums import VhostLimitName
 from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_request import VhostLimitRequest, VhostRequest
 
 if TYPE_CHECKING:
     from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
-    from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_response import VhostResponse
-
-
-@pytest.mark.live
-def test_get_vhosts(rabbitmq_client_compatibility: RabbitMQClient) -> None:
-    admin_service = rabbitmq_client_compatibility.admin
-    vhosts: list[VhostResponse] = admin_service.get_all_vhosts()
-    assert len(vhosts) > 0
+    from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_response import VhostLimitResponse, VhostResponse
 
 
 @pytest.mark.live
@@ -29,7 +22,7 @@ def test_create_delete_vhost(rabbitmq_client_compatibility: RabbitMQClient) -> N
     # Verify the vhost was created
     vhosts_created: list[VhostResponse] = vhost_service.get_all_vhosts()
     assert any(v.name == vhost_name for v in vhosts_created)
-
+    assert len(vhosts_created) > 1
     # Delete the vhost
     vhost_service.delete_vhost(vhost_name)
 
@@ -39,10 +32,10 @@ def test_create_delete_vhost(rabbitmq_client_compatibility: RabbitMQClient) -> N
 
 
 @pytest.mark.live
-def test_get_vhost(rabbitmq_client_compatibility: RabbitMQClient) -> None:
+def test_vhost_desc_tag(rabbitmq_client_compatibility: RabbitMQClient) -> None:
     vhost_service = rabbitmq_client_compatibility.admin
     vhost_name = "test-vhost"
-    vhost_service.create_vhost(vhost_name, VhostRequest())
+    vhost_service.create_vhost(vhost_name, VhostRequest(description="Test Vhost", tags=["test"]))
     vhost = vhost_service.get_vhost(vhost_name)
     assert vhost.name == vhost_name
     assert vhost.description == "Test Vhost"
@@ -54,5 +47,16 @@ def test_apply_vhost_limit(rabbitmq_client_compatibility: RabbitMQClient) -> Non
     vhost_service = rabbitmq_client_compatibility.admin
     vhost_name = "test-vhost"
     vhost_service.create_vhost(vhost_name, VhostRequest())
-    vlr = VhostLimitRequest(value=50)
+    vlr = VhostLimitRequest(value=0)
     vhost_service.apply_vhost_limit(vhost_name, VhostLimitName.MAX_CONNECTIONS, vlr)
+    vhost_service.apply_vhost_limit(vhost_name, VhostLimitName.MAX_QUEUES, vlr)
+    vhosts: list[VhostLimitResponse] = vhost_service.get_vhost_limits(vhost_name)
+    assert any(vhost.name == VhostLimitName.MAX_CONNECTIONS and vhost.value == 0 for vhost in vhosts)
+    assert any(vhost.name == VhostLimitName.MAX_QUEUES and vhost.value == 0 for vhost in vhosts)
+    vhost_service.delete_vhost(vhost_name)
+
+
+@pytest.mark.live
+def test_get_all_vhosts_limits(rabbitmq_client_compatibility: RabbitMQClient) -> None:
+    admin_service = rabbitmq_client_compatibility.admin
+    vhosts: list[VhostLimitResponse] = admin_service.get_all_vhosts_limits()
