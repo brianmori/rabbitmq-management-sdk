@@ -28,8 +28,7 @@ class VhostLimitResponse(RabbitMQBase):
     across the entire cluster.
 
     Example:
-        >>> {"vhost": "production", "limit": "max-connections", "value": 100}
-        {'vhost': 'test-vhost','value': {'max-connections': 3, 'max-queues': 3}}
+        >>> {"vhost": "test", "value": {"max-connections": 3, "max-queues": 3}}
     """
 
     vhost: str

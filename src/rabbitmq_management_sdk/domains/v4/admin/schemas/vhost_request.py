@@ -35,6 +35,3 @@ class VhostLimitRequest(RabbitMQBase):
     """
 
     value: int = Field(ge=-1, description="Limit must be -1 (unlimited), 0 (block) or a positive integer.")
-
-    def to_api_payload(self) -> dict[str, int]:
-        return {"value": self.value}
