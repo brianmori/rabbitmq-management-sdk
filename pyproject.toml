@@ -44,7 +44,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "ruff>=0.15.2,<1.0.0",
-    "pytest>=9.0.0,<10.0.0",
+    "pytest>=9.0.3,<10.0.0",
     "pytest-cov>=7.1.0,<8.0.0",
     "mypy>=1.19.1,<2.0.0",
     "pip-audit>=2.10.0,<3.0.0",
@@ -55,12 +55,6 @@ dev = [
 line-length = 120
 target-version = "py314"
 src = ["src", "tests"]
-
-[tool.ruff.lint.isort]
-known-first-party = ["rabbitmq_management_sdk"]
-
-[tool.ruff.lint.pylint]
-max-args = 8
 
 [tool.ruff.lint]
 select = [
@@ -77,6 +71,7 @@ select = [
     "PTH", # flake8-use-pathlib     — prefers pathlib over os.path
     "RUF", # ruff-specific rules
     "PL", # pylint
+    "TID", # flake8-tidy-imports
 ]
 
 [tool.ruff.format]
@@ -86,6 +81,15 @@ docstring-code-format = true
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["rabbitmq_management_sdk"]
+
+[tool.ruff.lint.pylint]
+max-args = 8
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["PLR2004"]

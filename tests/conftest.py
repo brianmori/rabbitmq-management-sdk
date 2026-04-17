@@ -37,6 +37,7 @@ def rabbitmq_client_compatibility(rabbit_config: RabbitSettings) -> RabbitMQClie
         port=rabbit_config.port,
         username=rabbit_config.username,
         password=rabbit_config.password,
+        strict=False,
     )
 
     return RabbitMQClient(config)

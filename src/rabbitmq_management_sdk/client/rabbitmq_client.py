@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from rabbitmq_management_sdk.client.config import RabbitMQMajorVersion, RabbitMQVersion
 from rabbitmq_management_sdk.client.utils import create_ssl_context
+from rabbitmq_management_sdk.domains.v4.admin.services import AdminManagerV4
 from rabbitmq_management_sdk.domains.v4.queues.services import QueueManagerV4
 from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse, TransportError, factory
 from rabbitmq_management_sdk.http_adapter.config import BasicAuthentication
@@ -118,4 +119,10 @@ class RabbitMQClient:
             return QueueManagerV4(
                 http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict
             )
+        raise NotImplementedError(f"Version {self._version} not supported")
+
+    @property
+    def admin(self) -> AdminManagerV4:
+        if self._version.major == RabbitMQMajorVersion.V4:
+            return AdminManagerV4(http_client=self._ha, strict=self._config.strict)
         raise NotImplementedError(f"Version {self._version} not supported")
