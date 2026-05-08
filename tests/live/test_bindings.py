@@ -35,6 +35,7 @@ def exchange_factory(rabbitmq_client_compatibility: RabbitMQClient) -> Iterator[
     for name in created_names:
         rabbitmq_client_compatibility.exchanges.delete(name)
 
+
 @pytest.fixture
 def temp_queue(rabbitmq_client_compatibility: RabbitMQClient, exchange_type: str) -> Iterator[str]:
     name = f"test-{exchange_type}-exch"

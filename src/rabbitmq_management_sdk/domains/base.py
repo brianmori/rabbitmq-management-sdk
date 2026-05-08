@@ -28,9 +28,7 @@ def parse_one[T: RabbitMQBase](response: HttpResponse, model: type[T]) -> T:
     try:
         return model.model_validate(response.json())
     except ValidationError as e:
-        raise MalformedResponseError(
-            f"Response body did not match {model.__name__}"
-        ) from e
+        raise MalformedResponseError(f"Response body did not match {model.__name__}") from e
 
 
 def parse_list[T: RabbitMQBase](response: HttpResponse, model: type[T]) -> list[T]:
@@ -49,6 +47,4 @@ def parse_list[T: RabbitMQBase](response: HttpResponse, model: type[T]) -> list[
     try:
         return [model.model_validate(item) for item in response.json()]
     except ValidationError as e:
-        raise MalformedResponseError(
-            f"Response body did not match list[{model.__name__}]"
-        ) from e
+        raise MalformedResponseError(f"Response body did not match list[{model.__name__}]") from e

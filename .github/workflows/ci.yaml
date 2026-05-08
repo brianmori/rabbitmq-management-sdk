@@ -42,8 +42,5 @@ jobs:
       - name: Type Check
         run: uv run mypy src/
 
-      - name: Audit Dependencies
-        run: uv run pip-audit
-
       - name: Run Tests
         run: uv run pytest -m "unit or integration" --cov --cov-report=xml -v

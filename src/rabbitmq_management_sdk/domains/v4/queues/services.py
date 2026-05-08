@@ -16,9 +16,7 @@ class QueueManagerV4:
         self._strict = strict
 
     def get(self, name: str) -> Queue:
-        return parse_one(
-            self._ha.request(method=HTTPMethod.GET, path=f"/api/queues/{self._vhost}/{name}"), Queue
-        )
+        return parse_one(self._ha.request(method=HTTPMethod.GET, path=f"/api/queues/{self._vhost}/{name}"), Queue)
 
     def create(self, name: str, request: QueueRequest) -> None:
         self._ha.request(
