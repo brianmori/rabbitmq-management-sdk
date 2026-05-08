@@ -1,6 +1,7 @@
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
+from rabbitmq_management_sdk.domains.base import parse_list, parse_one
 from rabbitmq_management_sdk.domains.v4.exchanges.schemas.exchange_response import ExchangeResponse
 
 if TYPE_CHECKING:
@@ -23,9 +24,9 @@ class ExchangeManagerV4:
         Returns:
 
         """
-        data = (self._ha.request(method=HTTPMethod.GET, path=f"/api/exchanges/{self._vhost}/{name}")).json()
-
-        return ExchangeResponse.model_validate(data)
+        return parse_one(
+            self._ha.request(method=HTTPMethod.GET, path=f"/api/exchanges/{self._vhost}/{name}"), ExchangeResponse
+        )
 
     def list_by_vhost(self) -> list[ExchangeResponse]:
         """Return all exchanges in the virtual host.
@@ -33,8 +34,9 @@ class ExchangeManagerV4:
         Includes the default nameless exchange and the built-in
         ``amq.*`` exchanges.
         """
-        response = self._ha.request(method=HTTPMethod.GET, path=f"/api/exchanges/{self._vhost}")
-        return [ExchangeResponse.model_validate(item) for item in response.json()]
+        return parse_list(
+            self._ha.request(method=HTTPMethod.GET, path=f"/api/exchanges/{self._vhost}"), ExchangeResponse
+        )
 
     def list_all(self) -> list[ExchangeResponse]:
         """Returns all exchanges in the virtual host.
@@ -46,8 +48,7 @@ class ExchangeManagerV4:
             list[ExchangeResponse]: A list of objects representing all
                 exchanges in the virtual host.
         """
-        response = self._ha.request(method=HTTPMethod.GET, path="/api/exchanges")
-        return [ExchangeResponse.model_validate(item) for item in response.json()]
+        return parse_list(self._ha.request(method=HTTPMethod.GET, path="/api/exchanges"), ExchangeResponse)
 
     # ------------------------------------------------------------------
     # Write operations

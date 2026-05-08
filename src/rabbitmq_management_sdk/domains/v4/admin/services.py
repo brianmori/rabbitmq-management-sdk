@@ -1,6 +1,7 @@
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
+from rabbitmq_management_sdk.domains.base import parse_list, parse_one
 from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_response import VhostLimitResponse, VhostResponse
 
 if TYPE_CHECKING:
@@ -18,12 +19,10 @@ class AdminManagerV4:
         self._strict = strict
 
     def get_vhost(self, name: str) -> VhostResponse:
-        data = (self._ha.request(method=HTTPMethod.GET, path=f"/api/vhosts/{name}")).json()
-        return VhostResponse(**data)
+        return parse_one(self._ha.request(method=HTTPMethod.GET, path=f"/api/vhosts/{name}"), VhostResponse)
 
     def get_all_vhosts(self) -> list[VhostResponse]:
-        data = (self._ha.request(method=HTTPMethod.GET, path="/api/vhosts")).json()
-        return [VhostResponse.model_validate(vr) for vr in data]
+        return parse_list(self._ha.request(method=HTTPMethod.GET, path="/api/vhosts"), VhostResponse)
 
     def create_vhost(self, name: str, request: VhostRequest) -> None:
         self._ha.request(method=HTTPMethod.PUT, path=f"/api/vhosts/{name}", json=request.model_dump(exclude_none=True))
@@ -38,12 +37,12 @@ class AdminManagerV4:
         self._ha.request(method=HTTPMethod.DELETE, path=f"/api/vhosts/{name}/deletion/protection")
 
     def get_all_vhosts_limits(self) -> list[VhostLimitResponse]:
-        data = (self._ha.request(method=HTTPMethod.GET, path="/api/vhost-limits")).json()
-        return [VhostLimitResponse.model_validate(vh_lim) for vh_lim in data]
+        return parse_list(self._ha.request(method=HTTPMethod.GET, path="/api/vhost-limits"), VhostLimitResponse)
 
     def get_vhost_limits(self, vhost: str) -> VhostLimitResponse:
-        data = (self._ha.request(method=HTTPMethod.GET, path=f"/api/vhost-limits/{vhost}")).json()
-        return [VhostLimitResponse.model_validate(vh_lim) for vh_lim in data].pop()
+        return parse_list(
+            self._ha.request(method=HTTPMethod.GET, path=f"/api/vhost-limits/{vhost}"), VhostLimitResponse
+        ).pop()
 
     def apply_vhost_limit(self, vhost: str, limit_name: VhostLimitName, request: VhostLimitRequest) -> None:
         self._ha.request(

@@ -5,12 +5,6 @@ from rabbitmq_management_sdk.http_adapter.config import (
     ExponentialBackoffWithJitter,
     NoBackoff,
 )
-from rabbitmq_management_sdk.http_adapter.exceptions import (
-    TransportConnectionError,
-    TransportError,
-    TransportResponseError,
-    TransportTimeoutError,
-)
 from rabbitmq_management_sdk.http_adapter.factory import create_adapter
 
 __all__ = [
@@ -20,9 +14,5 @@ __all__ = [
     "HttpAdapter",
     "HttpResponse",
     "NoBackoff",
-    "TransportConnectionError",
-    "TransportError",
-    "TransportResponseError",
-    "TransportTimeoutError",
     "create_adapter",
 ]

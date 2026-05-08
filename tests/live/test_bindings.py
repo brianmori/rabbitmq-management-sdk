@@ -34,8 +34,6 @@ def exchange_factory(rabbitmq_client_compatibility: RabbitMQClient) -> Iterator[
     # Teardown: Loop through everything created in the test
     for name in created_names:
         rabbitmq_client_compatibility.exchanges.delete(name)
-        pass
-
 
 @pytest.fixture
 def temp_queue(rabbitmq_client_compatibility: RabbitMQClient, exchange_type: str) -> Iterator[str]:
@@ -49,7 +47,6 @@ def temp_queue(rabbitmq_client_compatibility: RabbitMQClient, exchange_type: str
         yield name
     finally:
         with contextlib.suppress(Exception):
-            pass
             rabbitmq_client_compatibility.queues.delete(name)
 
 

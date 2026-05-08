@@ -1,8 +1,10 @@
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
+from rabbitmq_management_sdk.domains.base import parse_list
 from rabbitmq_management_sdk.domains.v4.bindings.schemas.binding_response import BindingResponse
 from rabbitmq_management_sdk.domains.v4.bindings.schemas.common import BindingDestinationType
+from rabbitmq_management_sdk.exceptions import MalformedResponseError
 
 if TYPE_CHECKING:
     from rabbitmq_management_sdk.domains.v4.bindings.schemas.binding_request import BindingRequest
@@ -17,13 +19,11 @@ class BindingManagerV4:
 
     def list_all(self) -> list[BindingResponse]:
         """Return all bindings across every virtual host in the cluster."""
-        response = self._ha.request(method=HTTPMethod.GET, path="/api/bindings")
-        return [BindingResponse.model_validate(item) for item in response.json()]
+        return parse_list(self._ha.request(method=HTTPMethod.GET, path="/api/bindings"), BindingResponse)
 
     def list_by_vhost(self) -> list[BindingResponse]:
         """Return all bindings in the virtual host."""
-        response = self._ha.request(method=HTTPMethod.GET, path=f"/api/bindings/{self._vhost}")
-        return [BindingResponse.model_validate(item) for item in response.json()]
+        return parse_list(self._ha.request(method=HTTPMethod.GET, path=f"/api/bindings/{self._vhost}"), BindingResponse)
 
     def list_exchange_to_queue(
         self,
@@ -43,8 +43,10 @@ class BindingManagerV4:
             list[BindingResponse]: A list of objects representing all bindings between the exchange and queue.
 
         """
-        response = self._ha.request(method=HTTPMethod.GET, path=f"/api/bindings/{self._vhost}/e/{exchange}/q/{queue}")
-        return [BindingResponse.model_validate(item) for item in response.json()]
+        return parse_list(
+            self._ha.request(method=HTTPMethod.GET, path=f"/api/bindings/{self._vhost}/e/{exchange}/q/{queue}"),
+            BindingResponse,
+        )
 
     def list_exchange_to_exchange(
         self,
@@ -62,10 +64,10 @@ class BindingManagerV4:
             destination exchanges.
 
         """
-        response = self._ha.request(
-            method=HTTPMethod.GET, path=f"/api/bindings/{self._vhost}/e/{source}/e/{destination}"
+        return parse_list(
+            self._ha.request(method=HTTPMethod.GET, path=f"/api/bindings/{self._vhost}/e/{source}/e/{destination}"),
+            BindingResponse,
         )
-        return [BindingResponse.model_validate(item) for item in response.json()]
 
     def create_exchange_to_queue(
         self,
@@ -84,7 +86,7 @@ class BindingManagerV4:
             The created binding including the server-assigned ``properties_key`` needed for deletion.
 
         Raises:
-            ValueError: If RabbitMQ does not return a Location header in the response.
+            MalformedResponseError: If RabbitMQ does not return a Location header in the response.
         """
         response = self._ha.request(
             method=HTTPMethod.POST,
@@ -94,7 +96,7 @@ class BindingManagerV4:
 
         location = response.headers.get("location")
         if not location:
-            raise ValueError(
+            raise MalformedResponseError(
                 "RabbitMQ did not return a Location header after binding creation",
             )
         props_key = location.split("/")[-1]
@@ -127,6 +129,9 @@ class BindingManagerV4:
 
         Returns:
             The created binding including the server-assigned ``properties_key`` needed for deletion.
+
+        Raises:
+            MalformedResponseError: If RabbitMQ does not return a Location header in the response.
         """
         response = self._ha.request(
             method=HTTPMethod.POST,
@@ -136,7 +141,7 @@ class BindingManagerV4:
 
         location = response.headers.get("location")
         if not location:
-            raise ValueError(
+            raise MalformedResponseError(
                 "RabbitMQ did not return a Location header after binding creation",
             )
         props_key = location.split("/")[-1]
