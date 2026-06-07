@@ -1,21 +1,26 @@
 from time import sleep
 from typing import TYPE_CHECKING, Any
 
-if TYPE_CHECKING:
-    from types import TracebackType
-
-from rabbitmq_management_sdk.http_adapter import (
-    HttpAdapter,
-    HttpResponse,
-    TransportConnectionError,
+from rabbitmq_management_sdk.exceptions import (
+    ConnectionError as RMQConnectionError,
+)
+from rabbitmq_management_sdk.exceptions import (
+    RabbitMQError,
     TransportError,
-    TransportTimeoutError,
+)
+from rabbitmq_management_sdk.exceptions import (
+    TimeoutError as RMQTimeoutError,
 )
 from rabbitmq_management_sdk.http_adapter.config import BackoffStrategy, ExponentialBackoffWithJitter
 
-_DEFAULT_RETRYABLE: tuple[type[TransportError], ...] = (
-    TransportTimeoutError,
-    TransportConnectionError,
+if TYPE_CHECKING:
+    from types import TracebackType
+
+    from rabbitmq_management_sdk.http_adapter.base import HttpAdapter, HttpResponse
+
+_DEFAULT_RETRYABLE: tuple[type[RabbitMQError], ...] = (
+    RMQTimeoutError,
+    RMQConnectionError,
 )
 
 
@@ -26,7 +31,7 @@ class RetryTransport:
         *,
         max_attempts: int = 3,
         backoff_strategy: BackoffStrategy | None = None,
-        retryable_exceptions: tuple[type[TransportError], ...] = _DEFAULT_RETRYABLE,
+        retryable_exceptions: tuple[type[RabbitMQError], ...] = _DEFAULT_RETRYABLE,
     ) -> None:
         self._transport = transport
         self._max_attempts = max_attempts
@@ -43,7 +48,7 @@ class RetryTransport:
         headers: dict[str, str] | None = None,
     ) -> HttpResponse:
 
-        last_exc: TransportError = TransportError("Request failed for an unknown reason")
+        last_exc: RabbitMQError = TransportError("Request failed for an unknown reason")
         for attempt in range(self._max_attempts):
             try:
                 return self._transport.request(method=method, path=path, params=params, json=json, headers=headers)

@@ -1,24 +1,8 @@
 import ssl
 from typing import TYPE_CHECKING
-from urllib.parse import quote
 
 if TYPE_CHECKING:
     from rabbitmq_management_sdk.client.config import SSLConfig
-
-
-def encode_vhost(vhost: str) -> str:
-    """Encodes a virtual host name for the RabbitMQ Management API.
-
-    Characters like '/' are converted to '%2F' and whitespaces are
-    properly escaped to ensure URL compatibility.
-
-    Args:
-        vhost: The virtual host to encode.
-
-    Returns:
-        The URL-safe encoded virtual host string.
-    """
-    return quote(vhost, safe="")
 
 
 def create_ssl_context(sc: SSLConfig) -> ssl.SSLContext:

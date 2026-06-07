@@ -5,8 +5,11 @@ from typing import TYPE_CHECKING
 from rabbitmq_management_sdk.client.config import RabbitMQMajorVersion, RabbitMQVersion
 from rabbitmq_management_sdk.client.utils import create_ssl_context
 from rabbitmq_management_sdk.domains.v4.admin.services import AdminManagerV4
+from rabbitmq_management_sdk.domains.v4.bindings.services import BindingManagerV4
+from rabbitmq_management_sdk.domains.v4.exchanges.services import ExchangeManagerV4
 from rabbitmq_management_sdk.domains.v4.queues.services import QueueManagerV4
-from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse, TransportError, factory
+from rabbitmq_management_sdk.exceptions import MalformedResponseError, RabbitMQError
+from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse, factory
 from rabbitmq_management_sdk.http_adapter.config import BasicAuthentication
 
 if TYPE_CHECKING:
@@ -21,7 +24,7 @@ class RabbitMQClient:
     """Client for the RabbitMQ Management API.
 
     Attributes:
-      config: Configuration for the client.
+      _config: Configuration for the client.
       _ha: HTTP adapter for making API requests.
       _basic_auth: Basic authentication for API requests.
       _version: Semantic version of the RabbitMQ server.
@@ -63,8 +66,7 @@ class RabbitMQClient:
             RabbitMQVersion: The semantic version of the RabbitMQ server.
 
         Raises:
-            TransportError: If there is a problem communicating with the server.
-            ValueError: If the RabbitMQ version string is not in the expected format.
+            RabbitMQError: If there is a problem communicating with the server or parsing the version.
         """
 
         if self._config.version_override is not None:
@@ -73,7 +75,7 @@ class RabbitMQClient:
         try:
             hr: HttpResponse = self._ha.request(method=HTTPMethod.GET, path="/api/overview")
             data = hr.json()
-        except TransportError as e:
+        except RabbitMQError as e:
             logger.error(
                 "Failed to reach RabbitMQ Management API during version detection. "
                 "Consider setting version_override in Config and/or proxy settings.",
@@ -94,7 +96,7 @@ class RabbitMQClient:
                     "rabbitmq_version": rabbitmq_version,
                 },
             )
-            raise ValueError(
+            raise MalformedResponseError(
                 f"Expected a string for rabbitmq_version, got {type(rabbitmq_version).__name__}. "
                 f"Set version_override in Config to bypass detection."
             )
@@ -111,7 +113,10 @@ class RabbitMQClient:
                 },
                 exc_info=e,
             )
-            raise
+            raise MalformedResponseError(
+                f"Could not parse rabbitmq_version {rabbitmq_version!r}. "
+                f"Set version_override in Config to bypass detection."
+            ) from e
 
     @property
     def queues(self) -> QueueManagerV4:
@@ -125,4 +130,20 @@ class RabbitMQClient:
     def admin(self) -> AdminManagerV4:
         if self._version.major == RabbitMQMajorVersion.V4:
             return AdminManagerV4(http_client=self._ha, strict=self._config.strict)
+        raise NotImplementedError(f"Version {self._version} not supported")
+
+    @property
+    def exchanges(self) -> ExchangeManagerV4:
+        if self._version.major == RabbitMQMajorVersion.V4:
+            return ExchangeManagerV4(
+                http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict
+            )
+        raise NotImplementedError(f"Version {self._version} not supported")
+
+    @property
+    def bindings(self) -> BindingManagerV4:
+        if self._version.major == RabbitMQMajorVersion.V4:
+            return BindingManagerV4(
+                http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict
+            )
         raise NotImplementedError(f"Version {self._version} not supported")

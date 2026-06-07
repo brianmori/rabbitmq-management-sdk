@@ -61,7 +61,11 @@ class Config(BaseModel):
 
     @property
     def virtual_host_safe(self) -> str:
-        """The automatically encoded vhost for API calls."""
+        """Return the virtual host name URL-encoded for use in API paths.
+
+        The result is percent-encoded with ``safe=""`` so that ``/`` becomes
+        ``%2F``. Managers receive this value and must NOT encode it again.
+        """
         return quote(self.virtual_host, safe="")
 
     strict: bool = Field(

@@ -2,12 +2,17 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
-from rabbitmq_management_sdk.http_adapter import (
-    HttpResponse,
-    TransportConnectionError,
-    TransportResponseError,
-    TransportTimeoutError,
+from rabbitmq_management_sdk.exceptions import (
+    ConnectionError as RMQConnectionError,
 )
+from rabbitmq_management_sdk.exceptions import (
+    TimeoutError as RMQTimeoutError,
+)
+from rabbitmq_management_sdk.exceptions import (
+    TransportError,
+    api_error_from_response,
+)
+from rabbitmq_management_sdk.http_adapter.base import HttpResponse
 from rabbitmq_management_sdk.http_adapter.config import TimeoutConfig
 
 if TYPE_CHECKING:
@@ -81,17 +86,18 @@ class HttpxAdapter:
                 body=response.content,
             )
         except httpx.HTTPStatusError as e:
-            raise TransportResponseError(
-                f"HTTP {e.response.status_code}: {method.upper()} {path}",
+            raise api_error_from_response(
                 status_code=e.response.status_code,
-                response_body=e.response.content,
+                method=method.upper(),
+                path=path,
+                body=e.response.content,
             ) from e
         except httpx.TimeoutException as e:
-            raise TransportTimeoutError(f"Request timed out: {method.upper()} {path}") from e
+            raise RMQTimeoutError(f"Request timed out: {method.upper()} {path}") from e
         except httpx.NetworkError as e:
-            raise TransportConnectionError(f"Network error: {method.upper()} {path}") from e
+            raise RMQConnectionError(f"Network error: {method.upper()} {path}") from e
         except httpx.HTTPError as e:
-            raise TransportResponseError(f"HTTP error: {method.upper()} {path}") from e
+            raise TransportError(f"HTTP error: {method.upper()} {path}") from e
 
     def close(self) -> None:
         self._client.close()
