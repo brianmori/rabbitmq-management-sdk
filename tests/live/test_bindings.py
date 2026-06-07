@@ -13,11 +13,6 @@ if TYPE_CHECKING:
     from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
 
 
-@pytest.fixture(params=["direct", "topic", "fanout"])
-def exchange_type(request: str) -> str:
-    return request
-
-
 @pytest.fixture
 def exchange_factory(rabbitmq_client_compatibility: RabbitMQClient) -> Iterator[Callable[[str, str], str]]:
 
@@ -32,8 +27,8 @@ def exchange_factory(rabbitmq_client_compatibility: RabbitMQClient) -> Iterator[
     yield _make_exchange  # Send the function to the test
 
     # Teardown: Loop through everything created in the test
-    for name in created_names:
-        rabbitmq_client_compatibility.exchanges.delete(name)
+    # for name in created_names:
+    #     rabbitmq_client_compatibility.exchanges.delete(name)
 
 
 @pytest.fixture
@@ -53,7 +48,7 @@ def temp_queue(rabbitmq_client_compatibility: RabbitMQClient, exchange_type: str
 
 @pytest.mark.live
 @pytest.mark.parametrize("exchange_type", ["direct", "topic"])
-def test_create_destroy_direct_exchange(
+def test_create_destroy_exchange(
     rabbitmq_client_compatibility: RabbitMQClient, exchange_factory: Callable[[str, str], str], temp_queue: str
 ) -> None:
     src = exchange_factory("source_ex", "topic")
@@ -66,9 +61,3 @@ def test_create_destroy_direct_exchange(
     rabbitmq_client_compatibility.bindings.create_exchange_to_queue(
         src, temp_queue, request=BindingRequest(routing_key="test.#")
     )
-
-
-@pytest.mark.live
-def test_fix(rabbitmq_client_compatibility: RabbitMQClient, exchange_type: str) -> None:
-    print(exchange_type)
-    pass
