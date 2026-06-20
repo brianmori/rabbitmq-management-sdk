@@ -18,8 +18,15 @@ test:
     uv run pytest -m "unit or integration" --cov --cov-report=term-missing -v
 
 # Run live RabbitMQ tests
-test-live:
+test-live-rmq42:
+    docker compose -f docker-compose.rabbitmq-42.yaml up -d
     uv run pytest -m live
+    docker compose -f docker-compose.rabbitmq-42.yaml down --volumes
+
+test-live-rmq43:
+    docker compose -f docker-compose.rabbitmq-43.yaml up -d
+    uv run pytest -m live
+    docker compose -f docker-compose.rabbitmq-43.yaml down --volumes
 
 # Mypy check
 typecheck:
