@@ -67,9 +67,7 @@ class Amqp091ShovelDestinationResponse(RabbitMQBase):
     dest_predeclared: bool = Field(False, alias="dest-predeclared")
     dest_add_forward_headers: bool = Field(False, alias="dest-add-forward-headers")
     dest_add_timestamp_header: bool = Field(False, alias="dest-add-timestamp-header")
-    dest_publish_properties: dict[str, object] | None = Field(
-        None, alias="dest-publish-properties"
-    )
+    dest_publish_properties: dict[str, object] | None = Field(None, alias="dest-publish-properties")
 
 
 class LocalShovelDestinationResponse(RabbitMQBase):
@@ -81,27 +79,19 @@ class LocalShovelDestinationResponse(RabbitMQBase):
     dest_predeclared: bool = Field(False, alias="dest-predeclared")
     dest_add_forward_headers: bool = Field(False, alias="dest-add-forward-headers")
     dest_add_timestamp_header: bool = Field(False, alias="dest-add-timestamp-header")
-    dest_publish_properties: dict[str, object] | None = Field(
-        None, alias="dest-publish-properties"
-    )
+    dest_publish_properties: dict[str, object] | None = Field(None, alias="dest-publish-properties")
 
 
 class Amqp10ShovelDestinationResponse(RabbitMQBase):
     dest_protocol: Literal["amqp10"] = Field(alias="dest-protocol")
     dest_address: str = Field(alias="dest-address")
-    dest_application_properties: dict[str, str] | None = Field(
-        None, alias="dest-application-properties"
-    )
+    dest_application_properties: dict[str, str] | None = Field(None, alias="dest-application-properties")
     dest_properties: dict[str, str] | None = Field(None, alias="dest-properties")
-    dest_message_annotations: dict[str, str] | None = Field(
-        None, alias="dest-message-annotations"
-    )
+    dest_message_annotations: dict[str, str] | None = Field(None, alias="dest-message-annotations")
 
 
 type ShovelDestinationArgumentsResponse = Annotated[
-    Amqp091ShovelDestinationResponse
-    | LocalShovelDestinationResponse
-    | Amqp10ShovelDestinationResponse,
+    Amqp091ShovelDestinationResponse | LocalShovelDestinationResponse | Amqp10ShovelDestinationResponse,
     Field(discriminator="dest_protocol"),
 ]
 
@@ -147,15 +137,31 @@ class ShovelResponse(RabbitMQBase):
             return data
 
         src_keys = {
-            "src-protocol", "src-queue", "src-queue-args", "src-exchange",
-            "src-exchange-key", "src-predeclared", "src-consumer-name",
-            "src-consumer-args", "src-prefetch-count", "src-address",
+            "src-protocol",
+            "src-queue",
+            "src-queue-args",
+            "src-exchange",
+            "src-exchange-key",
+            "src-predeclared",
+            "src-consumer-name",
+            "src-consumer-args",
+            "src-prefetch-count",
+            "src-address",
         }
         dest_keys = {
-            "dest-protocol", "dest-queue", "dest-queue-args", "dest-exchange",
-            "dest-exchange-key", "dest-predeclared", "dest-add-forward-headers",
-            "dest-add-timestamp-header", "dest-publish-properties", "dest-address",
-            "dest-application-properties", "dest-properties", "dest-message-annotations",
+            "dest-protocol",
+            "dest-queue",
+            "dest-queue-args",
+            "dest-exchange",
+            "dest-exchange-key",
+            "dest-predeclared",
+            "dest-add-forward-headers",
+            "dest-add-timestamp-header",
+            "dest-publish-properties",
+            "dest-address",
+            "dest-application-properties",
+            "dest-properties",
+            "dest-message-annotations",
         }
 
         src_arguments = {k: v for k, v in data.items() if k in src_keys}
@@ -165,10 +171,7 @@ class ShovelResponse(RabbitMQBase):
         src_arguments.setdefault("src-protocol", "amqp091")
         dest_arguments.setdefault("dest-protocol", "amqp091")
 
-        remainder = {
-            k: v for k, v in data.items()
-            if k not in src_keys and k not in dest_keys
-        }
+        remainder = {k: v for k, v in data.items() if k not in src_keys and k not in dest_keys}
 
         return remainder | {"src_arguments": src_arguments, "dest_arguments": dest_arguments}
 
@@ -248,5 +251,3 @@ class ShovelStatusResponse(RabbitMQBase):
     dest_queue: str | None = None
     dest_exchange: str | None = None
     dest_address: str | None = None
-
-

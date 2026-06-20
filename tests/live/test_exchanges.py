@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Queue creation and retrieval test
 from typing import TYPE_CHECKING
 

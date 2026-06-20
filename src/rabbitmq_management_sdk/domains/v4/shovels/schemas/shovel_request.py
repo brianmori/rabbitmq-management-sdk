@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
@@ -92,9 +94,7 @@ class Amqp091ShovelDestination(RabbitMQBase):
     dest_predeclared: bool = Field(False, alias="dest-predeclared")
     dest_add_forward_headers: bool = Field(False, alias="dest-add-forward-headers")
     dest_add_timestamp_header: bool = Field(False, alias="dest-add-timestamp-header")
-    dest_publish_properties: dict[str, object] | None = Field(
-        None, alias="dest-publish-properties"
-    )
+    dest_publish_properties: dict[str, object] | None = Field(None, alias="dest-publish-properties")
 
     @model_validator(mode="after")
     def _check_queue_xor_exchange(self) -> Amqp091ShovelDestination:
@@ -119,9 +119,7 @@ class LocalShovelDestination(RabbitMQBase):
     dest_predeclared: bool = Field(False, alias="dest-predeclared")
     dest_add_forward_headers: bool = Field(False, alias="dest-add-forward-headers")
     dest_add_timestamp_header: bool = Field(False, alias="dest-add-timestamp-header")
-    dest_publish_properties: dict[str, object] | None = Field(
-        None, alias="dest-publish-properties"
-    )
+    dest_publish_properties: dict[str, object] | None = Field(None, alias="dest-publish-properties")
 
     @model_validator(mode="after")
     def _check_queue_xor_exchange(self) -> LocalShovelDestination:
@@ -133,13 +131,9 @@ class LocalShovelDestination(RabbitMQBase):
 class Amqp10ShovelDestination(RabbitMQBase):
     dest_protocol: Literal["amqp10"] = Field("amqp10", alias="dest-protocol", frozen=True)
     dest_address: str = Field(alias="dest-address")
-    dest_application_properties: dict[str, str] | None = Field(
-        None, alias="dest-application-properties"
-    )
+    dest_application_properties: dict[str, str] | None = Field(None, alias="dest-application-properties")
     dest_properties: dict[str, str] | None = Field(None, alias="dest-properties")
-    dest_message_annotations: dict[str, str] | None = Field(
-        None, alias="dest-message-annotations"
-    )
+    dest_message_annotations: dict[str, str] | None = Field(None, alias="dest-message-annotations")
 
 
 type ShovelDestinationArguments = Annotated[
@@ -162,7 +156,7 @@ class ShovelRequest(RabbitMQBase):
     src_arguments and dest_arguments, matching the queue pattern where
     queue-type-specific x-args live in a nested `arguments` model.
 
-    Wire serialisation is handled by to_api_value() which flattens the
+    Wire serialization is handled by to_api_value() which flattens the
     nested models into the single flat JSON object the API expects.
 
     Example — local to amqp091::
@@ -212,9 +206,7 @@ class ShovelRequest(RabbitMQBase):
     @model_validator(mode="after")
     def _delete_after_no_ack_guard(self) -> ShovelRequest:
         if isinstance(self.src_delete_after, int) and self.ack_mode == AckMode.NO_ACK:
-            raise ValueError(
-                "src-delete-after integer cannot be combined with ack-mode='no-ack'"
-            )
+            raise ValueError("src-delete-after integer cannot be combined with ack-mode='no-ack'")
         return self
 
     def to_api_value(self) -> dict[str, object]:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from http import HTTPMethod
 from typing import TYPE_CHECKING
@@ -118,6 +120,11 @@ class RabbitMQClient:
                 f"Could not parse rabbitmq_version {rabbitmq_version!r}. "
                 f"Set version_override in Config to bypass detection."
             ) from e
+
+    @property
+    def version(self) -> RabbitMQVersion:
+        """The RabbitMQ server version detected at construction (or the configured override)."""
+        return self._version
 
     @property
     def queues(self) -> QueueManagerV4:

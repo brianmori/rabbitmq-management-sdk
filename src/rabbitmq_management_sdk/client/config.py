@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ssl
 from enum import IntEnum
 from urllib.parse import quote

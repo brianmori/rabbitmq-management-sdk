@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.14" ]
+        python-version: [ "3.12", "3.13", "3.14" ]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -40,7 +40,7 @@ jobs:
           uv run ruff format --check src/ tests/
 
       - name: Type Check
-        run: uv run mypy src/
+        run: uv run mypy
 
       - name: Run Tests
         run: uv run pytest -m "unit or integration" --cov --cov-report=xml -v

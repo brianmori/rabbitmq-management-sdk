@@ -32,6 +32,10 @@ test-live-rmq43:
 typecheck:
     uv run mypy .
 
+# Audit installed dependencies for known vulnerabilities
+audit:
+    uv run pip-audit
+
 # Build the library for distribution
 build:
     uv build

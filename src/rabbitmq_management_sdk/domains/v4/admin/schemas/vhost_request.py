@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # domains/v4/vhost/schemas/vhost_request.py
 from enum import StrEnum
 from typing import Literal

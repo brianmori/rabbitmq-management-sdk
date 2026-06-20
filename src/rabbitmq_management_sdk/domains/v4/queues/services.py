@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from http import HTTPMethod
 from typing import TYPE_CHECKING, Any
 
@@ -16,8 +18,9 @@ class QueueManagerV4:
         self._strict = strict
 
     def get(self, name: str) -> QueueResponse:
-        return parse_one(self._ha.request(method=HTTPMethod.GET,
-                                          path=f"/api/queues/{self._vhost}/{name}"), QueueResponse)
+        return parse_one(
+            self._ha.request(method=HTTPMethod.GET, path=f"/api/queues/{self._vhost}/{name}"), QueueResponse
+        )
 
     def create(self, name: str, request: QueueRequest) -> None:
         self._ha.request(

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 

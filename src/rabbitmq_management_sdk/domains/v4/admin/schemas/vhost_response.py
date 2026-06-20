@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # domains/v4/vhost/schemas/vhost_response.py
 from typing import Literal
 

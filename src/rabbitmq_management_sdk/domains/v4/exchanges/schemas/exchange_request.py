@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import ConfigDict, Field
 
 from rabbitmq_management_sdk.domains.base import RabbitMQBase
