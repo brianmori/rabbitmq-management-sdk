@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
@@ -39,10 +41,24 @@ class AdminManagerV4:
     def get_all_vhosts_limits(self) -> list[VhostLimitResponse]:
         return parse_list(self._ha.request(method=HTTPMethod.GET, path="/api/vhost-limits"), VhostLimitResponse)
 
-    def get_vhost_limits(self, vhost: str) -> VhostLimitResponse:
-        return parse_list(
+    def get_vhost_limits(self, vhost: str) -> VhostLimitResponse | None:
+        """Return the configured limits for a single vhost.
+
+        The ``GET /api/vhost-limits/{vhost}`` endpoint returns a list that is
+        empty when the vhost has no limits configured.
+
+        Args:
+            vhost: The virtual host name.
+
+        Returns:
+            The vhost's limits, or ``None`` when no limits are set. (Previously
+            this raised a bare ``IndexError`` on an empty result, which leaked
+            past the SDK's ``RabbitMQError`` boundary.)
+        """
+        limits = parse_list(
             self._ha.request(method=HTTPMethod.GET, path=f"/api/vhost-limits/{vhost}"), VhostLimitResponse
-        ).pop()
+        )
+        return limits[0] if limits else None
 
     def apply_vhost_limit(self, vhost: str, limit_name: VhostLimitName, request: VhostLimitRequest) -> None:
         self._ha.request(
