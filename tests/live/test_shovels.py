@@ -70,4 +70,3 @@ def test_create_destroy_shovel(rabbitmq_client_compatibility: RabbitMQClient) ->
             vhost_service.delete_vhost(vhost_src_name)
         with contextlib.suppress(RabbitMQError):
             vhost_service.delete_vhost(vhost_dst_name)
-
