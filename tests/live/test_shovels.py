@@ -70,3 +70,21 @@ def test_create_destroy_shovel(rabbitmq_client_compatibility: RabbitMQClient) ->
             vhost_service.delete_vhost(vhost_src_name)
         with contextlib.suppress(RabbitMQError):
             vhost_service.delete_vhost(vhost_dst_name)
+
+
+@pytest.mark.live
+def test_get_all_shovels(rabbitmq_client_compatibility: RabbitMQClient) -> None:
+    shovels_status = rabbitmq_client_compatibility.shovels.get_all_shovel_statuses()
+    assert shovels_status is not None
+
+
+@pytest.mark.live
+def test_get_all_shovels_vhost(rabbitmq_client_strict_vhost_src: RabbitMQClient) -> None:
+    shovels_status = rabbitmq_client_strict_vhost_src.shovels.get_shovel_statuses_by_vhost()
+    assert shovels_status is not None
+
+
+@pytest.mark.live
+def test_get_shovel_status_vhost(rabbitmq_client_strict_vhost_src: RabbitMQClient) -> None:
+    shovels_status = rabbitmq_client_strict_vhost_src.shovels.get_shovel_status("test")
+    assert shovels_status is not None

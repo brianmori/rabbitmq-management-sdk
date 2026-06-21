@@ -40,13 +40,15 @@ class ShovelManagerV4:
         return parse_list(self._ha.request(method=HTTPMethod.GET, path="/api/shovels"), ShovelStatusResponse)
 
     def get_shovel_statuses_by_vhost(self) -> list[ShovelStatusResponse]:
+        resp = self._ha.request(method=HTTPMethod.GET, path=f"/api/shovels/{self._vhost}")
         return parse_list(
-            self._ha.request(method=HTTPMethod.GET, path=f"/api/shovels/vhost/{self._vhost}"),
+            resp,
             ShovelStatusResponse,
         )
 
     def get_shovel_status(self, name: str) -> ShovelStatusResponse:
+        resp = self._ha.request(method=HTTPMethod.GET, path=f"/api/shovels/vhost/{self._vhost}/{name}")
         return parse_one(
-            self._ha.request(method=HTTPMethod.GET, path=f"/api/shovels/vhost/{self._vhost}/{name}"),
+            resp,
             ShovelStatusResponse,
         )

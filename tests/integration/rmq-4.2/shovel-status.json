@@ -1,0 +1,16 @@
+{
+  "value": {
+    "ack-mode": "on-confirm",
+    "dest-add-forward-headers": false,
+    "dest-protocol": "amqp091",
+    "dest-queue": "dest.q",
+    "dest-uri": "amqp:///dest",
+    "src-delete-after": "never",
+    "src-protocol": "amqp091",
+    "src-queue": "src.q",
+    "src-uri": "amqp:///src"
+  },
+  "vhost": "src",
+  "component": "shovel",
+  "name": "test"
+}

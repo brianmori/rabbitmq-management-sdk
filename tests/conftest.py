@@ -41,7 +41,6 @@ def rabbitmq_client_compatibility(rabbit_config: RabbitSettings) -> RabbitMQClie
         password=rabbit_config.password,
         strict=False,
     )
-
     return RabbitMQClient(config)
 
 
@@ -56,5 +55,34 @@ def rabbitmq_client_strict(rabbit_config: RabbitSettings) -> RabbitMQClient:
         password=rabbit_config.password,
         strict=True,
     )
+    return RabbitMQClient(config)
 
+
+@pytest.fixture
+def rabbitmq_client_strict_vhost_src(rabbit_config: RabbitSettings) -> RabbitMQClient:
+    """Universal fixture for a RabbitMQ Manager in Strict Mode."""
+
+    config = Config(
+        host=rabbit_config.host,
+        port=rabbit_config.port,
+        username=rabbit_config.username,
+        password=rabbit_config.password,
+        strict=True,
+        virtual_host="src",
+    )
+    return RabbitMQClient(config)
+
+
+@pytest.fixture
+def rabbitmq_client_strict_vhost_dest(rabbit_config: RabbitSettings) -> RabbitMQClient:
+    """Universal fixture for a RabbitMQ Manager in Strict Mode."""
+
+    config = Config(
+        host=rabbit_config.host,
+        port=rabbit_config.port,
+        username=rabbit_config.username,
+        password=rabbit_config.password,
+        strict=True,
+        virtual_host="test-dst",
+    )
     return RabbitMQClient(config)
