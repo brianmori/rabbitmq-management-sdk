@@ -4,7 +4,7 @@ import contextlib
 from typing import TYPE_CHECKING
 
 import pytest
-from tests.shared.constants import TestVhost
+from tests.shared.constants import VhostTest
 
 from rabbitmq_management_sdk.domains.v4.queues.schemas.queue_request import QueueRequest, QuorumQueueRequest
 from rabbitmq_management_sdk.domains.v4.shovels.schemas.shovel_request import (
@@ -26,8 +26,8 @@ def test_create_destroy_shovel_amqp091(
 ) -> None:
 
     shovel_name = "test.shovel.091"
-    vhost_src_name = TestVhost.SRC
-    vhost_dst_name = TestVhost.DST
+    vhost_src_name = VhostTest.SRC
+    vhost_dst_name = VhostTest.DST
     queue_src_name = "src.queue.091"
     queue_dst_name = "dst.queue.091"
 
@@ -74,8 +74,8 @@ def test_create_destroy_shovel_amqp10(
 ) -> None:
 
     shovel_name = "test.shovel.10"
-    vhost_src_name = TestVhost.SRC
-    vhost_dst_name = TestVhost.DST
+    vhost_src_name = VhostTest.SRC
+    vhost_dst_name = VhostTest.DST
     queue_src_name = "src.queue.10"
     queue_dst_name = "dst.queue.10"
 

@@ -4,14 +4,11 @@ import os
 from dataclasses import dataclass
 
 import pytest
-from dotenv import find_dotenv, load_dotenv
 
 from rabbitmq_management_sdk import VhostRequest
 from rabbitmq_management_sdk.client.config import Config
 from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
-from tests.shared.constants import TestVhost
-
-load_dotenv(find_dotenv())
+from tests.shared.constants import VhostTest
 
 
 @dataclass
@@ -70,7 +67,7 @@ def rabbitmq_client_strict_vhost_src(rabbit_config: RabbitSettings) -> RabbitMQC
         username=rabbit_config.username,
         password=rabbit_config.password,
         strict=True,
-        virtual_host=TestVhost.SRC,
+        virtual_host=VhostTest.SRC,
     )
     return RabbitMQClient(config)
 
@@ -85,7 +82,7 @@ def rabbitmq_client_strict_vhost_dest(rabbit_config: RabbitSettings) -> RabbitMQ
         username=rabbit_config.username,
         password=rabbit_config.password,
         strict=True,
-        virtual_host=TestVhost.DST,
+        virtual_host=VhostTest.DST,
     )
     return RabbitMQClient(config)
 
@@ -96,5 +93,5 @@ def test_create_test_vhost(rabbitmq_client_compatibility: RabbitMQClient) -> Non
 
     # Create a new vhost
     vhost_request = VhostRequest(description="Test Vhost", tags=["test"])
-    vhost_service.create_vhost(TestVhost.SRC, vhost_request)
-    vhost_service.create_vhost(TestVhost.DST, vhost_request)
+    vhost_service.create_vhost(VhostTest.SRC, vhost_request)
+    vhost_service.create_vhost(VhostTest.DST, vhost_request)
