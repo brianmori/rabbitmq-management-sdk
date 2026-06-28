@@ -70,7 +70,6 @@ class LocalShovelSource(RabbitMQBase):
 class Amqp10ShovelSource(RabbitMQBase):
     src_protocol: Literal["amqp10"] = Field("amqp10", alias="src-protocol", frozen=True)
     src_address: str = Field(alias="src-address")
-    src_consumer_name: str | None = Field(None, alias="src-consumer-name")
     src_prefetch_count: int = Field(1000, alias="src-prefetch-count")
 
 
@@ -131,9 +130,11 @@ class LocalShovelDestination(RabbitMQBase):
 class Amqp10ShovelDestination(RabbitMQBase):
     dest_protocol: Literal["amqp10"] = Field("amqp10", alias="dest-protocol", frozen=True)
     dest_address: str = Field(alias="dest-address")
-    dest_application_properties: dict[str, str] | None = Field(None, alias="dest-application-properties")
-    dest_properties: dict[str, str] | None = Field(None, alias="dest-properties")
-    dest_message_annotations: dict[str, str] | None = Field(None, alias="dest-message-annotations")
+    dest_application_properties: dict[str, str | int | float | bool] | None = Field(None, alias="dest-application-properties")
+    dest_properties: dict[str, str | int | float | bool] | None = Field(None, alias="dest-properties")
+    dest_message_annotations: dict[str, str | int | float | bool] | None = Field(None, alias="dest-message-annotations")
+    dest_add_forward_headers: bool = Field(False, alias="dest-add-forward-headers")
+    dest_add_timestamp_header: bool = Field(False, alias="dest-add-timestamp-header")
 
 
 type ShovelDestinationArguments = Annotated[

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from enum import StrEnum
 
 import pytest
 from dotenv import find_dotenv, load_dotenv
 
+from rabbitmq_management_sdk import VhostRequest
 from rabbitmq_management_sdk.client.config import Config
 from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
 
@@ -68,7 +70,7 @@ def rabbitmq_client_strict_vhost_src(rabbit_config: RabbitSettings) -> RabbitMQC
         username=rabbit_config.username,
         password=rabbit_config.password,
         strict=True,
-        virtual_host="src",
+        virtual_host=TestVhost.SRC,
     )
     return RabbitMQClient(config)
 
@@ -83,6 +85,21 @@ def rabbitmq_client_strict_vhost_dest(rabbit_config: RabbitSettings) -> RabbitMQ
         username=rabbit_config.username,
         password=rabbit_config.password,
         strict=True,
-        virtual_host="test-dst",
+        virtual_host=TestVhost.DST,
     )
     return RabbitMQClient(config)
+
+
+class TestVhost(StrEnum):
+    SRC = "test-src"
+    DST = "test-dst"
+
+
+@pytest.fixture(autouse=True)
+def test_create_test_vhost(rabbitmq_client_compatibility: RabbitMQClient) -> None:
+    vhost_service = rabbitmq_client_compatibility.admin
+
+    # Create a new vhost
+    vhost_request = VhostRequest(description="Test Vhost", tags=["test"])
+    vhost_service.create_vhost(TestVhost.SRC, vhost_request)
+    vhost_service.create_vhost(TestVhost.DST, vhost_request)

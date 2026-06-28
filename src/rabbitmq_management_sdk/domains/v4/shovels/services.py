@@ -10,7 +10,9 @@ from rabbitmq_management_sdk.domains.v4.shovels.schemas.shovel_response import (
 )
 
 if TYPE_CHECKING:
-    from rabbitmq_management_sdk.domains.v4.shovels.schemas.shovel_request import ShovelRequest
+    from rabbitmq_management_sdk.domains.v4.shovels.schemas.shovel_request import (
+        ShovelRequest,
+    )
     from rabbitmq_management_sdk.http_adapter import HttpAdapter
 
 
