@@ -4,8 +4,8 @@ import contextlib
 from typing import TYPE_CHECKING
 
 import pytest
+from tests.shared.constants import TestVhost
 
-from conftest import TestVhost
 from rabbitmq_management_sdk.domains.v4.queues.schemas.queue_request import QueueRequest, QuorumQueueRequest
 from rabbitmq_management_sdk.domains.v4.shovels.schemas.shovel_request import (
     Amqp091ShovelDestination,

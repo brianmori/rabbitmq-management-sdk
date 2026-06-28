@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from enum import StrEnum
 
 import pytest
 from dotenv import find_dotenv, load_dotenv
@@ -10,6 +9,7 @@ from dotenv import find_dotenv, load_dotenv
 from rabbitmq_management_sdk import VhostRequest
 from rabbitmq_management_sdk.client.config import Config
 from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
+from tests.shared.constants import TestVhost
 
 load_dotenv(find_dotenv())
 
@@ -88,11 +88,6 @@ def rabbitmq_client_strict_vhost_dest(rabbit_config: RabbitSettings) -> RabbitMQ
         virtual_host=TestVhost.DST,
     )
     return RabbitMQClient(config)
-
-
-class TestVhost(StrEnum):
-    SRC = "test-src"
-    DST = "test-dst"
 
 
 @pytest.fixture(autouse=True)

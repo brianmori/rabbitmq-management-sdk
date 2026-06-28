@@ -64,7 +64,7 @@ class QuorumQueueRequest(RabbitMQBase):
     """
 
     queue_type: Literal["quorum"] = Field("quorum", alias="x-queue-type", frozen=True)
-    delivery_limit: int | None = Field(None, alias="x-delivery-limit")
+    delivery_limit: int | None = Field(20, alias="x-delivery-limit")
     dead_letter_exchange: str | None = Field(None, alias="x-dead-letter-exchange")
     dead_letter_routing_key: str | None = Field(None, alias="x-dead-letter-routing-key")
     dead_letter_strategy: DeadLetterStrategy | None = Field(None, alias="x-dead-letter-strategy")
