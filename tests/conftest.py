@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 import pytest
 
-from rabbitmq_management_sdk import VhostRequest
 from rabbitmq_management_sdk.client.config import Config
 from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
 from tests.shared.constants import VhostTest
@@ -85,6 +84,3 @@ def rabbitmq_client_strict_vhost_dest(rabbit_config: RabbitSettings) -> RabbitMQ
         virtual_host=VhostTest.DST,
     )
     return RabbitMQClient(config)
-
-
-

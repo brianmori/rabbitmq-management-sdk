@@ -1,7 +1,7 @@
 import pytest
+from tests.shared.constants import VhostTest
 
 from rabbitmq_management_sdk import RabbitMQClient, VhostRequest
-from shared.constants import VhostTest
 
 
 @pytest.fixture(autouse=True)
