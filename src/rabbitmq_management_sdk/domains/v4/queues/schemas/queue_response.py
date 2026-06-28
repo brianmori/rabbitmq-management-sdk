@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Annotated, Literal
 
 from pydantic import Field
@@ -91,7 +93,7 @@ class MessageStats(RabbitMQBase):
 # ---------------------------------------------------------------------------
 
 
-class Queue(RabbitMQBase):
+class QueueResponse(RabbitMQBase):
     """Represents a queue as returned by the RabbitMQ Management API (v4+).
 
     Fields are required when the v4 API guarantees their presence. Stats

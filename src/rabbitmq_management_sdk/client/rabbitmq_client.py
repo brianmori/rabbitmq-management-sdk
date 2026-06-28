@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from http import HTTPMethod
 from typing import TYPE_CHECKING
@@ -8,6 +10,7 @@ from rabbitmq_management_sdk.domains.v4.admin.services import AdminManagerV4
 from rabbitmq_management_sdk.domains.v4.bindings.services import BindingManagerV4
 from rabbitmq_management_sdk.domains.v4.exchanges.services import ExchangeManagerV4
 from rabbitmq_management_sdk.domains.v4.queues.services import QueueManagerV4
+from rabbitmq_management_sdk.domains.v4.shovels.services import ShovelManagerV4
 from rabbitmq_management_sdk.exceptions import MalformedResponseError, RabbitMQError
 from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse, factory
 from rabbitmq_management_sdk.http_adapter.config import BasicAuthentication
@@ -119,6 +122,11 @@ class RabbitMQClient:
             ) from e
 
     @property
+    def version(self) -> RabbitMQVersion:
+        """The RabbitMQ server version detected at construction (or the configured override)."""
+        return self._version
+
+    @property
     def queues(self) -> QueueManagerV4:
         if self._version.major == RabbitMQMajorVersion.V4:
             return QueueManagerV4(
@@ -144,6 +152,14 @@ class RabbitMQClient:
     def bindings(self) -> BindingManagerV4:
         if self._version.major == RabbitMQMajorVersion.V4:
             return BindingManagerV4(
+                http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict
+            )
+        raise NotImplementedError(f"Version {self._version} not supported")
+
+    @property
+    def shovels(self) -> ShovelManagerV4:
+        if self._version.major == RabbitMQMajorVersion.V4:
+            return ShovelManagerV4(
                 http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict
             )
         raise NotImplementedError(f"Version {self._version} not supported")

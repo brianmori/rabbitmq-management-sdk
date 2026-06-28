@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from rabbitmq_management_sdk.http_adapter.base import HttpAdapter, HttpResponse
 from rabbitmq_management_sdk.http_adapter.config import (
     ConstantBackoff,

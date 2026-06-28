@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from enum import StrEnum
 from typing import Annotated, Literal
@@ -62,12 +64,10 @@ class QuorumQueueRequest(RabbitMQBase):
     """
 
     queue_type: Literal["quorum"] = Field("quorum", alias="x-queue-type", frozen=True)
-    delivery_limit: int | None = Field(None, alias="x-delivery-limit")
+    delivery_limit: int | None = Field(20, alias="x-delivery-limit")
     dead_letter_exchange: str | None = Field(None, alias="x-dead-letter-exchange")
     dead_letter_routing_key: str | None = Field(None, alias="x-dead-letter-routing-key")
-    dead_letter_strategy: DeadLetterStrategy | None = Field(
-        DeadLetterStrategy.AT_MOST_ONCE, alias="x-dead-letter-strategy"
-    )
+    dead_letter_strategy: DeadLetterStrategy | None = Field(None, alias="x-dead-letter-strategy")
     overflow: Overflow | None = Field(Overflow.DROP_HEAD, alias="x-overflow")
     single_active_consumer: bool | None = Field(None, alias="x-single-active-consumer")
     max_length: int | None = Field(None, alias="x-max-length")
@@ -86,6 +86,12 @@ class QuorumQueueRequest(RabbitMQBase):
             raise ValueError(
                 f"dead_letter_strategy '{DeadLetterStrategy.AT_LEAST_ONCE}' "
                 f"requires overflow to be set to '{Overflow.REJECT_PUBLISH}'."
+            )
+
+        if self.dead_letter_strategy is not None and self.dead_letter_exchange is None:
+            raise ValueError(
+                "dead_letter_strategy requires dead_letter_exchange to be configured. "
+                "The broker will warn and ignore dead_letter_strategy without a DLX."
             )
         return self
 

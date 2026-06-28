@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from http import HTTPMethod
 from typing import TYPE_CHECKING, Any
 
 from rabbitmq_management_sdk.domains.base import parse_one
-from rabbitmq_management_sdk.domains.v4.queues.schemas.queue_response import Queue
+from rabbitmq_management_sdk.domains.v4.queues.schemas.queue_response import QueueResponse
 
 if TYPE_CHECKING:
     from rabbitmq_management_sdk.domains.v4.queues.schemas.queue_request import QueueRequest
@@ -15,8 +17,10 @@ class QueueManagerV4:
         self._vhost = vhost
         self._strict = strict
 
-    def get(self, name: str) -> Queue:
-        return parse_one(self._ha.request(method=HTTPMethod.GET, path=f"/api/queues/{self._vhost}/{name}"), Queue)
+    def get(self, name: str) -> QueueResponse:
+        return parse_one(
+            self._ha.request(method=HTTPMethod.GET, path=f"/api/queues/{self._vhost}/{name}"), QueueResponse
+        )
 
     def create(self, name: str, request: QueueRequest) -> None:
         self._ha.request(

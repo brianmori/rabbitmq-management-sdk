@@ -1,0 +1,16 @@
+{
+    "value": {
+        "ack-mode": "on-confirm",
+        "dest-add-forward-headers": true,
+        "dest-address": "/queues/dest.q",
+        "dest-protocol": "amqp10",
+        "dest-uri": "amqp://localhost:5672?hostname=vhost:dest",
+        "src-address": "/queues/src.q",
+        "src-delete-after": "never",
+        "src-protocol": "amqp10",
+        "src-uri": "amqp://localhost:5672?hostname=vhost:src"
+    },
+    "vhost": "src",
+    "component": "shovel",
+    "name": "test-amqp10"
+}

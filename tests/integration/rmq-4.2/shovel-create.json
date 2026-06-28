@@ -1,0 +1,18 @@
+{
+  "component": "shovel",
+  "vhost": "src",
+  "name": "test2",
+  "value": {
+    "src-uri": "amqp:///src",
+    "dest-uri": "amqp:///dest",
+    "reconnect-delay": 1,
+    "ack-mode": "on-confirm",
+    "src-protocol": "amqp091",
+    "dest-protocol": "amqp091",
+    "src-queue": "src.q",
+    "src-prefetch-count": 2,
+    "src-delete-after": "never",
+    "dest-queue": "dest.q",
+    "dest-add-forward-headers": false
+  }
+}

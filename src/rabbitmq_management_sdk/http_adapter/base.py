@@ -1,5 +1,7 @@
 """Abstract HTTP http_adapter protocol."""
 
+from __future__ import annotations
+
 import json as _json
 from dataclasses import dataclass
 from json import JSONDecodeError

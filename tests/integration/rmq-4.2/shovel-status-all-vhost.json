@@ -1,0 +1,21 @@
+[
+  {
+    "node": "rabbit@rabbitmq-sa",
+    "timestamp": "2026-06-21 17:38:21",
+    "name": "test",
+    "vhost": "src",
+    "type": "dynamic",
+    "pending": 0,
+    "remaining": "unlimited",
+    "remaining_unacked": "unlimited",
+    "forwarded": 0,
+    "state": "running",
+    "src_uri": "amqp:///src",
+    "src_protocol": "amqp091",
+    "dest_protocol": "amqp091",
+    "dest_uri": "amqp:///dest",
+    "src_queue": "src.q",
+    "dest_queue": "dest.q",
+    "blocked_status": "running"
+  }
+]

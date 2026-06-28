@@ -1,0 +1,21 @@
+name: rabbitmq-test-sa-4.2
+
+services:
+  rabbitmq-42:
+    image: rabbitmq:4.2-management
+    hostname: rabbitmq-test-42
+    container_name: rabbitmq-test-42
+    environment:
+      RABBITMQ_DEFAULT_USER: lab
+      RABBITMQ_DEFAULT_PASS: lab
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "15692:15692"
+    configs:
+      - source: rabbitmq-plugins
+        target: /etc/rabbitmq/enabled_plugins
+
+configs:
+  rabbitmq-plugins:
+    file: ./rabbitmq-plugins

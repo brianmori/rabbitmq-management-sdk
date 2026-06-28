@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import pytest
@@ -55,8 +57,9 @@ def test_apply_vhost_limit(rabbitmq_client_compatibility: RabbitMQClient) -> Non
     vhost_service.apply_vhost_limit(vhost_name, VhostLimitName.MAX_CONNECTIONS, vlr)
     vhost_service.apply_vhost_limit(vhost_name, VhostLimitName.MAX_QUEUES, vlr)
 
-    vhosts_lim_single: VhostLimitResponse = vhost_service.get_vhost_limits(vhost_name)
+    vhosts_lim_single = vhost_service.get_vhost_limits(vhost_name)
 
+    assert vhosts_lim_single is not None
     assert vhosts_lim_single.value.max_connections == 3
     assert vhosts_lim_single.value.max_queues == 3
 
