@@ -67,9 +67,7 @@ class QuorumQueueRequest(RabbitMQBase):
     delivery_limit: int | None = Field(None, alias="x-delivery-limit")
     dead_letter_exchange: str | None = Field(None, alias="x-dead-letter-exchange")
     dead_letter_routing_key: str | None = Field(None, alias="x-dead-letter-routing-key")
-    dead_letter_strategy: DeadLetterStrategy | None = Field(
-        None, alias="x-dead-letter-strategy"
-    )
+    dead_letter_strategy: DeadLetterStrategy | None = Field(None, alias="x-dead-letter-strategy")
     overflow: Overflow | None = Field(Overflow.DROP_HEAD, alias="x-overflow")
     single_active_consumer: bool | None = Field(None, alias="x-single-active-consumer")
     max_length: int | None = Field(None, alias="x-max-length")

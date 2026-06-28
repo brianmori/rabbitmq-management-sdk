@@ -68,7 +68,6 @@ def test_create_destroy_shovel_amqp091(
             rabbitmq_client_strict_vhost_src.queues.delete(queue_src_name)
 
 
-
 @pytest.mark.live
 def test_create_destroy_shovel_amqp10(
     rabbitmq_client_strict_vhost_src: RabbitMQClient, rabbitmq_client_strict_vhost_dest: RabbitMQClient
@@ -100,12 +99,8 @@ def test_create_destroy_shovel_amqp10(
             request=ShovelRequest(
                 src_uri=shovel_src_uri,
                 dest_uri=shovel_dst_uri,
-                src_arguments=Amqp10ShovelSource(
-                    src_address=f"/queues/{queue_src_name}"
-                ),
-                dest_arguments=Amqp10ShovelDestination(
-                    dest_address=f"/queues/{queue_dst_name}"
-                ),
+                src_arguments=Amqp10ShovelSource(src_address=f"/queues/{queue_src_name}"),
+                dest_arguments=Amqp10ShovelDestination(dest_address=f"/queues/{queue_dst_name}"),
             ),
         )
 
