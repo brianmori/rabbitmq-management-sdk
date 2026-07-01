@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import Field
+from typing import Literal
+
+from pydantic import ConfigDict, Field, model_validator
 
 from rabbitmq_management_sdk.domains.base import RabbitMQBase
 
@@ -105,15 +107,10 @@ class DefinitionBinding(RabbitMQBase):
 
 
 class ClusterDefinitionsResponse(RabbitMQBase):
-    """
-    Response for GET /api/definitions.
+    """Response for GET /api/definitions.
 
     Exports everything except messages: users, vhosts, permissions,
     exchanges, queues, bindings, policies, parameters, global parameters.
-
-    Note: both rabbit_version (legacy) and rabbitmq_version (4.x)
-    may be present. Both are optional since the field name changed
-    across versions.
     """
 
     rabbit_version: str | None = None
@@ -132,26 +129,97 @@ class ClusterDefinitionsResponse(RabbitMQBase):
 
 
 # ---------------------------------------------------------------------------
-# GET /api/definitions/{vhost}  — vhost-scoped export
+# GET /api/definitions/{vhost} — vhost-scoped export
 # ---------------------------------------------------------------------------
 
 
+class VhostDefinitionsQueue(RabbitMQBase):
+    """Queue entry in a vhost-scoped export. No 'vhost' field — implied by the response envelope."""
+
+    name: str
+    durable: bool
+    auto_delete: bool
+    arguments: dict[str, object] = Field(default_factory=dict)
+
+
+class VhostDefinitionsExchange(RabbitMQBase):
+    name: str
+    type: str
+    durable: bool
+    auto_delete: bool
+    internal: bool
+    arguments: dict[str, object] = Field(default_factory=dict)
+
+
+class VhostDefinitionsBinding(RabbitMQBase):
+    source: str
+    destination: str
+    destination_type: str
+    routing_key: str
+    arguments: dict[str, object] = Field(default_factory=dict)
+
+
+class VhostDefinitionsPolicy(RabbitMQBase):
+    name: str
+    pattern: str
+    definition: dict[str, object]
+    priority: int = 0
+    apply_to: str = Field("all", alias="apply-to")
+
+
+class VhostDefinitionsParameter(RabbitMQBase):
+    """Includes plugin parameters (shovel, federation) and a synthetic
+    'vhost-limits' parameter that echoes the vhost's connection/queue
+    limits.
+    """
+
+    component: str
+    name: str
+    value: dict[str, object]
+
+    def is_shovel(self) -> bool:
+        return self.component == "shovel"
+
+
+class VhostMetadata(RabbitMQBase):
+    description: str = ""
+    tags: list[str] = Field(default_factory=list)
+    default_queue_type: str | None = None
+
+
+class VhostLimits(RabbitMQBase):
+    """Extra allowed: limit keys are broker-defined and may grow."""
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+    max_connections: int | None = Field(None, alias="max-connections")
+    max_queues: int | None = Field(None, alias="max-queues")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_empty_list(cls, data: object) -> object:
+        if isinstance(data, list):
+            if len(data) == 0:
+                return {}
+            raise ValueError(f"Expected a dict of limits or an empty list, got a non-empty list: {data}")
+        return data
+
+
 class VhostDefinitionsResponse(RabbitMQBase):
-    """
-    Response for GET /api/definitions/{vhost}.
+    """GET /api/definitions/{vhost} — vhost-scoped export."""
 
-    Subset of ClusterDefinitionsResponse: omits users, vhosts,
-    permissions, topic_permissions, and global_parameters — those
-    are cluster-level and cannot be imported via the vhost endpoint.
+    rabbit_version: str
+    rabbitmq_version: str
+    product_name: str
+    product_version: str
+    rabbitmq_definition_format: Literal["single_virtual_host"]
+    original_vhost_name: str
+    explanation: str
+    metadata: VhostMetadata
+    description: str = ""
+    limits: VhostLimits = Field(default_factory=VhostLimits)
 
-    POST /api/definitions/{vhost} accepts this same shape.
-    """
-
-    rabbit_version: str | None = None
-    rabbitmq_version: str | None = None
-
-    parameters: list[DefinitionParameter] = Field(default_factory=list)
-    policies: list[DefinitionPolicy] = Field(default_factory=list)
-    queues: list[DefinitionQueue] = Field(default_factory=list)
-    exchanges: list[DefinitionExchange] = Field(default_factory=list)
-    bindings: list[DefinitionBinding] = Field(default_factory=list)
+    parameters: list[VhostDefinitionsParameter] = Field(default_factory=list)
+    policies: list[VhostDefinitionsPolicy] = Field(default_factory=list)
+    queues: list[VhostDefinitionsQueue] = Field(default_factory=list)
+    exchanges: list[VhostDefinitionsExchange] = Field(default_factory=list)
+    bindings: list[VhostDefinitionsBinding] = Field(default_factory=list)

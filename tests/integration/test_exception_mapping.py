@@ -104,7 +104,7 @@ def test_http_error_is_rabbitmq_error(status_code: int, expected_cls: type[APIEr
 @pytest.mark.integration
 @pytest.mark.parametrize("status_code,expected_cls", _STATUS_CASES)
 def test_no_httpx_exception_leaks(status_code: int, expected_cls: type[APIError]) -> None:
-    """httpx exception types must never reach the caller."""
+    """Httpx exception types must never reach the caller."""
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(status_code, content=b"{}")

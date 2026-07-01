@@ -51,13 +51,8 @@ class AdminManagerV4:
         The ``GET /api/vhost-limits/{vhost}`` endpoint returns a list that is
         empty when the vhost has no limits configured.
 
-        Args:
-            vhost: The virtual host name.
-
         Returns:
-            The vhost's limits, or ``None`` when no limits are set. (Previously
-            this raised a bare ``IndexError`` on an empty result, which leaked
-            past the SDK's ``RabbitMQError`` boundary.)
+            The vhost's limits, or ``None`` when no limits are set.
         """
         limits = parse_list(
             self._ha.request(method=HTTPMethod.GET, path=f"/api/vhost-limits/{vhost}"), VhostLimitResponse

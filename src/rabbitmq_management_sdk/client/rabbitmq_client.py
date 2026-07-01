@@ -62,8 +62,7 @@ class RabbitMQClient:
         )
 
     def _get_version(self) -> RabbitMQVersion:
-        """
-        Retrieves the RabbitMQ version from the server.
+        """Retrieves the RabbitMQ version from the server.
 
         Returns:
             RabbitMQVersion: The semantic version of the RabbitMQ server.
@@ -71,7 +70,6 @@ class RabbitMQClient:
         Raises:
             RabbitMQError: If there is a problem communicating with the server or parsing the version.
         """
-
         if self._config.version_override is not None:
             return self._config.version_override
 

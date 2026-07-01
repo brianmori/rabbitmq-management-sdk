@@ -75,8 +75,7 @@ class QuorumQueueRequest(RabbitMQBase):
 
     @model_validator(mode="after")
     def quorum_queue_validate(self) -> QuorumQueueRequest:
-        """
-        Ensures that 'at-least-once' dead lettering is only used
+        """Ensures that 'at-least-once' dead lettering is only used
         with 'reject-publish' overflow.
 
         Raises:

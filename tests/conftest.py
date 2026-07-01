@@ -31,7 +31,6 @@ def rabbit_config() -> RabbitSettings:
 @pytest.fixture
 def rabbitmq_client_compatibility(rabbit_config: RabbitSettings) -> RabbitMQClient:
     """Universal fixture for a RabbitMQ Manager in Compatibility Mode."""
-
     config = Config(
         host=rabbit_config.host,
         port=rabbit_config.port,
@@ -45,7 +44,6 @@ def rabbitmq_client_compatibility(rabbit_config: RabbitSettings) -> RabbitMQClie
 @pytest.fixture
 def rabbitmq_client_strict(rabbit_config: RabbitSettings) -> RabbitMQClient:
     """Universal fixture for a RabbitMQ Manager in Strict Mode."""
-
     config = Config(
         host=rabbit_config.host,
         port=rabbit_config.port,
@@ -59,7 +57,6 @@ def rabbitmq_client_strict(rabbit_config: RabbitSettings) -> RabbitMQClient:
 @pytest.fixture
 def rabbitmq_client_strict_vhost_src(rabbit_config: RabbitSettings) -> RabbitMQClient:
     """Universal fixture for a RabbitMQ Manager in Strict Mode."""
-
     config = Config(
         host=rabbit_config.host,
         port=rabbit_config.port,
@@ -74,7 +71,6 @@ def rabbitmq_client_strict_vhost_src(rabbit_config: RabbitSettings) -> RabbitMQC
 @pytest.fixture
 def rabbitmq_client_strict_vhost_dest(rabbit_config: RabbitSettings) -> RabbitMQClient:
     """Universal fixture for a RabbitMQ Manager in Strict Mode."""
-
     config = Config(
         host=rabbit_config.host,
         port=rabbit_config.port,
