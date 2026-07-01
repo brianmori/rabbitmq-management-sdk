@@ -57,6 +57,7 @@ class DefinitionGlobalParameter(RabbitMQBase):
 
 class DefinitionParameter(RabbitMQBase):
     """Vhost-scoped runtime parameter (e.g. a dynamic shovel definition)."""
+
     component: str
     vhost: str
     name: str
