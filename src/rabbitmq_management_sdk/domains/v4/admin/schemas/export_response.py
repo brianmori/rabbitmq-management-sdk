@@ -1,4 +1,3 @@
-# rabbitmq_management_sdk/domains/v4/admin/schemas/definitions.py
 from __future__ import annotations
 
 from pydantic import Field
