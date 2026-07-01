@@ -23,8 +23,7 @@ if TYPE_CHECKING:
 
 
 class HttpxAdapter:
-    """
-    HttpTransport implementation using httpx.
+    """HttpTransport implementation using httpx.
 
     Supports base URL, default headers, timeouts, and retries.
     Use as a context manager or call .close() explicitly.

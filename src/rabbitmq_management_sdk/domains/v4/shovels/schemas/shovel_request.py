@@ -37,8 +37,7 @@ class Amqp091ShovelSource(RabbitMQBase):
 
 
 class LocalShovelSource(RabbitMQBase):
-    """
-    Source config for local protocol (RabbitMQ 4.2+).
+    """Source config for local protocol (RabbitMQ 4.2+).
 
     Uses an internal cluster API instead of a TCP connection —
     higher throughput, no TLS, same-cluster only.
@@ -103,8 +102,7 @@ class Amqp091ShovelDestination(RabbitMQBase):
 
 
 class LocalShovelDestination(RabbitMQBase):
-    """
-    Destination config for local protocol (RabbitMQ 4.2+).
+    """Destination config for local protocol (RabbitMQ 4.2+).
 
     Same field set as amqp091 destination — local shovels share
     most configuration with AMQP 0-9-1.
@@ -151,8 +149,7 @@ type ShovelDestinationArguments = Annotated[
 
 
 class ShovelRequest(RabbitMQBase):
-    """
-    Full payload for PUT /api/parameters/shovel/{vhost}/{name}.
+    """Full payload for PUT /api/parameters/shovel/{vhost}/{name}.
 
     Common transfer fields sit at the top level alongside src-uri and
     dest-uri. Protocol-specific topology fields are nested under
@@ -170,6 +167,7 @@ class ShovelRequest(RabbitMQBase):
             src_arguments=LocalShovelSource(src_queue="source.q"),
             dest_arguments=Amqp091ShovelDestination(dest_queue="dest.q"),
         )
+
     Attributes:
         src_uri: Source URI
         dest_uri: Destination URI
@@ -213,8 +211,7 @@ class ShovelRequest(RabbitMQBase):
         return self
 
     def to_api_value(self) -> dict[str, object]:
-        """
-        Flatten src_arguments and dest_arguments into the single JSON
+        """Flatten src_arguments and dest_arguments into the single JSON
         object the management API expects as the 'value' key.
 
         src-uri and dest-uri live on ShovelRequest itself (not in the

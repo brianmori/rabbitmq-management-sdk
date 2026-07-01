@@ -15,7 +15,6 @@ class BindingResponse(RabbitMQBase):
     deletion — store it if you need to delete a specific binding later.
 
     Example:
-
         binding = BindingResponse.model_validate(api_response)
         binding.source # exchange name
         binding.destination # queue or exchange name

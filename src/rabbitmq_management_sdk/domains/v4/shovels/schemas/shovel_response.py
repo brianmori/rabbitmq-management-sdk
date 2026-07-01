@@ -101,8 +101,7 @@ type ShovelDestinationArgumentsResponse = Annotated[
 
 
 class ShovelResponse(RabbitMQBase):
-    """
-    The value object inside GET /api/parameters/shovel/{vhost}/{name}.
+    """The value object inside GET /api/parameters/shovel/{vhost}/{name}.
 
     The server echoes the stored definition flat — same shape as the PUT
     body — so we parse it the same way ShovelRequest is constructed:
@@ -129,8 +128,7 @@ class ShovelResponse(RabbitMQBase):
     @model_validator(mode="before")
     @classmethod
     def _split_flat_value(cls, data: object) -> object:
-        """
-        The wire format is a single flat dict. Split it into the nested
+        """The wire format is a single flat dict. Split it into the nested
         src_arguments / dest_arguments sub-dicts before field validation
         runs, keyed by the discriminator fields src-protocol / dest-protocol.
 
@@ -181,8 +179,7 @@ class ShovelResponse(RabbitMQBase):
 
 
 class ShovelParameterResponse(RabbitMQBase):
-    """
-    Envelope for GET /api/parameters/shovel/{vhost}/{name}.
+    """Envelope for GET /api/parameters/shovel/{vhost}/{name}.
 
     Wire shape:
         {
@@ -220,8 +217,7 @@ class ShovelState(StrEnum):
 
 
 class ShovelStatusResponse(RabbitMQBase):
-    """
-    Runtime status for GET /api/shovels/vhost/{vhost}/{name}.
+    """Runtime status for GET /api/shovels/vhost/{vhost}/{name}.
 
     Note: keys here use underscores, not hyphens — the status API
     serialises differently from the parameters API.

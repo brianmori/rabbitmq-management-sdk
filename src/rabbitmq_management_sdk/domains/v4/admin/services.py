@@ -4,6 +4,10 @@ from http import HTTPMethod
 from typing import TYPE_CHECKING
 
 from rabbitmq_management_sdk.domains.base import parse_list, parse_one
+from rabbitmq_management_sdk.domains.v4.admin.schemas.export_response import (
+    ClusterDefinitionsResponse,
+    VhostDefinitionsResponse,
+)
 from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_response import VhostLimitResponse, VhostResponse
 
 if TYPE_CHECKING:
@@ -47,13 +51,8 @@ class AdminManagerV4:
         The ``GET /api/vhost-limits/{vhost}`` endpoint returns a list that is
         empty when the vhost has no limits configured.
 
-        Args:
-            vhost: The virtual host name.
-
         Returns:
-            The vhost's limits, or ``None`` when no limits are set. (Previously
-            this raised a bare ``IndexError`` on an empty result, which leaked
-            past the SDK's ``RabbitMQError`` boundary.)
+            The vhost's limits, or ``None`` when no limits are set.
         """
         limits = parse_list(
             self._ha.request(method=HTTPMethod.GET, path=f"/api/vhost-limits/{vhost}"), VhostLimitResponse
@@ -69,3 +68,17 @@ class AdminManagerV4:
 
     def delete_vhost_limit(self, vhost: str, limit_name: VhostLimitName) -> None:
         self._ha.request(method=HTTPMethod.DELETE, path=f"/api/vhost-limits/{vhost}/{limit_name}")
+
+    def export_definitions(self) -> ClusterDefinitionsResponse:
+        """GET /api/definitions — exports all cluster-wide definitions."""
+        return parse_one(
+            self._ha.request(method=HTTPMethod.GET, path="/api/definitions"),
+            ClusterDefinitionsResponse,
+        )
+
+    def export_vhost_definitions(self, vhost: str) -> VhostDefinitionsResponse:
+        """GET /api/definitions/{vhost} — exports definitions scoped to one vhost."""
+        return parse_one(
+            self._ha.request(method=HTTPMethod.GET, path=f"/api/definitions/{vhost}"),
+            VhostDefinitionsResponse,
+        )
