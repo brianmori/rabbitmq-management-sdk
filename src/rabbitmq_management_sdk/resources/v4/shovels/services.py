@@ -3,17 +3,17 @@ from __future__ import annotations
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
-from rabbitmq_management_sdk.domains.base import parse_list, parse_one
-from rabbitmq_management_sdk.domains.v4.shovels.schemas.shovel_response import (
+from rabbitmq_management_sdk.resources.base import parse_list, parse_one
+from rabbitmq_management_sdk.resources.v4.shovels.schemas.shovel_response import (
     ShovelParameterResponse,
     ShovelStatusResponse,
 )
 
 if TYPE_CHECKING:
-    from rabbitmq_management_sdk.domains.v4.shovels.schemas.shovel_request import (
+    from rabbitmq_management_sdk.http_adapter import HttpAdapter
+    from rabbitmq_management_sdk.resources.v4.shovels.schemas.shovel_request import (
         ShovelRequest,
     )
-    from rabbitmq_management_sdk.http_adapter import HttpAdapter
 
 
 class ShovelManagerV4:

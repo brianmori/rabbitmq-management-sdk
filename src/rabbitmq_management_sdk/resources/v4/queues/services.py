@@ -3,12 +3,12 @@ from __future__ import annotations
 from http import HTTPMethod
 from typing import TYPE_CHECKING, Any
 
-from rabbitmq_management_sdk.domains.base import parse_one
-from rabbitmq_management_sdk.domains.v4.queues.schemas.queue_response import QueueResponse
+from rabbitmq_management_sdk.resources.base import parse_one
+from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QueueResponse
 
 if TYPE_CHECKING:
-    from rabbitmq_management_sdk.domains.v4.queues.schemas.queue_request import QueueRequest
     from rabbitmq_management_sdk.http_adapter import HttpAdapter
+    from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_request import QueueRequest
 
 
 class QueueManagerV4:

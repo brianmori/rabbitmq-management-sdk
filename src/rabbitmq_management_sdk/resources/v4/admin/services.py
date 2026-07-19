@@ -3,20 +3,20 @@ from __future__ import annotations
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
-from rabbitmq_management_sdk.domains.base import parse_list, parse_one
-from rabbitmq_management_sdk.domains.v4.admin.schemas.export_response import (
+from rabbitmq_management_sdk.resources.base import parse_list, parse_one
+from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import (
     ClusterDefinitionsResponse,
     VhostDefinitionsResponse,
 )
-from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_response import VhostLimitResponse, VhostResponse
+from rabbitmq_management_sdk.resources.v4.admin.schemas.vhost_response import VhostLimitResponse, VhostResponse
 
 if TYPE_CHECKING:
-    from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_request import (
+    from rabbitmq_management_sdk.http_adapter import HttpAdapter
+    from rabbitmq_management_sdk.resources.v4.admin.schemas.vhost_request import (
         VhostLimitName,
         VhostLimitRequest,
         VhostRequest,
     )
-    from rabbitmq_management_sdk.http_adapter import HttpAdapter
 
 
 class AdminManagerV4:

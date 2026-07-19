@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import Field
 
-from rabbitmq_management_sdk.domains.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQBase
 
 
 class BindingRequest(RabbitMQBase):

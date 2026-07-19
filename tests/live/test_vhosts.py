@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_request import (
+from rabbitmq_management_sdk.resources.v4.admin.schemas.vhost_request import (
     VhostLimitName,
     VhostLimitRequest,
     VhostRequest,
@@ -12,7 +12,7 @@ from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_request import (
 
 if TYPE_CHECKING:
     from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
-    from rabbitmq_management_sdk.domains.v4.admin.schemas.vhost_response import VhostLimitResponse, VhostResponse
+    from rabbitmq_management_sdk.resources.v4.admin.schemas.vhost_response import VhostLimitResponse, VhostResponse
 
 
 @pytest.mark.live

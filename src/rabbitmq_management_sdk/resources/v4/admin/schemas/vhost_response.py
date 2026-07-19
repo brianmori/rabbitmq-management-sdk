@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from rabbitmq_management_sdk.domains.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQBase
 
 
 class VhostResponse(RabbitMQBase):

@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from rabbitmq_management_sdk.domains.v4.bindings.schemas.binding_request import BindingRequest
-from rabbitmq_management_sdk.domains.v4.exchanges.schemas.exchange_request import ExchangeRequest
-from rabbitmq_management_sdk.domains.v4.queues.schemas.queue_request import ClassicQueueRequest, QueueRequest
+from rabbitmq_management_sdk.resources.v4.bindings.schemas.binding_request import BindingRequest
+from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_request import ExchangeRequest
+from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_request import ClassicQueueRequest, QueueRequest
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator

@@ -4,8 +4,8 @@ from typing import Any
 
 from pydantic import Field
 
-from rabbitmq_management_sdk.domains.base import RabbitMQBase
-from rabbitmq_management_sdk.domains.v4.bindings.schemas.common import BindingDestinationType
+from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.v4.bindings.schemas.common import BindingDestinationType
 
 
 class BindingResponse(RabbitMQBase):

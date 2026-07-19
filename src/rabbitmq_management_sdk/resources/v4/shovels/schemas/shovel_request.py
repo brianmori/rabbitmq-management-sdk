@@ -4,8 +4,8 @@ from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from rabbitmq_management_sdk.domains.base import RabbitMQBase
-from rabbitmq_management_sdk.domains.v4.shovels.schemas.common import AckMode, DeleteAfter
+from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.v4.shovels.schemas.common import AckMode, DeleteAfter
 
 # ---------------------------------------------------------------------------
 # Source endpoint — per-protocol variants

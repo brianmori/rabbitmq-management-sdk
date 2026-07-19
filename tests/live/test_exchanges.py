@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from rabbitmq_management_sdk.domains.v4.exchanges.schemas.common import ExchangeType
-from rabbitmq_management_sdk.domains.v4.exchanges.schemas.exchange_request import ExchangeRequest
+from rabbitmq_management_sdk.resources.v4.exchanges.schemas.common import ExchangeType
+from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_request import ExchangeRequest
 
 if TYPE_CHECKING:
     from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
-    from rabbitmq_management_sdk.domains.v4.exchanges.schemas.exchange_response import ExchangeResponse
+    from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
 
 
 @pytest.mark.live

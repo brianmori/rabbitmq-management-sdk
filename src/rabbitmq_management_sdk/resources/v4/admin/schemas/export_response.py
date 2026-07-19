@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import ConfigDict, Field, model_validator
 
-from rabbitmq_management_sdk.domains.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQBase
 
 # ---------------------------------------------------------------------------
 # Enums — broker-core elements only.
@@ -28,8 +28,7 @@ class PolicyApplyTo(StrEnum):
 
 
 class OperatorPolicyApplyTo(StrEnum):
-    """`apply-to` for operator policies. Queue/stream targets only.
-    """
+    """`apply-to` for operator policies. Queue/stream targets only."""
 
     QUEUES = "queues"
     CLASSIC_QUEUES = "classic_queues"
@@ -58,9 +57,11 @@ class QueueType(StrEnum):
     QUORUM = "quorum"
     STREAM = "stream"
 
+
 class HeadersMatchMode(StrEnum):
     ALL = "all"  # default if x-match is omitted
     ANY = "any"
+
 
 # ---------------------------------------------------------------------------
 # Shared sub-models
@@ -109,8 +110,62 @@ class DefinitionTopicPermission(RabbitMQBase):
 
 
 class DefinitionGlobalParameter(RabbitMQBase):
+    """Cluster-wide (virtual-host-independent) runtime parameter.
+
+    `value` stays a generic union since its shape depends on `name` and
+    covers several unrelated broker-defined parameters; use the typed
+    accessor(s) below for the well-known ones this SDK models explicitly.
+    """
+
     name: str
     value: str | int | float | bool | dict[str, object] | list[object]
+
+    def as_cluster_name(self) -> str | None:
+        """Typed view of `value` when name == 'cluster_name'.
+
+        This is the same value RabbitMQ displays in the management UI and
+        exposes via `GET /api/global-parameters/cluster_name`. It also
+        appears redundantly as the top-level `original_cluster_name` field
+        on the cluster-wide export, which is a snapshot captured at export
+        time so the broker can detect a cluster-name mismatch on import.
+
+        Returns:
+            The cluster name, or None if this parameter isn't `cluster_name`
+            or its value isn't a string.
+        """
+        if self.name != "cluster_name" or not isinstance(self.value, str):
+            return None
+        return self.value
+
+    def as_cluster_tags(self) -> dict[str, str] | None:
+        """Typed view of `value` when name == 'cluster_tags'.
+
+        Cluster tags are arbitrary operator-defined key/value pairs (e.g.
+        environment, region) used to attach deployment-specific
+        information to a cluster. They're configured via `cluster_tags.<key>`
+        entries in rabbitmq.conf, so values are always strings.
+
+        Returns:
+            The tag mapping, or None if this parameter isn't `cluster_tags`
+            or its value isn't a dict.
+        """
+        if self.name != "cluster_tags" or not isinstance(self.value, dict):
+            return None
+        return {str(k): str(v) for k, v in self.value.items()}
+
+    def as_internal_cluster_id(self) -> str | None:
+        """Typed view of `value` when name == 'internal_cluster_id'.
+
+        Broker-generated, stable identifier for the cluster (distinct from
+        the operator-assigned `cluster_name`).
+
+        Returns:
+            The internal cluster ID, or None if this parameter isn't
+            `internal_cluster_id` or its value isn't a string.
+        """
+        if self.name != "internal_cluster_id" or not isinstance(self.value, str):
+            return None
+        return self.value
 
 
 class DefinitionPolicyDefinition(RabbitMQBase):
@@ -239,6 +294,7 @@ class DefinitionQueueArguments(RabbitMQBase):
             return DeadLetterStrategy.AT_MOST_ONCE
         return self.dead_letter_strategy
 
+
 class DefinitionQueue(RabbitMQBase):
     name: str
     vhost: str
@@ -279,6 +335,7 @@ class DefinitionBindingArguments(RabbitMQBase):
 
     # Used in headers exchanges
     x_match: HeadersMatchMode | None = Field(None, alias="x-match")
+
 
 class DefinitionBinding(RabbitMQBase):
     source: str
@@ -324,6 +381,44 @@ class ClusterDefinitionsResponse(RabbitMQBase):
     exchanges: list[DefinitionExchange] = Field(default_factory=list)
     bindings: list[DefinitionBinding] = Field(default_factory=list)
 
+    @property
+    def cluster_name(self) -> str | None:
+        """Lookup of the well-known `cluster_name` entry in `global_parameters`.
+
+        Returns:
+            The cluster name, or None if no such global parameter is present.
+        """
+        for gp in self.global_parameters:
+            if (name := gp.as_cluster_name()) is not None:
+                return name
+        return None
+
+    @property
+    def cluster_tags(self) -> dict[str, str] | None:
+        """Lookup of the well-known `cluster_tags` entry in `global_parameters`.
+
+        Returns:
+            The cluster tag mapping, or None if no such global parameter is
+            present.
+        """
+        for gp in self.global_parameters:
+            if (tags := gp.as_cluster_tags()) is not None:
+                return tags
+        return None
+
+    @property
+    def internal_cluster_id(self) -> str | None:
+        """Lookup of the well-known `internal_cluster_id` entry in `global_parameters`.
+
+        Returns:
+            The internal cluster ID, or None if no such global parameter is
+            present.
+        """
+        for gp in self.global_parameters:
+            if (cluster_id := gp.as_internal_cluster_id()) is not None:
+                return cluster_id
+        return None
+
 
 # ---------------------------------------------------------------------------
 # GET /api/definitions/{vhost} — vhost-scoped export
@@ -332,6 +427,7 @@ class ClusterDefinitionsResponse(RabbitMQBase):
 
 class VhostDefinitionsQueue(RabbitMQBase):
     """Queue entry in a vhost-scoped export. No 'vhost' field."""
+
     name: str
     durable: bool
     auto_delete: bool
@@ -363,7 +459,6 @@ class VhostDefinitionsPolicy(RabbitMQBase):
     apply_to: PolicyApplyTo = Field(PolicyApplyTo.ALL, alias="apply-to")
 
 
-
 class VhostDefinitionsParameter(RabbitMQBase):
     """Includes plugin parameters (shovel, federation) and a synthetic
     'vhost-limits' parameter that echoes the vhost's connection/queue
@@ -382,6 +477,7 @@ class VhostDefinitionsParameter(RabbitMQBase):
         if self.component != "operator_policy":
             return None
         return OperatorPolicyValue.model_validate(self.value)
+
 
 class VhostMetadata(RabbitMQBase):
     description: str = ""

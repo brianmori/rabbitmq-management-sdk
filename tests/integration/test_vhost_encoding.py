@@ -12,10 +12,10 @@ from urllib.parse import quote
 import httpx
 import pytest
 
-from rabbitmq_management_sdk.domains.v4.bindings.services import BindingManagerV4
-from rabbitmq_management_sdk.domains.v4.exchanges.services import ExchangeManagerV4
-from rabbitmq_management_sdk.domains.v4.queues.services import QueueManagerV4
 from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.resources.v4.bindings.services import BindingManagerV4
+from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManagerV4
+from rabbitmq_management_sdk.resources.v4.queues.services import QueueManagerV4
 
 
 def _adapter_with_path_capture(seen_urls: list[str], *, response_body: bytes = b"{}") -> HttpxAdapter:

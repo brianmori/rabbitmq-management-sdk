@@ -4,8 +4,8 @@ from typing import Any
 
 from pydantic import ConfigDict, Field
 
-from rabbitmq_management_sdk.domains.base import RabbitMQBase
-from rabbitmq_management_sdk.domains.v4.exchanges.schemas.common import ExchangeType
+from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.v4.exchanges.schemas.common import ExchangeType
 
 
 class ExchangeArgumentsResponse(RabbitMQBase):

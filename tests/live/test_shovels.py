@@ -6,15 +6,15 @@ from typing import TYPE_CHECKING
 import pytest
 from tests.shared.constants import VhostTest
 
-from rabbitmq_management_sdk.domains.v4.queues.schemas.queue_request import QueueRequest, QuorumQueueRequest
-from rabbitmq_management_sdk.domains.v4.shovels.schemas.shovel_request import (
+from rabbitmq_management_sdk.exceptions import RabbitMQError
+from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_request import QueueRequest, QuorumQueueRequest
+from rabbitmq_management_sdk.resources.v4.shovels.schemas.shovel_request import (
     Amqp091ShovelDestination,
     Amqp091ShovelSource,
     Amqp10ShovelDestination,
     Amqp10ShovelSource,
     ShovelRequest,
 )
-from rabbitmq_management_sdk.exceptions import RabbitMQError
 
 if TYPE_CHECKING:
     from rabbitmq_management_sdk import RabbitMQClient
