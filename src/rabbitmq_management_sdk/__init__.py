@@ -8,6 +8,7 @@ from the package root, e.g.::
 
 from __future__ import annotations
 
+from rabbitmq_management_sdk.client.cluster_auditor import ClusterAuditor, TopologyAuditReport
 from rabbitmq_management_sdk.client.config import Config, RabbitMQVersion, SSLConfig
 from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
 from rabbitmq_management_sdk.exceptions import (
@@ -25,10 +26,18 @@ from rabbitmq_management_sdk.exceptions import (
     ServiceUnavailableError,
     TimeoutError,
     TooManyRequestsError,
+    TopologyAnalysisError,
+    TopologyDefinitionsError,
+    TopologyError,
+    TopologyLoadError,
+    TopologyParseError,
+    TopologyResourceSnapshotError,
+    TopologyValidationError,
     TransportError,
     UnauthorizedError,
     UnprocessableEntityError,
 )
+from rabbitmq_management_sdk.resources.base import Page
 from rabbitmq_management_sdk.resources.v4.admin.schemas.vhost_request import (
     VhostLimitName,
     VhostLimitRequest,
@@ -84,6 +93,7 @@ __all__ = [
     "BindingRequest",
     "BindingResponse",
     "ClassicQueueRequest",
+    "ClusterAuditor",
     "Config",
     "ConflictError",
     "ConnectionError",
@@ -100,6 +110,7 @@ __all__ = [
     "MethodNotAllowedError",
     "NotFoundError",
     "Overflow",
+    "Page",
     "PreconditionFailedError",
     "QueueDeleteOptions",
     "QueueRequest",
@@ -118,6 +129,14 @@ __all__ = [
     "StreamQueueRequest",
     "TimeoutError",
     "TooManyRequestsError",
+    "TopologyAnalysisError",
+    "TopologyAuditReport",
+    "TopologyDefinitionsError",
+    "TopologyError",
+    "TopologyLoadError",
+    "TopologyParseError",
+    "TopologyResourceSnapshotError",
+    "TopologyValidationError",
     "TransportError",
     "UnauthorizedError",
     "UnprocessableEntityError",

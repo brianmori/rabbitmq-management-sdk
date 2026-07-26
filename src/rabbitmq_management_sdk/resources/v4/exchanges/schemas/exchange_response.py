@@ -40,6 +40,7 @@ class ExchangeResponse(RabbitMQBase):
     durable: bool
     auto_delete: bool = Field(alias="auto-delete")
     internal: bool
+    policy: str | None = None
 
     arguments: ExchangeArgumentsResponse = Field(default_factory=ExchangeArgumentsResponse)
 

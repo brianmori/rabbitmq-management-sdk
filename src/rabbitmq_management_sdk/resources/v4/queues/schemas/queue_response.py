@@ -114,6 +114,7 @@ class QueueResponse(RabbitMQBase):
     durable: bool
     auto_delete: bool
     exclusive: bool
+    policy: str | None = None
     type: Literal["classic", "quorum", "stream"]
 
     # -- Cluster placement (always present in v4) --

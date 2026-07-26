@@ -57,7 +57,7 @@ dev = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py312"
+required-version = ">=0.15.2,<1.0.0"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -81,6 +81,7 @@ select = [
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+line-ending = "lf"
 docstring-code-format = true
 
 [tool.ruff.lint.pydocstyle]
@@ -101,11 +102,6 @@ runtime-evaluated-base-classes = ["rabbitmq_management_sdk.resources.base.Rabbit
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["PLR2004"]
 
-[tool.uv.workspace]
-members = [
-    "rabbitmq-management-sdk",
-]
-
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
@@ -121,5 +117,9 @@ addopts = "--import-mode=importlib"
 python_version = "3.12"
 strict = true
 files = ["src", "tests"]
-ignore_missing_imports = true
+warn_unused_configs = true
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "conftest"
+ignore_missing_imports = true

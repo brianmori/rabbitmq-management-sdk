@@ -100,6 +100,34 @@ class MalformedResponseError(RabbitMQError):
     """
 
 
+class TopologyError(RabbitMQError):
+    """Base class for errors raised while loading or analysing topology."""
+
+
+class TopologyLoadError(TopologyError):
+    """A definitions export could not be read, decoded, or parsed as JSON."""
+
+
+class TopologyDefinitionsError(TopologyError):
+    """A JSON definitions export does not satisfy the SDK wire schema."""
+
+
+class TopologyResourceSnapshotError(TopologyError):
+    """A captured queue or exchange resource snapshot has an invalid shape."""
+
+
+class TopologyParseError(TopologyError):
+    """Validated definitions could not be translated into a topology graph."""
+
+
+class TopologyValidationError(TopologyError):
+    """A caller constructed an internally inconsistent topology model."""
+
+
+class TopologyAnalysisError(TopologyError):
+    """A topology analysis request has invalid parameters or cannot run."""
+
+
 _STATUS_TO_EXCEPTION: dict[int, type[APIError]] = {
     400: BadRequestError,
     401: UnauthorizedError,
