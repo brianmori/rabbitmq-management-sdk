@@ -76,6 +76,7 @@ select = [
     "RUF", # ruff-specific rules
     "PL", # pylint
     "TID", # flake8-tidy-imports
+    "D", # pydocstyle — incrementally enforced for topology/parser.py and topology/models.py
 ]
 
 [tool.ruff.format]
@@ -101,6 +102,7 @@ runtime-evaluated-base-classes = ["rabbitmq_management_sdk.resources.base.Rabbit
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["PLR2004"]
+"!src/rabbitmq_management_sdk/topology/{models,parser}.py" = ["D"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

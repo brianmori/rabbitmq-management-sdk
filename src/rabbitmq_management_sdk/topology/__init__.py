@@ -1,7 +1,43 @@
-"""Internal implementation of RabbitMQ topology auditing.
+"""Supported immutable RabbitMQ topology graph and analysis vocabulary.
 
-Use :class:`rabbitmq_management_sdk.ClusterAuditor` as the supported public
-entry point. Modules in this package may change while the topology API evolves.
+Use :class:`rabbitmq_management_sdk.ClusterAuditor` to construct a graph from
+validated in-memory responses or captured JSON files. Only the names exported
+here are supported; parser and algorithm submodules remain implementation
+details.
 """
 
-__all__: list[str] = []
+from rabbitmq_management_sdk.topology.cycles import (
+    Cycle,
+    CycleSearchResult,
+    StronglyConnectedComponent,
+)
+from rabbitmq_management_sdk.topology.models import (
+    ClusterTopology,
+    EdgeKind,
+    EndpointAuthority,
+    ExchangeNode,
+    NodeId,
+    NodeKind,
+    QueueNode,
+    ResourceEndpoint,
+    ShovelNode,
+    TopologyEdge,
+    TopologyNode,
+)
+
+__all__ = [
+    "ClusterTopology",
+    "Cycle",
+    "CycleSearchResult",
+    "EdgeKind",
+    "EndpointAuthority",
+    "ExchangeNode",
+    "NodeId",
+    "NodeKind",
+    "QueueNode",
+    "ResourceEndpoint",
+    "ShovelNode",
+    "StronglyConnectedComponent",
+    "TopologyEdge",
+    "TopologyNode",
+]
