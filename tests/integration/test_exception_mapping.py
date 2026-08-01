@@ -13,7 +13,6 @@ import pytest
 from pydantic import ValidationError
 
 import rabbitmq_management_sdk as sdk
-from rabbitmq_management_sdk.domains.base import RabbitMQBase, parse_list, parse_one
 from rabbitmq_management_sdk.exceptions import (
     APIError,
     BadRequestError,
@@ -34,6 +33,7 @@ from rabbitmq_management_sdk.exceptions import (
 )
 from rabbitmq_management_sdk.http_adapter.base import HttpResponse
 from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.resources.base import RabbitMQBase, parse_list, parse_one
 
 
 def _adapter_for(handler: httpx.MockTransport | None = None, **kw: object) -> HttpxAdapter:

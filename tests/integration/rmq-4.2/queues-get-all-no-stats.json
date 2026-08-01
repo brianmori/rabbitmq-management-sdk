@@ -1,0 +1,345 @@
+[
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "dest.q",
+    "node": "rabbit@rabbitmq-sa",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "/"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "src.q",
+    "node": "rabbit@rabbitmq-sa",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "/"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "name": "dest.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "quorum",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "test.dlx",
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "name": "test.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "quorum",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {
+      "dead-letter-exchange": "dlx.b",
+      "max-length-bytes": 2000
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "name": "orders.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "operator_policy": "all-queues",
+    "policy": "tie-dlx-b",
+    "state": "running",
+    "type": "quorum",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {
+      "x-overflow": "drop-head",
+      "x-queue-leader-locator": "client-local",
+      "x-queue-type": "classic",
+      "x-single-active-consumer": false
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {
+      "max-length": 1000
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "classic.q",
+    "node": "rabbit@rabbitmq-sa",
+    "operator_policy": null,
+    "policy": "test-policy",
+    "state": "running",
+    "type": "classic",
+    "vhost": "src"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "my-fan.dlx",
+      "x-dead-letter-routing-key": "asd",
+      "x-dead-letter-strategy": "at-least-once",
+      "x-delivery-limit": 5,
+      "x-max-length": 3243,
+      "x-max-length-bytes": 12452,
+      "x-message-ttl": 3000,
+      "x-overflow": "reject-publish",
+      "x-queue-leader-locator": "client-local",
+      "x-queue-type": "quorum",
+      "x-quorum-initial-group-size": 54,
+      "x-quorum-target-group-size": 96,
+      "x-single-active-consumer": true
+    },
+    "auto_delete": false,
+    "delivery_limit": 5,
+    "durable": true,
+    "effective_policy_definition": {
+      "max-length": 1000
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "name": "fan.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "operator_policy": null,
+    "policy": "test-policy",
+    "state": "running",
+    "type": "quorum",
+    "vhost": "src"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {
+      "max-length": 1000
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "name": "holidays.ita.sicily.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "operator_policy": null,
+    "policy": "test-policy",
+    "state": "running",
+    "type": "quorum",
+    "vhost": "src"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {
+      "max-length": 1000
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "name": "holidays.ita.tuscany.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "operator_policy": null,
+    "policy": "test-policy",
+    "state": "running",
+    "type": "quorum",
+    "vhost": "src"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {
+      "max-length": 1000
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "name": "src.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "operator_policy": null,
+    "policy": "test-policy",
+    "state": "running",
+    "type": "quorum",
+    "vhost": "src"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "name": "dst.queue.10",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "quorum",
+    "vhost": "test-dst"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "name": "mytest",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "quorum",
+    "vhost": "test-src"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "name": "src.queue.10",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "quorum",
+    "vhost": "test-src"
+  }
+]

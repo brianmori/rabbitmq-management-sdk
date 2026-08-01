@@ -57,7 +57,7 @@ dev = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py312"
+required-version = ">=0.15.2,<1.0.0"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -76,11 +76,13 @@ select = [
     "RUF", # ruff-specific rules
     "PL", # pylint
     "TID", # flake8-tidy-imports
+    "D", # pydocstyle — incrementally enforced for topology/parser.py and topology/models.py
 ]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+line-ending = "lf"
 docstring-code-format = true
 
 [tool.ruff.lint.pydocstyle]
@@ -96,15 +98,11 @@ max-args = 8
 ban-relative-imports = "all"
 
 [tool.ruff.lint.flake8-type-checking]
-runtime-evaluated-base-classes = ["rabbitmq_management_sdk.domains.base.RabbitMQBase"]
+runtime-evaluated-base-classes = ["rabbitmq_management_sdk.resources.base.RabbitMQBase"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["PLR2004"]
-
-[tool.uv.workspace]
-members = [
-    "rabbitmq-management-sdk",
-]
+"!src/rabbitmq_management_sdk/topology/{models,parser}.py" = ["D"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
@@ -121,5 +119,9 @@ addopts = "--import-mode=importlib"
 python_version = "3.12"
 strict = true
 files = ["src", "tests"]
-ignore_missing_imports = true
+warn_unused_configs = true
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "conftest"
+ignore_missing_imports = true

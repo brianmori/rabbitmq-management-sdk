@@ -4,14 +4,14 @@ default:
 
 # Lint and format check
 check:
-    uv run ruff check
-    uv run ruff format --check
-    uv run mypy
+    uv run ruff check src/ tests/
+    uv run ruff format --check src/ tests/
+    uv run mypy src/ tests/
 
 # Auto-fix everything
 fix:
-    uv run ruff check --fix --show-fixes
-    uv run ruff format
+    uv run ruff check --fix --show-fixes src/ tests/
+    uv run ruff format src/ tests/
 
 # Run non-live tests
 test:
@@ -30,7 +30,7 @@ test-live-rmq43:
 
 # Mypy check
 typecheck:
-    uv run mypy .
+    uv run mypy src/ tests/
 
 # Audit installed dependencies for known vulnerabilities
 audit:

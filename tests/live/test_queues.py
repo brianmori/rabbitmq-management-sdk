@@ -4,13 +4,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from rabbitmq_management_sdk.domains.v4.queues.schemas.queue_request import (
+from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse, factory
+from rabbitmq_management_sdk.http_adapter.config import BasicAuthentication
+from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_request import (
     ClassicQueueRequest,
     QueueRequest,
     QuorumQueueRequest,
 )
-from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse, factory
-from rabbitmq_management_sdk.http_adapter.config import BasicAuthentication
 
 if TYPE_CHECKING:
     from conftest import RabbitSettings

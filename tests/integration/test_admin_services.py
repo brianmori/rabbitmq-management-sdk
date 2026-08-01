@@ -5,8 +5,8 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from rabbitmq_management_sdk.domains.v4.admin.services import AdminManagerV4
 from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.resources.v4.admin.services import AdminManagerV4
 
 
 def _adapter_returning(body: bytes, status: int = 200) -> HttpxAdapter:
