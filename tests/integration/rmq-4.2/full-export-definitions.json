@@ -1,0 +1,961 @@
+{
+  "rabbit_version": "4.2.8",
+  "rabbitmq_version": "4.2.8",
+  "product_name": "RabbitMQ",
+  "product_version": "4.2.8",
+  "rabbitmq_definition_format": "cluster",
+  "original_cluster_name": "my-lab-rabbit",
+  "explanation": "Definitions of cluster 'my-lab-rabbit'",
+  "users": [
+    {
+      "name": "lab",
+      "password_hash": "",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": [
+        "administrator"
+      ],
+      "limits": {
+        "max-channels": 100
+      }
+    },
+    {
+      "name": "vh-mon-user",
+      "password_hash": "",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": [
+        "monitoring"
+      ],
+      "limits": {
+        "max-channels": 60,
+        "max-connections": 70
+      }
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "test-vhost",
+      "description": "",
+      "metadata": {
+        "description": "",
+        "tags": [],
+        "default_queue_type": "classic"
+      },
+      "tags": []
+    },
+    {
+      "name": "dest",
+      "description": "",
+      "metadata": {
+        "description": "",
+        "tags": [],
+        "default_queue_type": "classic"
+      },
+      "tags": []
+    },
+    {
+      "name": "test-vh-export",
+      "description": "Test Vhost",
+      "metadata": {
+        "description": "Test Vhost",
+        "tags": [
+          "test"
+        ],
+        "default_queue_type": "classic"
+      },
+      "tags": [
+        "test"
+      ]
+    },
+    {
+      "name": "test-src",
+      "description": "Test Vhost",
+      "metadata": {
+        "description": "Test Vhost",
+        "tags": [
+          "test"
+        ],
+        "default_queue_type": "classic"
+      },
+      "tags": [
+        "test"
+      ]
+    },
+    {
+      "name": "test-dst",
+      "description": "Test Vhost",
+      "metadata": {
+        "description": "Test Vhost",
+        "tags": [
+          "test"
+        ],
+        "default_queue_type": "classic"
+      },
+      "tags": [
+        "test"
+      ]
+    },
+    {
+      "name": "/",
+      "description": "Default virtual host",
+      "metadata": {
+        "description": "Default virtual host",
+        "tags": [],
+        "default_queue_type": "classic"
+      },
+      "tags": []
+    },
+    {
+      "name": "policy",
+      "description": "policies vhost",
+      "metadata": {
+        "description": "policies vhost",
+        "tags": [
+          "policy"
+        ],
+        "default_queue_type": "quorum"
+      },
+      "tags": [
+        "policy"
+      ]
+    },
+    {
+      "name": "src",
+      "description": "",
+      "metadata": {
+        "description": "",
+        "tags": [],
+        "default_queue_type": "quorum"
+      },
+      "tags": []
+    }
+  ],
+  "permissions": [
+    {
+      "user": "lab",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "lab",
+      "vhost": "dest",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "lab",
+      "vhost": "policy",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "vh-mon-user",
+      "vhost": "policy",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "lab",
+      "vhost": "src",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "vh-mon-user",
+      "vhost": "src",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "lab",
+      "vhost": "test-dst",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "lab",
+      "vhost": "test-src",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "lab",
+      "vhost": "test-vh-export",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "lab",
+      "vhost": "test-vhost",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "topic_permissions": [
+    {
+      "user": "vh-mon-user",
+      "vhost": "policy",
+      "exchange": "",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "lab",
+      "vhost": "policy",
+      "exchange": "amq.fanout",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "parameters": [
+    {
+      "value": {
+        "pattern": "quorum123.*",
+        "definition": {
+          "overflow": "drop-head"
+        },
+        "priority": 300,
+        "apply-to": "quorum_queues"
+      },
+      "vhost": "policy",
+      "component": "operator_policy",
+      "name": "quorum.s"
+    },
+    {
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-add-forward-headers": true,
+        "dest-address": "/queues/dst.queue.10",
+        "dest-protocol": "amqp10",
+        "dest-uri": "amqp://lab:lab@localhost:5672?hostname=vhost:test-dst&sasl=plain",
+        "src-address": "/queues/src.queue.10",
+        "src-delete-after": "never",
+        "src-prefetch-count": 30,
+        "src-protocol": "amqp10",
+        "src-uri": "amqp://lab:lab@localhost:5672?hostname=vhost:test-src&sasl=plain"
+      },
+      "vhost": "test-src",
+      "component": "shovel",
+      "name": "test-shovel-10"
+    },
+    {
+      "value": {
+        "pattern": "stream.*",
+        "definition": {
+          "max-length-bytes": 20000
+        },
+        "priority": 100,
+        "apply-to": "streams"
+      },
+      "vhost": "policy",
+      "component": "operator_policy",
+      "name": "stream.queues"
+    },
+    {
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-add-forward-headers": false,
+        "dest-protocol": "amqp091",
+        "dest-queue": "dest.q",
+        "dest-uri": "amqp:///dest",
+        "src-delete-after": "never",
+        "src-protocol": "amqp091",
+        "src-queue": "src.q",
+        "src-uri": "amqp:///src"
+      },
+      "vhost": "src",
+      "component": "shovel",
+      "name": "test-shovel"
+    },
+    {
+      "value": {
+        "pattern": "clas.*",
+        "definition": {
+          "expires": 2000,
+          "max-length": 20000000,
+          "max-length-bytes": 3600,
+          "message-ttl": 360000,
+          "overflow": "reject-publish-dlx"
+        },
+        "priority": 100,
+        "apply-to": "classic_queues"
+      },
+      "vhost": "policy",
+      "component": "operator_policy",
+      "name": "classic-queues"
+    },
+    {
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-add-forward-headers": false,
+        "dest-protocol": "local",
+        "dest-queue": "dest.q",
+        "dest-uri": [
+          "amqp://lab:lab@localhost/dest",
+          "amqp://lab:lab@localhost/dest"
+        ],
+        "src-delete-after": "never",
+        "src-protocol": "local",
+        "src-queue": "src.q",
+        "src-uri": [
+          "amqp://lab:lab@localhost/src",
+          "amqp://lab:lab@localhost/src"
+        ]
+      },
+      "vhost": "src",
+      "component": "shovel",
+      "name": "test-shovel-local-multiple"
+    },
+    {
+      "value": {
+        "pattern": "quorum.*",
+        "definition": {
+          "delivery-limit": 2000,
+          "expires": 20000000,
+          "max-in-memory-bytes": 7600,
+          "max-in-memory-length": 6600,
+          "max-length": 5000,
+          "max-length-bytes": 40000,
+          "message-ttl": 300000,
+          "overflow": "reject-publish",
+          "target-group-size": 3232
+        },
+        "priority": 100,
+        "apply-to": "quorum_queues"
+      },
+      "vhost": "policy",
+      "component": "operator_policy",
+      "name": "quorum.q"
+    },
+    {
+      "value": {
+        "max-queues": 50
+      },
+      "vhost": "/",
+      "component": "vhost-limits",
+      "name": "limits"
+    },
+    {
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-add-forward-headers": true,
+        "dest-protocol": "local",
+        "dest-queue": "dest.q",
+        "dest-uri": "amqp://lab:lab@localhost/dest",
+        "reconnect-delay": 33,
+        "src-delete-after": "never",
+        "src-protocol": "local",
+        "src-queue": "src.q",
+        "src-uri": "amqp://lab:lab@localhost/src"
+      },
+      "vhost": "src",
+      "component": "shovel",
+      "name": "test-shovel-local"
+    },
+    {
+      "value": {
+        "max-queues": 100
+      },
+      "vhost": "dest",
+      "component": "vhost-limits",
+      "name": "limits"
+    },
+    {
+      "value": {
+        "pattern": ".*",
+        "definition": {
+          "max-length-bytes": 2000
+        },
+        "priority": 10,
+        "apply-to": "queues"
+      },
+      "vhost": "policy",
+      "component": "operator_policy",
+      "name": "all-queues"
+    },
+    {
+      "value": {
+        "max-connections": 60
+      },
+      "vhost": "policy",
+      "component": "vhost-limits",
+      "name": "limits"
+    },
+    {
+      "value": {
+        "max-queues": 3,
+        "max-connections": 3
+      },
+      "vhost": "test-vhost",
+      "component": "vhost-limits",
+      "name": "limits"
+    },
+    {
+      "value": {
+        "max-connections": 50
+      },
+      "vhost": "src",
+      "component": "vhost-limits",
+      "name": "limits"
+    }
+  ],
+  "global_parameters": [
+    {
+      "name": "cluster_name",
+      "value": "my-lab-rabbit"
+    },
+    {
+      "name": "cluster_tags",
+      "value": []
+    },
+    {
+      "name": "internal_cluster_id",
+      "value": "rabbitmq-cluster-id-8ybq49F1lPFVBGa2QKGeCQ"
+    }
+  ],
+  "policies": [
+    {
+      "vhost": "policy",
+      "name": "stream-q-min",
+      "pattern": "streammin.*",
+      "apply-to": "streams",
+      "definition": {
+        "delivery-limit": -3,
+        "stream-filter-size-bytes": 16
+      },
+      "priority": 100
+    },
+    {
+      "vhost": "src",
+      "name": "test-policy",
+      "pattern": ".*",
+      "apply-to": "all",
+      "definition": {
+        "max-length": 1000
+      },
+      "priority": 0
+    },
+    {
+      "vhost": "policy",
+      "name": "tie-ae-b",
+      "pattern": "^events$",
+      "apply-to": "exchanges",
+      "definition": {
+        "alternate-exchange": "ae.b"
+      },
+      "priority": 10
+    },
+    {
+      "vhost": "policy",
+      "name": "tie-ae-a",
+      "pattern": "^events$",
+      "apply-to": "exchanges",
+      "definition": {
+        "alternate-exchange": "ae.a"
+      },
+      "priority": 10
+    },
+    {
+      "vhost": "policy",
+      "name": "tie-dlx-b",
+      "pattern": "^orders\\.q$",
+      "apply-to": "queues",
+      "definition": {
+        "dead-letter-exchange": "dlx.b"
+      },
+      "priority": 10
+    },
+    {
+      "vhost": "policy",
+      "name": "all-quorum-q",
+      "pattern": "all.quo.*",
+      "apply-to": "quorum_queues",
+      "definition": {
+        "consumer-timeout": 5432,
+        "dead-letter-exchange": "b-dlx",
+        "dead-letter-routing-key": "abcv",
+        "dead-letter-strategy": "at-least-once",
+        "delivery-limit": 30,
+        "expires": 984343,
+        "max-length": 2332,
+        "max-length-bytes": 4433,
+        "message-ttl": 32,
+        "overflow": "reject-publish",
+        "queue-leader-locator": "client-local"
+      },
+      "priority": 200
+    },
+    {
+      "vhost": "policy",
+      "name": "tie-dlx-a",
+      "pattern": "^orders\\.q$",
+      "apply-to": "queues",
+      "definition": {
+        "dead-letter-exchange": "dlx.a"
+      },
+      "priority": 10
+    },
+    {
+      "vhost": "policy",
+      "name": "all-stream",
+      "pattern": "stream.*",
+      "apply-to": "streams",
+      "definition": {
+        "consumer-timeout": 60,
+        "dead-letter-exchange": "stream.dlx",
+        "dead-letter-routing-key": "stream-rk",
+        "expires": 3452,
+        "max-age": "1h",
+        "max-length": 86553,
+        "max-length-bytes": 58855,
+        "message-ttl": 32,
+        "overflow": "drop-head",
+        "queue-leader-locator": "balanced",
+        "stream-filter-size-bytes": 255
+      },
+      "priority": 10
+    },
+    {
+      "vhost": "policy",
+      "name": "all-exchanges",
+      "pattern": "all-ex.*",
+      "apply-to": "exchanges",
+      "definition": {
+        "alternate-exchange": "all-ae"
+      },
+      "priority": 100
+    },
+    {
+      "vhost": "policy",
+      "name": "all-queues-",
+      "pattern": "all.q.*",
+      "apply-to": "queues",
+      "definition": {
+        "consumer-timeout": 39432,
+        "dead-letter-exchange": "all.dlx",
+        "dead-letter-routing-key": "abc",
+        "expires": 456,
+        "max-length": 1000,
+        "max-length-bytes": 32342,
+        "message-ttl": 2122,
+        "overflow": "reject-publish-dlx",
+        "queue-leader-locator": "client-local"
+      },
+      "priority": 10
+    },
+    {
+      "vhost": "src",
+      "name": "test-policy-dlx",
+      "pattern": "^orders\\.q$",
+      "apply-to": "queues",
+      "definition": {
+        "dead-letter-exchange": "shared.dlx",
+        "dead-letter-routing-key": "dead.orders",
+        "dead-letter-strategy": "at-least-once"
+      },
+      "priority": 5
+    },
+    {
+      "vhost": "policy",
+      "name": "all-classic",
+      "pattern": "all-classic-q.*",
+      "apply-to": "classic_queues",
+      "definition": {
+        "consumer-timeout": 39432,
+        "dead-letter-exchange": "classic.dlx",
+        "dead-letter-routing-key": "abcqw",
+        "expires": 456,
+        "max-length": 1000,
+        "max-length-bytes": 32342,
+        "message-ttl": 2122,
+        "overflow": "drop-head",
+        "queue-leader-locator": "balanced"
+      },
+      "priority": 100
+    },
+    {
+      "vhost": "policy",
+      "name": "quorum-at-most",
+      "pattern": "quo-amo.*",
+      "apply-to": "quorum_queues",
+      "definition": {
+        "dead-letter-strategy": "at-most-once",
+        "overflow": "reject-publish-dlx"
+      },
+      "priority": 300
+    }
+  ],
+  "queues": [
+    {
+      "name": "dest.q",
+      "vhost": "dest",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "test.q",
+      "vhost": "dest",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "test.dlx",
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "src.queue.10",
+      "vhost": "test-src",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "mytest",
+      "vhost": "test-src",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "dst.queue.10",
+      "vhost": "test-dst",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "dest.q",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "classic"
+      }
+    },
+    {
+      "name": "src.q",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "classic"
+      }
+    },
+    {
+      "name": "orders.q",
+      "vhost": "policy",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "holidays.ita.tuscany.q",
+      "vhost": "src",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "classic.q",
+      "vhost": "src",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-overflow": "drop-head",
+        "x-queue-leader-locator": "client-local",
+        "x-queue-type": "classic",
+        "x-single-active-consumer": false
+      }
+    },
+    {
+      "name": "holidays.ita.sicily.q",
+      "vhost": "src",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "fan.q",
+      "vhost": "src",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "my-fan.dlx",
+        "x-dead-letter-routing-key": "asd",
+        "x-dead-letter-strategy": "at-least-once",
+        "x-delivery-limit": 5,
+        "x-max-length": 3243,
+        "x-max-length-bytes": 12452,
+        "x-message-ttl": 3000,
+        "x-overflow": "reject-publish",
+        "x-queue-leader-locator": "client-local",
+        "x-queue-type": "quorum",
+        "x-quorum-initial-group-size": 54,
+        "x-quorum-target-group-size": 96,
+        "x-single-active-consumer": true
+      }
+    },
+    {
+      "name": "src.q",
+      "vhost": "src",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "dest.dx",
+      "vhost": "dest",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "dest.fx",
+      "vhost": "dest",
+      "type": "fanout",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "dest.tx",
+      "vhost": "dest",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "test.dlx",
+      "vhost": "dest",
+      "type": "fanout",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "dest_ex",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "source_ex",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "ae.a",
+      "vhost": "policy",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "ae.b",
+      "vhost": "policy",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "dlx.a",
+      "vhost": "policy",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "dlx.b",
+      "vhost": "policy",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "events",
+      "vhost": "policy",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "alt-exch",
+      "vhost": "src",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {
+        "alternate-exchange": "src.dx"
+      }
+    },
+    {
+      "name": "another.dx",
+      "vhost": "src",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "int-transient-auto-del",
+      "vhost": "src",
+      "type": "direct",
+      "durable": false,
+      "auto_delete": true,
+      "internal": true,
+      "arguments": {}
+    },
+    {
+      "name": "my-fan.dlx",
+      "vhost": "src",
+      "type": "fanout",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "src.dx",
+      "vhost": "src",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "src.fx",
+      "vhost": "src",
+      "type": "fanout",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "src.tx",
+      "vhost": "src",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "x-local-random.rx",
+      "vhost": "src",
+      "type": "x-local-random",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "source_ex",
+      "vhost": "/",
+      "destination": "dest_ex",
+      "destination_type": "exchange",
+      "routing_key": "test.#",
+      "arguments": {}
+    },
+    {
+      "source": "src.tx",
+      "vhost": "src",
+      "destination": "holidays.ita.tuscany.q",
+      "destination_type": "queue",
+      "routing_key": "holidays.ita.tuscany.*",
+      "arguments": {
+        "dsa": "das"
+      }
+    },
+    {
+      "source": "another.dx",
+      "vhost": "src",
+      "destination": "src.dx",
+      "destination_type": "exchange",
+      "routing_key": "#",
+      "arguments": {
+        "ds": true,
+        "dsa": [
+          "ds",
+          1,
+          false
+        ]
+      }
+    },
+    {
+      "source": "my-fan.dlx",
+      "vhost": "src",
+      "destination": "fan.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "asf": "2"
+      }
+    },
+    {
+      "source": "src.tx",
+      "vhost": "src",
+      "destination": "holidays.ita.sicily.q",
+      "destination_type": "queue",
+      "routing_key": "holidays.ita.sicily.#",
+      "arguments": {}
+    }
+  ]
+}

@@ -1,15 +1,14 @@
-"""Translate a RabbitMQ definitions export into a topology graph.
+"""Translate validated RabbitMQ configuration into a topology graph.
 
 The parser converts a :class:`ClusterDefinitionsResponse` wire model from
-``GET /api/definitions`` into the frozen-dataclass
-:class:`ClusterTopology` domain model. Graph construction includes:
+``GET /api/definitions`` plus optional broker observations into the immutable
+:class:`ClusterTopology` domain model. Its edges are configured possible hops,
+not guarantees that a particular message will traverse them.
 
-1. Exchange and queue nodes plus binding edges, including referenced
-   broker-predeclared exchanges omitted by definitions exports.
-2. Dead-letter and alternate-exchange edges from declared arguments.
-3. Broker-observed user-policy resolution layered on top of declared
-   arguments.
-4. Shovel nodes plus up to two shovel edges per shovel.
+Graph construction includes declared queues, exchanges, and bindings;
+dead-letter and alternate-exchange settings resolved from direct arguments and
+selected regular policies; shovel endpoint evidence; and referenced exchanges
+omitted by definitions exports.
 """
 
 import json
@@ -153,7 +152,7 @@ class _TopologyBuilder:
         return queue.arguments.queue_type or self.default_queue_types.get(queue.vhost)
 
     def _binding_edges(self) -> frozenset[TopologyEdge]:
-        """Build binding edges from the definitions export."""
+        """Build configured binding hops from the definitions export."""
         edges = set()
         for binding in self.response.bindings:
             destination_kind = NodeKind.QUEUE if binding.destination_type == "queue" else NodeKind.EXCHANGE
@@ -177,7 +176,7 @@ class _TopologyBuilder:
         return frozenset(edges)
 
     def _dead_letter_edges(self) -> frozenset[TopologyEdge]:
-        """Build dead-letter edges from arguments and policy evidence."""
+        """Build possible dead-letter hops from arguments and policy evidence."""
         edges = set()
         for queue in self.response.queues:
             source = self._node_id(vhost=queue.vhost, name=queue.name, kind=NodeKind.QUEUE)
@@ -201,7 +200,7 @@ class _TopologyBuilder:
         return frozenset(edges)
 
     def _alternate_exchange_edges(self) -> frozenset[TopologyEdge]:
-        """Build alternate-exchange edges from arguments and policy evidence."""
+        """Build possible alternate-exchange hops from captured evidence."""
         edges = set()
         for exchange in self.response.exchanges:
             source = self._node_id(vhost=exchange.vhost, name=exchange.name, kind=NodeKind.EXCHANGE)
@@ -231,7 +230,7 @@ class _TopologyBuilder:
         side: Literal["src", "dest"],
         shovel_id: NodeId,
     ) -> tuple[ResourceEndpoint, TopologyEdge | None]:
-        """Parse one shovel endpoint and build its edge when confirmed local."""
+        """Parse one shovel side and emit its edge when local and fixed."""
         endpoint = parse_shovel_endpoint(
             value,
             side,
@@ -262,7 +261,7 @@ class _TopologyBuilder:
         )
 
     def _shovels(self) -> tuple[frozenset[ShovelNode], frozenset[TopologyEdge]]:
-        """Build shovel nodes and edges for their confirmed local endpoints."""
+        """Build every shovel node and its fixed, confirmed-local endpoint edges."""
         shovels: set[ShovelNode] = set()
         edges: set[TopologyEdge] = set()
 
@@ -287,7 +286,7 @@ class _TopologyBuilder:
         declared_exchanges: frozenset[ExchangeNode],
         edges: frozenset[TopologyEdge],
     ) -> frozenset[ExchangeNode]:
-        """Supply referenced exchanges omitted by definitions exports."""
+        """Supply observed or standard predeclared exchanges omitted by definitions."""
         declared_vhosts = frozenset(vhost.name for vhost in self.response.vhosts)
         declared_ids = frozenset(exchange.id for exchange in declared_exchanges)
         referenced_ids = frozenset(
@@ -323,13 +322,18 @@ def parse_cluster_topology(
     user_policy_selections: UserPolicySelections | None = None,
     observed_exchanges: Collection[ExchangeResponse] = (),
 ) -> ClusterTopology:
-    """Build a graph for the cluster represented by ``response``.
+    """Build a configuration graph for the cluster represented by ``response``.
+
+    Each resulting edge is a configured possible message hop. The graph does
+    not evaluate message routing keys, headers, dead-letter triggers, shovel
+    runtime state, or later configuration changes.
 
     ``in_cluster_amqp_hosts`` supplies membership evidence for hosted AMQP
     shovel endpoints. ``local`` protocol shovels and hostless AMQP URIs do not
-    need that evidence. An endpoint that is unresolved or not confirmed local
-    remains visible on its :class:`ShovelNode`, but its resource edge is
-    excluded so it cannot be merged with a same-named local resource.
+    need that evidence. An endpoint without a fixed resource identity, or one
+    that is unresolved or not confirmed local, remains visible on its
+    :class:`ShovelNode`. Its resource edge is excluded so it cannot be merged
+    with a same-named local resource.
 
     When present, the export's broker-generated ``internal_cluster_id`` is the
     graph and node identity. Older or manually constructed exports without that
@@ -342,16 +346,16 @@ def parse_cluster_topology(
     Neither label changes node identity.
 
     ``user_policy_selections`` is normalized broker evidence for
-    policy-derived routes. It is independent of how queue and exchange
+    policy-derived routing values. It is independent of how queue and exchange
     observations were acquired. The parser does not evaluate RabbitMQ policy
-    regular expressions locally; where direct arguments do not settle a route,
-    a routing-relevant policy requires a selection record.
+    regular expressions locally; where direct arguments do not settle a
+    routing value, a relevant policy requires a selection record.
 
     ``observed_exchanges`` supplies Management API observations for
     broker-created exchanges omitted by the definitions export and referenced
-    by parsed routes. Definitions remain authoritative for declared exchanges.
-    A guaranteed standard exchange is synthesized when a referenced exchange
-    is neither declared nor observed.
+    by parsed hops. Definitions remain authoritative for declared exchanges.
+    For a referenced exchange in a declared vhost, a standard predeclared
+    RabbitMQ exchange is synthesized when it is neither declared nor observed.
 
     Args:
         response: Validated cluster-wide definitions export.
@@ -364,7 +368,7 @@ def parse_cluster_topology(
             supplement referenced exchanges.
 
     Returns:
-        The parsed, immutable cluster topology.
+        The parsed immutable configuration graph.
 
     Raises:
         TopologyError: If the definitions and supplied observations cannot be

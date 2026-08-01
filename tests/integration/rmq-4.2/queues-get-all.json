@@ -1,0 +1,784 @@
+[
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "consumer_capacity": 0,
+    "consumer_utilisation": 0,
+    "consumers": 0,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "memory": 13912,
+    "message_bytes": 0,
+    "message_bytes_paged_out": 0,
+    "message_bytes_persistent": 0,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 0,
+    "message_bytes_unacknowledged": 0,
+    "messages": 0,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_paged_out": 0,
+    "messages_persistent": 0,
+    "messages_ram": 0,
+    "messages_ready": 0,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_ram": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "messages_unacknowledged_ram": 0,
+    "name": "dest.q",
+    "node": "rabbit@rabbitmq-sa",
+    "reductions": 5587,
+    "reductions_details": {
+      "rate": 0.0
+    },
+    "state": "running",
+    "storage_version": 2,
+    "type": "classic",
+    "vhost": "/"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "consumer_capacity": 0,
+    "consumer_utilisation": 0,
+    "consumers": 0,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "memory": 13912,
+    "message_bytes": 0,
+    "message_bytes_paged_out": 0,
+    "message_bytes_persistent": 0,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 0,
+    "message_bytes_unacknowledged": 0,
+    "messages": 0,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_paged_out": 0,
+    "messages_persistent": 0,
+    "messages_ram": 0,
+    "messages_ready": 0,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_ram": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "messages_unacknowledged_ram": 0,
+    "name": "src.q",
+    "node": "rabbit@rabbitmq-sa",
+    "reductions": 5585,
+    "reductions_details": {
+      "rate": 0.0
+    },
+    "state": "running",
+    "storage_version": 2,
+    "type": "classic",
+    "vhost": "/"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "consumer_capacity": 0,
+    "consumer_utilisation": 0,
+    "consumers": 0,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "memory": 42668,
+    "message_bytes": 47,
+    "message_bytes_dlx": 0,
+    "message_bytes_persistent": 47,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 47,
+    "message_bytes_unacknowledged": 0,
+    "messages": 4,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_dlx": 0,
+    "messages_persistent": 4,
+    "messages_ram": 0,
+    "messages_ready": 4,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_high": 0,
+    "messages_ready_normal": 4,
+    "messages_ready_returned": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "name": "dest.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "open_files": {
+      "rabbit@rabbitmq-sa": 0
+    },
+    "publishers": 0,
+    "reductions": 222837,
+    "reductions_details": {
+      "rate": 74.6
+    },
+    "state": "running",
+    "type": "quorum",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "test.dlx",
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "consumer_capacity": 0,
+    "consumer_utilisation": 0,
+    "consumers": 0,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "memory": 34684,
+    "message_bytes": 0,
+    "message_bytes_dlx": 0,
+    "message_bytes_persistent": 0,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 0,
+    "message_bytes_unacknowledged": 0,
+    "messages": 0,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_dlx": 0,
+    "messages_persistent": 0,
+    "messages_ram": 0,
+    "messages_ready": 0,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_high": 0,
+    "messages_ready_normal": 0,
+    "messages_ready_returned": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "name": "test.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "open_files": {
+      "rabbit@rabbitmq-sa": 0
+    },
+    "publishers": 0,
+    "reductions": 213656,
+    "reductions_details": {
+      "rate": 71.8
+    },
+    "state": "running",
+    "type": "quorum",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "consumer_capacity": 0,
+    "consumer_utilisation": 0,
+    "consumers": 0,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {
+      "dead-letter-exchange": "dlx.b",
+      "max-length-bytes": 2000
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "memory": 34524,
+    "message_bytes": 0,
+    "message_bytes_dlx": 0,
+    "message_bytes_persistent": 0,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 0,
+    "message_bytes_unacknowledged": 0,
+    "messages": 0,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_dlx": 0,
+    "messages_persistent": 0,
+    "messages_ram": 0,
+    "messages_ready": 0,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_high": 0,
+    "messages_ready_normal": 0,
+    "messages_ready_returned": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "name": "orders.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "open_files": {
+      "rabbit@rabbitmq-sa": 0
+    },
+    "operator_policy": "all-queues",
+    "policy": "tie-dlx-b",
+    "publishers": 0,
+    "reductions": 216506,
+    "reductions_details": {
+      "rate": 74.6
+    },
+    "state": "running",
+    "type": "quorum",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {
+      "x-overflow": "drop-head",
+      "x-queue-leader-locator": "client-local",
+      "x-queue-type": "classic",
+      "x-single-active-consumer": false
+    },
+    "auto_delete": false,
+    "consumer_capacity": 0,
+    "consumer_utilisation": 0,
+    "consumers": 0,
+    "durable": true,
+    "effective_policy_definition": {
+      "max-length": 1000
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "memory": 13912,
+    "message_bytes": 0,
+    "message_bytes_paged_out": 0,
+    "message_bytes_persistent": 0,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 0,
+    "message_bytes_unacknowledged": 0,
+    "messages": 0,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_paged_out": 0,
+    "messages_persistent": 0,
+    "messages_ram": 0,
+    "messages_ready": 0,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_ram": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "messages_unacknowledged_ram": 0,
+    "name": "classic.q",
+    "node": "rabbit@rabbitmq-sa",
+    "policy": "test-policy",
+    "reductions": 5753,
+    "reductions_details": {
+      "rate": 0.0
+    },
+    "state": "running",
+    "storage_version": 2,
+    "type": "classic",
+    "vhost": "src"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "my-fan.dlx",
+      "x-dead-letter-routing-key": "asd",
+      "x-dead-letter-strategy": "at-least-once",
+      "x-delivery-limit": 5,
+      "x-max-length": 3243,
+      "x-max-length-bytes": 12452,
+      "x-message-ttl": 3000,
+      "x-overflow": "reject-publish",
+      "x-queue-leader-locator": "client-local",
+      "x-queue-type": "quorum",
+      "x-quorum-initial-group-size": 54,
+      "x-quorum-target-group-size": 96,
+      "x-single-active-consumer": true
+    },
+    "auto_delete": false,
+    "consumer_capacity": 0,
+    "consumer_utilisation": 0,
+    "consumers": 0,
+    "delivery_limit": 5,
+    "durable": true,
+    "effective_policy_definition": {
+      "max-length": 1000
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "memory": 39572,
+    "message_bytes": 5,
+    "message_bytes_dlx": 5,
+    "message_bytes_persistent": 5,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 0,
+    "message_bytes_unacknowledged": 0,
+    "messages": 1,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_dlx": 1,
+    "messages_persistent": 1,
+    "messages_ram": 0,
+    "messages_ready": 0,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_high": 0,
+    "messages_ready_normal": 0,
+    "messages_ready_returned": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "name": "fan.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "open_files": {
+      "rabbit@rabbitmq-sa": 1
+    },
+    "policy": "test-policy",
+    "publishers": 0,
+    "reductions": 215520,
+    "reductions_details": {
+      "rate": 72.8
+    },
+    "state": "running",
+    "type": "quorum",
+    "vhost": "src"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "consumer_capacity": 0,
+    "consumer_utilisation": 0,
+    "consumers": 0,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {
+      "max-length": 1000
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "memory": 39412,
+    "message_bytes": 5,
+    "message_bytes_dlx": 0,
+    "message_bytes_persistent": 5,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 5,
+    "message_bytes_unacknowledged": 0,
+    "messages": 1,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_dlx": 0,
+    "messages_persistent": 1,
+    "messages_ram": 0,
+    "messages_ready": 1,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_high": 0,
+    "messages_ready_normal": 1,
+    "messages_ready_returned": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "name": "holidays.ita.sicily.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "open_files": {
+      "rabbit@rabbitmq-sa": 0
+    },
+    "policy": "test-policy",
+    "publishers": 0,
+    "reductions": 222434,
+    "reductions_details": {
+      "rate": 76.0
+    },
+    "state": "running",
+    "type": "quorum",
+    "vhost": "src"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "consumer_capacity": 0,
+    "consumer_utilisation": 0,
+    "consumers": 0,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {
+      "max-length": 1000
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "memory": 42588,
+    "message_bytes": 0,
+    "message_bytes_dlx": 0,
+    "message_bytes_persistent": 0,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 0,
+    "message_bytes_unacknowledged": 0,
+    "messages": 0,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_dlx": 0,
+    "messages_persistent": 0,
+    "messages_ram": 0,
+    "messages_ready": 0,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_high": 0,
+    "messages_ready_normal": 0,
+    "messages_ready_returned": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "name": "holidays.ita.tuscany.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "open_files": {
+      "rabbit@rabbitmq-sa": 0
+    },
+    "policy": "test-policy",
+    "publishers": 0,
+    "reductions": 213840,
+    "reductions_details": {
+      "rate": 71.8
+    },
+    "state": "running",
+    "type": "quorum",
+    "vhost": "src"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "consumer_capacity": 1.0,
+    "consumer_utilisation": 1.0,
+    "consumers": 3,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {
+      "max-length": 1000
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "memory": 55596,
+    "message_bytes": 0,
+    "message_bytes_dlx": 0,
+    "message_bytes_persistent": 0,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 0,
+    "message_bytes_unacknowledged": 0,
+    "messages": 0,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_dlx": 0,
+    "messages_persistent": 0,
+    "messages_ram": 0,
+    "messages_ready": 0,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_high": 0,
+    "messages_ready_normal": 0,
+    "messages_ready_returned": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "name": "src.q",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "open_files": {
+      "rabbit@rabbitmq-sa": 0
+    },
+    "policy": "test-policy",
+    "publishers": 0,
+    "reductions": 246580,
+    "reductions_details": {
+      "rate": 81.8
+    },
+    "single_active_consumer_tag": "amq.ctag-9l6AAeadh0YOmkqqAJ8D7A",
+    "state": "running",
+    "type": "quorum",
+    "vhost": "src"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "consumer_capacity": 0,
+    "consumer_utilisation": 0,
+    "consumers": 0,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "memory": 34524,
+    "message_bytes": 0,
+    "message_bytes_dlx": 0,
+    "message_bytes_persistent": 0,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 0,
+    "message_bytes_unacknowledged": 0,
+    "messages": 0,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_dlx": 0,
+    "messages_persistent": 0,
+    "messages_ram": 0,
+    "messages_ready": 0,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_high": 0,
+    "messages_ready_normal": 0,
+    "messages_ready_returned": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "name": "dst.queue.10",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "open_files": {
+      "rabbit@rabbitmq-sa": 0
+    },
+    "publishers": 0,
+    "reductions": 213718,
+    "reductions_details": {
+      "rate": 75.0
+    },
+    "state": "running",
+    "type": "quorum",
+    "vhost": "test-dst"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "consumer_capacity": 0,
+    "consumer_utilisation": 0,
+    "consumers": 0,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "memory": 42668,
+    "message_bytes": 0,
+    "message_bytes_dlx": 0,
+    "message_bytes_persistent": 0,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 0,
+    "message_bytes_unacknowledged": 0,
+    "messages": 0,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_dlx": 0,
+    "messages_persistent": 0,
+    "messages_ram": 0,
+    "messages_ready": 0,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_high": 0,
+    "messages_ready_normal": 0,
+    "messages_ready_returned": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "name": "mytest",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "open_files": {
+      "rabbit@rabbitmq-sa": 0
+    },
+    "publishers": 0,
+    "reductions": 213694,
+    "reductions_details": {
+      "rate": 71.8
+    },
+    "state": "running",
+    "type": "quorum",
+    "vhost": "test-src"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "consumer_capacity": 1.0,
+    "consumer_utilisation": 1.0,
+    "consumers": 1,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@rabbitmq-sa",
+    "members": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "memory": 42660,
+    "message_bytes": 0,
+    "message_bytes_dlx": 0,
+    "message_bytes_persistent": 0,
+    "message_bytes_ram": 0,
+    "message_bytes_ready": 0,
+    "message_bytes_unacknowledged": 0,
+    "messages": 0,
+    "messages_details": {
+      "rate": 0.0
+    },
+    "messages_dlx": 0,
+    "messages_persistent": 0,
+    "messages_ram": 0,
+    "messages_ready": 0,
+    "messages_ready_details": {
+      "rate": 0.0
+    },
+    "messages_ready_high": 0,
+    "messages_ready_normal": 0,
+    "messages_ready_returned": 0,
+    "messages_unacknowledged": 0,
+    "messages_unacknowledged_details": {
+      "rate": 0.0
+    },
+    "name": "src.queue.10",
+    "node": "rabbit@rabbitmq-sa",
+    "online": [
+      "rabbit@rabbitmq-sa"
+    ],
+    "open_files": {
+      "rabbit@rabbitmq-sa": 0
+    },
+    "publishers": 0,
+    "reductions": 229274,
+    "reductions_details": {
+      "rate": 75.4
+    },
+    "single_active_consumer_tag": "0",
+    "state": "running",
+    "type": "quorum",
+    "vhost": "test-src"
+  }
+]

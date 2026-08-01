@@ -10,7 +10,7 @@ import httpx
 import pytest
 
 from rabbitmq_management_sdk import ClusterAuditor
-from rabbitmq_management_sdk.client.policy_selection import _build_user_policy_selections
+from rabbitmq_management_sdk.client.policy_selection import build_user_policy_selections
 from rabbitmq_management_sdk.exceptions import TopologyValidationError
 from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
@@ -222,7 +222,7 @@ def test_policy_selections_normalize_response_models() -> None:
     ]
     exchanges = [ExchangeResponse.model_validate({**_exchange("events"), "policy": "tie-ae-b"})]
 
-    selections = _build_user_policy_selections(
+    selections = build_user_policy_selections(
         queues=queues,
         exchanges=exchanges,
         cluster_id="cluster-a",
@@ -242,7 +242,7 @@ def test_policy_selections_reject_duplicate_resource_observations() -> None:
     queue = QueueResponse.model_validate({**_queue("orders.q"), "policy": "orders-policy"})
 
     with pytest.raises(TopologyValidationError, match="Duplicate user policy selections"):
-        _build_user_policy_selections(
+        build_user_policy_selections(
             queues=[queue, queue],
             exchanges=[],
             cluster_id="cluster-a",
@@ -254,7 +254,7 @@ def test_policy_selections_reject_empty_policy_names() -> None:
     queue = QueueResponse.model_validate({**_queue("orders.q"), "policy": ""})
 
     with pytest.raises(TopologyValidationError, match="policy names must be non-empty"):
-        _build_user_policy_selections(
+        build_user_policy_selections(
             queues=[queue],
             exchanges=[],
             cluster_id="cluster-a",

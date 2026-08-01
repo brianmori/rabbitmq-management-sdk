@@ -1,9 +1,11 @@
-"""Resolve policy-derived RabbitMQ routes without evaluating policy regexes.
+"""Resolve policy-derived routing settings without evaluating policy regexes.
 
 RabbitMQ evaluates policy patterns using its Erlang regular-expression engine.
 This module therefore treats an observed Management API policy selection as the
-authority for pattern matching, and only checks the selection against the
-definitions export's vhost and ``apply-to`` scope.
+authority for which regular user policy the broker selected at capture time.
+It checks that selection against the definitions export's vhost and
+``apply-to`` scope, then resolves topology-relevant settings. These settings
+are configuration evidence; they do not prove runtime delivery.
 """
 
 from collections.abc import Mapping
@@ -81,9 +83,10 @@ def _policies_that_can_set(
 ) -> tuple[DefinitionPolicy, ...]:
     """Return policies that could set one topology-relevant definition key.
 
-    Without a broker observation, the parser can only determine that a policy
-    could apply. It must fail closed rather than approximate Erlang's matching
-    semantics with Python's regex engine.
+    Without an observed broker selection, compatible vhost and ``apply-to``
+    scope show only that a policy might apply. The caller must require that
+    selection instead of approximating Erlang's matching semantics with
+    Python's regular-expression engine.
     """
     return tuple(
         policy
@@ -120,7 +123,11 @@ def resolve_dead_letter_values(
     policies: list[DefinitionPolicy],
     user_policy_selections: UserPolicySelections,
 ) -> tuple[str | None, str | None]:
-    """Resolve DLX values using direct arguments or broker policy evidence."""
+    """Resolve dead-letter settings from direct arguments and policy evidence.
+
+    A direct queue argument takes precedence for its individual setting. An
+    observed, selected regular user policy supplies any missing setting.
+    """
     observed, selected_policy = _observed_user_policy(
         node_id=queue_id,
         queue_type=queue_type,
@@ -181,7 +188,11 @@ def resolve_alternate_exchange(
     policies: list[DefinitionPolicy],
     user_policy_selections: UserPolicySelections,
 ) -> str | None:
-    """Resolve an alternate exchange using direct arguments or broker evidence."""
+    """Resolve an alternate exchange from direct arguments and policy evidence.
+
+    A direct exchange argument takes precedence. Otherwise, an observed,
+    selected regular user policy supplies the setting.
+    """
     observed, selected_policy = _observed_user_policy(
         node_id=exchange_id,
         queue_type=None,

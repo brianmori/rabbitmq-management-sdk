@@ -1,0 +1,780 @@
+[
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.log",
+    "type": "topic",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "dest_ex",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "source_ex",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "lab",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "dest.dx",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "dest.fx",
+    "type": "fanout",
+    "user_who_performed_action": "lab",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "dest.tx",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "test.dlx",
+    "type": "fanout",
+    "user_who_performed_action": "lab",
+    "vhost": "dest"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "ae.a",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "ae.b",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "lab",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "dlx.a",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "dlx.b",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "events",
+    "policy": "tie-ae-b",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "policy"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "policy": "test-policy",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {
+      "alternate-exchange": "src.dx"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "alt-exch",
+    "policy": "test-policy",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "policy": "test-policy",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "policy": "test-policy",
+    "type": "fanout",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "policy": "test-policy",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "policy": "test-policy",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "policy": "test-policy",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "policy": "test-policy",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "another.dx",
+    "policy": "test-policy",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": true,
+    "durable": false,
+    "internal": true,
+    "name": "int-transient-auto-del",
+    "policy": "test-policy",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "my-fan.dlx",
+    "policy": "test-policy",
+    "type": "fanout",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "src.dx",
+    "policy": "test-policy",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "src.fx",
+    "policy": "test-policy",
+    "type": "fanout",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "src.tx",
+    "policy": "test-policy",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "x-local-random.rx",
+    "policy": "test-policy",
+    "type": "x-local-random",
+    "user_who_performed_action": "lab",
+    "vhost": "src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "test-dst"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "test-dst"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "lab",
+    "vhost": "test-dst"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "test-dst"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "test-dst"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "test-dst"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "test-dst"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "test-src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "test-src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "lab",
+    "vhost": "test-src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "test-src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "test-src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "test-src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "test-src"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vh-export"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vh-export"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vh-export"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vh-export"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vh-export"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vh-export"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vh-export"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vhost"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vhost"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vhost"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vhost"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vhost"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vhost"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "lab",
+    "vhost": "test-vhost"
+  }
+]

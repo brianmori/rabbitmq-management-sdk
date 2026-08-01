@@ -1,4 +1,10 @@
-"""Normalize shovel URI, address, resource, and locality evidence."""
+"""Normalize credential-free shovel endpoint and locality evidence.
+
+Locality is conservative. A shovel endpoint contributes a resource edge only
+when it identifies a fixed queue or exchange and positive evidence confirms
+that resource belongs to the captured cluster. An unconfirmed endpoint is not
+necessarily remote.
+"""
 
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -29,7 +35,7 @@ class _UriCandidate:
 
 @dataclass(frozen=True, slots=True)
 class _UriEvidence:
-    """Atomic vhost and authority evidence for a complete failover set."""
+    """Combined vhost and authority evidence for a complete failover set."""
 
     vhost: str | None
     authorities: tuple[EndpointAuthority, ...] | None
@@ -261,27 +267,28 @@ def _protocol_uri_evidence(uri: object, protocol: str | None) -> _UriEvidence:
 
 
 def parse_amqp10_address(address: object) -> tuple[str, NodeKind, str | None] | None:
-    """
-    Parse a RabbitMQ AMQP 1.0 address (src-address/dest-address) into
-    ``(name, kind, routing_key)``.
+    """Parse a RabbitMQ AMQP 1.0 shovel address into a fixed resource.
 
-    RabbitMQ 4.2 supports both current address v2 and deprecated address v1:
-      /queues/:queue              v2 fixed queue
-      /exchanges/:exchange/:key   v2 fixed exchange and routing key
-      /exchanges/:exchange        v2 fixed exchange and empty routing key
-      /amq/queue/:queue           v1 existing queue
-      /queue/:queue or :queue     v1 queue
-      /exchange/:exchange/:key    v1 fixed exchange and routing/binding key
-      /exchange/:exchange         v1 exchange with no fixed routing key
-      /topic/:routing-key         v1 amq.topic exchange
+    The parser accepts these current address-v2 and deprecated address-v1
+    forms::
 
-    The plural v2 exchange form deliberately returns ``""`` when its routing
-    key segment is omitted. Only the singular v1 form can mean that the key
-    comes from message metadata.
+        /queues/:queue              v2 fixed queue
+        /exchanges/:exchange/:key   v2 fixed exchange and routing key
+        /exchanges/:exchange        v2 fixed exchange and empty routing key
+        /amq/queue/:queue           v1 existing queue
+        /queue/:queue or :queue     v1 queue
+        /exchange/:exchange/:key    v1 fixed exchange and routing/binding key
+        /exchange/:exchange         v1 exchange with no fixed routing key
+        /topic/:routing-key         v1 amq.topic exchange
 
-    Returns None for anything unresolvable to a fixed resource, e.g. the
-    AMQP-null dynamic-addressing target, which by definition doesn't
-    name one in the address string at all.
+    The plural v2 exchange form uses ``""`` when its routing-key segment is
+    omitted. Only the singular v1 form can mean that message metadata supplies
+    the routing key.
+
+    Returns:
+        The resource name, kind, and optional routing key, or ``None`` when
+        the address does not identify one fixed resource. For example, the
+        AMQP null dynamic-addressing target does not name a resource.
     """
     parsed: tuple[str, NodeKind, str | None] | None = None
     if isinstance(address, str) and address:
@@ -309,16 +316,14 @@ def parse_amqp10_address(address: object) -> tuple[str, NodeKind, str | None] | 
 def shovel_side_resource(
     value: Mapping[str, object], side: str, protocol: str | None
 ) -> tuple[str, NodeKind, str | None] | None:
-    """
-    ``(name, kind, routing_key)`` for one side (``src`` or ``dest``) of a
-    shovel, or None if it can't be resolved (e.g. an AMQP 0-9-1 side
-    with neither -queue nor -exchange set).
+    """Resolve one shovel side to a fixed queue or exchange.
 
-    "local" shovels use the same -queue / -exchange / -exchange-key
-    field names as amqp091 -- confirmed against a real dump -- so they
-    share this branch. The two protocols differ elsewhere (amqp091 has
-    a prefetch-count, local doesn't), but not in how source/destination
-    resources are named.
+    The ``local`` and ``amqp091`` protocols use the same ``-queue``,
+    ``-exchange``, and ``-exchange-key`` fields for resource identity.
+
+    Returns:
+        The resource name, kind, and optional routing key, or ``None`` when
+        the side does not identify one fixed resource.
     """
     if protocol in ("amqp091", "local"):
         queue = value.get(f"{side}-queue")
@@ -341,7 +346,7 @@ def _endpoint_is_confirmed_local(
     authorities: tuple[EndpointAuthority, ...] | None,
     in_cluster_amqp_hosts: frozenset[str],
 ) -> bool:
-    """Return whether an endpoint has enough evidence to join this cluster graph."""
+    """Return whether positive evidence admits an endpoint to this cluster graph."""
     if vhost is None:
         return False
     if protocol == "local":
@@ -360,9 +365,9 @@ def parse_shovel_endpoint(
     """Normalize all retained evidence for one shovel endpoint.
 
     ``is_confirmed_local`` is conservative: it is true only for a resolved
-    local-protocol endpoint, a resolved hostless AMQP URI, or a hosted AMQP
-    endpoint whose complete failover set is present in the supplied host
-    evidence.
+    local-protocol endpoint or a resolved AMQP failover set in which every URI
+    either has no host component or names a host in the supplied in-cluster
+    set. False means unconfirmed, not necessarily remote.
     """
     protocol_value = value.get(f"{side}-protocol", "amqp091")
     protocol = protocol_value if isinstance(protocol_value, str) else None

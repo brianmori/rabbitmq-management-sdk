@@ -1,8 +1,9 @@
-"""Define the graph domain layer for RabbitMQ topology analysis.
+"""Define immutable graph values for RabbitMQ topology analysis.
 
 Graph algorithms operate on :class:`NodeId` and :class:`TopologyEdge`.
 :class:`ExchangeNode`, :class:`QueueNode`, and :class:`ShovelNode` form an
-attribute layer keyed by node identity.
+attribute layer keyed by node identity. An edge records a configured possible
+message hop; it does not guarantee that a particular message will traverse it.
 """
 
 from collections.abc import Mapping
@@ -69,19 +70,30 @@ class NodeId:
 
 
 class EdgeKind(StrEnum):
-    """Kinds of directed relationships represented by topology edges."""
+    """Ways a message can make one configured, directed topology hop."""
 
     BINDING = "binding"
-    """Exchange -> queue or exchange -> exchange, from a DefinitionBinding."""
+    """An exchange has a binding hop to a queue or another exchange.
+
+    The edge comes from a binding in the definitions export. Whether a message
+    matches that binding depends on its routing key, headers, and exchange
+    behavior.
+    """
 
     DEAD_LETTER = "dead_letter"
-    """Queue -> exchange, resolved from arguments and selected user policies."""
+    """A queue has a possible dead-letter hop to its configured exchange.
+
+    The setting may come from a queue argument or the selected regular user
+    policy. That source is configuration provenance, not a separate edge kind;
+    the hop occurs only when RabbitMQ dead-letters a message.
+    """
 
     ALTERNATE_EXCHANGE = "alternate_exchange"
-    """Exchange -> exchange, resolved from arguments and selected policies.
+    """An exchange has a possible hop to its alternate exchange.
 
-    An unmatched message can route to the alternate exchange and, through
-    ordinary bindings, return to its origin.
+    The setting may come from an exchange argument or the selected regular
+    user policy. The hop occurs only when the original exchange cannot route a
+    message.
     """
 
     SHOVEL = "shovel"
@@ -281,20 +293,25 @@ class ShovelNode:
     def has_unconfirmed_endpoint(self) -> bool:
         """Whether either endpoint has not been confirmed as local.
 
-        ``False`` on either endpoint's ``is_confirmed_local`` field means the
-        parser could not confirm that endpoint from the supplied host evidence;
-        it is not proof that the endpoint belongs to another cluster.
+        ``False`` on either endpoint's ``is_confirmed_local`` field means
+        normalized URI and vhost evidence plus the supplied host mapping could
+        not establish locality. It is not proof that the endpoint belongs to
+        another cluster.
         """
         return not self.source.is_confirmed_local or not self.destination.is_confirmed_local
 
 
 TopologyNode = ExchangeNode | QueueNode | ShovelNode
-"""Any declared resource node contained by :class:`ClusterTopology`."""
+"""Any resource node contained by :class:`ClusterTopology`."""
 
 
 @dataclass(frozen=True, slots=True)
 class TopologyEdge:
-    """Represent one directed relationship in the topology graph.
+    """Represent one configured possible message hop in the topology graph.
+
+    The edge records configuration evidence, not a runtime-delivery guarantee.
+    Whether a message follows it can depend on routing keys, headers,
+    dead-letter conditions, or shovel runtime state.
 
     Every non-shovel relationship is local to one cluster and virtual host.
     Shovel relationships may cross either boundary when a later federated
@@ -304,9 +321,11 @@ class TopologyEdge:
         source: Identity of the edge's origin.
         target: Identity of the edge's destination.
         kind: Relationship represented by the edge.
-        routing_key: Binding, dead-letter, or shovel routing key. ``None``
-            means absent or not applicable; an empty string remains a distinct,
-            meaningful RabbitMQ routing key.
+        routing_key: Captured key for a binding, configured dead-letter
+            override, or exchange shovel endpoint. ``None`` means no fixed key
+            was captured or the field is inapplicable; it does not imply that
+            runtime messages have no routing key. An empty string remains a
+            distinct, meaningful RabbitMQ routing key.
         arguments: Canonical, key-sorted JSON for binding arguments. It is
             ``None`` for a binding with no supplied arguments and for every
             other edge kind. Explicit JSON ``null`` values are preserved.
@@ -369,7 +388,13 @@ class TopologyEdge:
 
 @dataclass(frozen=True, slots=True)
 class ClusterTopology:
-    """The complete normalized graph for one cluster-wide definitions export.
+    """An immutable normalized graph for one captured cluster configuration.
+
+    The graph is built from a definitions export and optional resource
+    observations, and normalizes the supported topology evidence in those
+    inputs. They may come from several Management API calls and need not form
+    an atomic broker snapshot. The graph is not live and does not guarantee that
+    messages will traverse its edges.
 
     ``cluster_id`` is the broker-generated ``internal_cluster_id`` and provides
     stable topology identity when present. Older or manually constructed
@@ -437,12 +462,12 @@ class ClusterTopology:
 
     @property
     def all_node_ids(self) -> frozenset[NodeId]:
-        """Return the precomputed identities of every declared graph node."""
+        """Return the precomputed identities of every contained graph node."""
         return self._all_node_ids
 
     @property
     def nodes(self) -> frozenset[TopologyNode]:
-        """Every declared resource node in this immutable graph."""
+        """Return every resource node contained in this immutable graph."""
         return self._nodes
 
     @property
@@ -451,7 +476,7 @@ class ClusterTopology:
         return self._nodes_by_id
 
     def dangling_edges(self) -> frozenset[TopologyEdge]:
-        """Return edges whose source or target is not a declared graph node.
+        """Return edges whose source or target is not contained in the graph.
 
         RabbitMQ definitions can reference resources absent from the captured
         topology. This method reports that structural fact without inferring
