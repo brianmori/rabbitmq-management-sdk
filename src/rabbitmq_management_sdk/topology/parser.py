@@ -201,8 +201,22 @@ class _TopologyBuilder:
 
     def _alternate_exchange_edges(self) -> frozenset[TopologyEdge]:
         """Build possible alternate-exchange hops from captured evidence."""
+        declared_ids = frozenset(
+            self._node_id(vhost=exchange.vhost, name=exchange.name, kind=NodeKind.EXCHANGE)
+            for exchange in self.response.exchanges
+        )
+        observed_only = tuple(
+            exchange
+            for exchange in self.observed_exchanges
+            if self._node_id(vhost=exchange.vhost, name=exchange.name, kind=NodeKind.EXCHANGE) not in declared_ids
+        )
+        exchange_sources: tuple[DefinitionExchange | ExchangeResponse, ...] = (
+            *self.response.exchanges,
+            *observed_only,
+        )
+
         edges = set()
-        for exchange in self.response.exchanges:
+        for exchange in exchange_sources:
             source = self._node_id(vhost=exchange.vhost, name=exchange.name, kind=NodeKind.EXCHANGE)
             alternate_exchange = resolve_alternate_exchange(
                 exchange_id=source,

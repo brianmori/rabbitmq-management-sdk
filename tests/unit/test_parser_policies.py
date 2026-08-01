@@ -13,7 +13,8 @@ from tests.shared.parser_fixtures import (
 
 from rabbitmq_management_sdk import TopologyParseError
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
-from rabbitmq_management_sdk.topology.models import NodeId, NodeKind
+from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
+from rabbitmq_management_sdk.topology.models import EdgeKind, NodeId, NodeKind
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 
 pytestmark = pytest.mark.unit
@@ -377,6 +378,40 @@ class TestAlternateExchangeEdges:
             ),
         ).edges
         assert edge.target.name == "ae.exchange"
+
+    def test_observed_only_exchange_contributes_its_policy_derived_edge(self) -> None:
+        response = _response(
+            vhosts=[_vhost("t")],
+            exchanges=[_exchange("ae.exchange", "t")],
+            policies=[
+                _policy(
+                    "predeclared-ae",
+                    r"^amq\.topic$",
+                    "exchanges",
+                    10,
+                    definition={"alternate-exchange": "ae.exchange"},
+                )
+            ],
+        )
+        observed_exchange = ExchangeResponse.model_validate(
+            {**_exchange("amq.topic", "t", type_="topic"), "policy": "predeclared-ae"}
+        )
+        observed_target = ExchangeResponse.model_validate(_exchange("ae.exchange", "t"))
+
+        topology = parse_cluster_topology(
+            response,
+            observed_exchanges=[observed_exchange, observed_target],
+            user_policy_selections={
+                NodeId(vhost="t", name="amq.topic", kind=NodeKind.EXCHANGE): "predeclared-ae",
+                NodeId(vhost="t", name="ae.exchange", kind=NodeKind.EXCHANGE): None,
+            },
+        )
+
+        (edge,) = topology.edges
+        assert edge.kind == EdgeKind.ALTERNATE_EXCHANGE
+        assert edge.source.name == "amq.topic"
+        assert edge.target.name == "ae.exchange"
+        assert edge.source in topology.all_node_ids
 
     def test_routing_relevant_policies_without_evidence_do_not_fabricate_an_alternate_exchange(self) -> None:
         response = _response(
