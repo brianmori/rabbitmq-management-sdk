@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     )
 
 
-class AdminManagerV4:
+class AdminManager:
     def __init__(self, http_client: HttpAdapter, strict: bool) -> None:
         self._ha = http_client
         self._strict = strict

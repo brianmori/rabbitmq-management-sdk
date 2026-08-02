@@ -20,9 +20,9 @@ from typing import Literal
 from rabbitmq_management_sdk.exceptions import TopologyError, TopologyParseError
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import (
     ClusterDefinitionsResponse,
-    DefinitionBinding,
-    DefinitionExchange,
-    DefinitionQueue,
+    ClusterExportBinding,
+    ClusterExportExchange,
+    ClusterExportQueue,
 )
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
 from rabbitmq_management_sdk.topology.models import (
@@ -54,7 +54,7 @@ _PREDECLARED_EXCHANGE_TYPES: Mapping[str, str] = {
 }
 
 
-def _binding_arguments_repr(b: DefinitionBinding) -> str | None:
+def _binding_arguments_repr(b: ClusterExportBinding) -> str | None:
     """Serialize binding arguments for stable edge identity.
 
     Fields absent from the wire payload are omitted, while explicitly supplied
@@ -124,7 +124,7 @@ class _TopologyBuilder:
         """Build a resource identity scoped to this cluster."""
         return NodeId(cluster_id=self.cluster_id, vhost=vhost, name=name, kind=kind)
 
-    def _exchange_node(self, exchange: DefinitionExchange | ExchangeResponse) -> ExchangeNode:
+    def _exchange_node(self, exchange: ClusterExportExchange | ExchangeResponse) -> ExchangeNode:
         """Translate a declared or observed exchange into a graph node."""
         return ExchangeNode(
             id=self._node_id(vhost=exchange.vhost, name=exchange.name, kind=NodeKind.EXCHANGE),
@@ -133,7 +133,7 @@ class _TopologyBuilder:
             durable=exchange.durable,
         )
 
-    def _queue_node(self, queue: DefinitionQueue) -> QueueNode:
+    def _queue_node(self, queue: ClusterExportQueue) -> QueueNode:
         """Translate a declared queue, applying its vhost default if needed."""
         queue_type = self._resolved_queue_type(queue)
         if queue_type is None:
@@ -147,7 +147,7 @@ class _TopologyBuilder:
             durable=queue.durable,
         )
 
-    def _resolved_queue_type(self, queue: DefinitionQueue) -> str | None:
+    def _resolved_queue_type(self, queue: ClusterExportQueue) -> str | None:
         """Resolve a queue's explicit type or its virtual-host default."""
         return queue.arguments.queue_type or self.default_queue_types.get(queue.vhost)
 
@@ -210,7 +210,7 @@ class _TopologyBuilder:
             for exchange in self.observed_exchanges
             if self._node_id(vhost=exchange.vhost, name=exchange.name, kind=NodeKind.EXCHANGE) not in declared_ids
         )
-        exchange_sources: tuple[DefinitionExchange | ExchangeResponse, ...] = (
+        exchange_sources: tuple[ClusterExportExchange | ExchangeResponse, ...] = (
             *self.response.exchanges,
             *observed_only,
         )

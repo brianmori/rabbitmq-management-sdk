@@ -6,50 +6,23 @@ from typing import Literal
 from pydantic import ConfigDict, Field, model_validator
 
 from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.v4.common import (
+    DeadLetterStrategy,
+    OverflowBehaviour,
+    QueueLeaderLocator,
+)
+from rabbitmq_management_sdk.resources.v4.policies.schemas.common import (
+    OperatorPolicyApplyTo,
+    PolicyApplyTo,
+)
 
 # ---------------------------------------------------------------------------
 # Enums — broker-core elements only.
 #
 # Plugin-extensible (exchange types, policy *definition* keys such
 # as federation's `federation-upstream[-set]`) are stored as a `str` / `dict[str, object]`
-# with `extra="allow"` instead. See DefinitionPolicyDefinition below.
+# with `extra="allow"` instead. See ExportPolicySettings below.
 # ---------------------------------------------------------------------------
-
-
-class PolicyApplyTo(StrEnum):
-    """`apply-to` for regular (user) policies. Includes exchanges."""
-
-    QUEUES = "queues"
-    CLASSIC_QUEUES = "classic_queues"
-    QUORUM_QUEUES = "quorum_queues"
-    STREAMS = "streams"
-    EXCHANGES = "exchanges"
-    ALL = "all"  # management UI label: "Exchanges and queues"
-
-
-class OperatorPolicyApplyTo(StrEnum):
-    """`apply-to` for operator policies. Queue/stream targets only."""
-
-    QUEUES = "queues"
-    CLASSIC_QUEUES = "classic_queues"
-    QUORUM_QUEUES = "quorum_queues"
-    STREAMS = "streams"
-
-
-class DeadLetterStrategy(StrEnum):
-    AT_MOST_ONCE = "at-most-once"
-    AT_LEAST_ONCE = "at-least-once"
-
-
-class OverflowBehaviour(StrEnum):
-    DROP_HEAD = "drop-head"
-    REJECT_PUBLISH = "reject-publish"
-    REJECT_PUBLISH_DLX = "reject-publish-dlx"
-
-
-class QueueLeaderLocator(StrEnum):
-    CLIENT_LOCAL = "client-local"  # default
-    BALANCED = "balanced"
 
 
 class QueueType(StrEnum):
@@ -68,7 +41,7 @@ class HeadersMatchMode(StrEnum):
 # ---------------------------------------------------------------------------
 
 
-class DefinitionUser(RabbitMQBase):
+class ClusterExportUser(RabbitMQBase):
     name: str
     password_hash: str
     hashing_algorithm: str
@@ -80,20 +53,20 @@ class DefinitionUser(RabbitMQBase):
     """
 
 
-class DefinitionVhostMetadata(RabbitMQBase):
+class ClusterExportVhostMetadata(RabbitMQBase):
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     default_queue_type: str | None = None
 
 
-class DefinitionVhost(RabbitMQBase):
+class ClusterExportVhost(RabbitMQBase):
     name: str
     description: str = ""
     tags: list[str] = Field(default_factory=list)
-    metadata: DefinitionVhostMetadata | None = None
+    metadata: ClusterExportVhostMetadata | None = None
 
 
-class DefinitionPermission(RabbitMQBase):
+class ClusterExportPermission(RabbitMQBase):
     user: str
     vhost: str
     configure: str
@@ -101,7 +74,7 @@ class DefinitionPermission(RabbitMQBase):
     read: str
 
 
-class DefinitionTopicPermission(RabbitMQBase):
+class ClusterExportTopicPermission(RabbitMQBase):
     user: str
     vhost: str
     exchange: str
@@ -109,7 +82,7 @@ class DefinitionTopicPermission(RabbitMQBase):
     read: str
 
 
-class DefinitionGlobalParameter(RabbitMQBase):
+class ClusterExportGlobalParameter(RabbitMQBase):
     """Cluster-wide (virtual-host-independent) runtime parameter.
 
     `value` stays a generic union since its shape depends on `name` and
@@ -168,7 +141,7 @@ class DefinitionGlobalParameter(RabbitMQBase):
         return self.value
 
 
-class DefinitionPolicyDefinition(RabbitMQBase):
+class ExportPolicySettings(RabbitMQBase):
     """The `definition` object of a policy (or an operator-policy value).
 
     Known keys are typed. `extra="allow"` preserves anything else losslessly —
@@ -190,12 +163,12 @@ class DefinitionPolicyDefinition(RabbitMQBase):
     delivery_limit: int | None = Field(None, alias="delivery-limit")
     consumer_timeout: int | None = Field(None, alias="consumer-timeout")
     queue_leader_locator: QueueLeaderLocator | None = Field(None, alias="queue-leader-locator")
-    max_age: str | None = Field(None, alias="max-age")  # streams, e.g. "1h"
+    max_age: str | None = Field(None, alias="max-age")
     stream_filter_size_bytes: int | None = Field(None, alias="stream-filter-size-bytes")
-    max_in_memory_length: int | None = Field(None, alias="max-in-memory-length")  # quorum
-    max_in_memory_bytes: int | None = Field(None, alias="max-in-memory-bytes")  # quorum
-    target_group_size: int | None = Field(None, alias="target-group-size")  # quorum
-    alternate_exchange: str | None = Field(None, alias="alternate-exchange")  # exchanges
+    max_in_memory_length: int | None = Field(None, alias="max-in-memory-length")
+    max_in_memory_bytes: int | None = Field(None, alias="max-in-memory-bytes")
+    target_group_size: int | None = Field(None, alias="target-group-size")
+    alternate_exchange: str | None = Field(None, alias="alternate-exchange")
 
     @property
     def effective_dead_letter_strategy(self) -> DeadLetterStrategy | None:
@@ -214,7 +187,7 @@ class DefinitionPolicyDefinition(RabbitMQBase):
         return self.dead_letter_strategy
 
 
-class PolicyDefinitionBase(RabbitMQBase):
+class _ExportPolicyBase(RabbitMQBase):
     """Shared shape between a regular policy and an operator-policy value:
     pattern / definition / priority. `apply-to` differs between the two
     (see PolicyApplyTo vs. OperatorPolicyApplyTo), so it's declared on each
@@ -222,19 +195,19 @@ class PolicyDefinitionBase(RabbitMQBase):
     """
 
     pattern: str
-    definition: DefinitionPolicyDefinition
+    definition: ExportPolicySettings
     priority: int = 0
 
 
-class DefinitionPolicy(PolicyDefinitionBase):
+class ClusterExportPolicy(_ExportPolicyBase):
     vhost: str
     name: str
     apply_to: PolicyApplyTo = Field(PolicyApplyTo.ALL, alias="apply-to")
 
 
-class OperatorPolicyValue(PolicyDefinitionBase):
+class OperatorPolicyParameterValue(_ExportPolicyBase):
     """The `value` payload of a runtime parameter where component ==
-    'operator_policy'. Same shape as DefinitionPolicy minus vhost/name,
+    'operator_policy'. Same shape as ClusterExportPolicy minus vhost/name,
     which lives one level up on the parameter object itself — but apply-to
     is restricted to queue/stream targets; operator policies can't target
     exchanges.
@@ -243,7 +216,7 @@ class OperatorPolicyValue(PolicyDefinitionBase):
     apply_to: OperatorPolicyApplyTo = Field(alias="apply-to")
 
 
-class DefinitionParameter(RabbitMQBase):
+class ClusterExportParameter(RabbitMQBase):
     """Vhost-scoped runtime parameter (shovels, operator policies, vhost
     limits, federation upstreams, ...). `value` stays a generic dict since
     its shape depends entirely on `component` and covers several unrelated
@@ -256,14 +229,14 @@ class DefinitionParameter(RabbitMQBase):
     name: str
     value: dict[str, object]
 
-    def as_operator_policy(self) -> OperatorPolicyValue | None:
+    def as_operator_policy(self) -> OperatorPolicyParameterValue | None:
         """Typed view of `value` when component == 'operator_policy'."""
         if self.component != "operator_policy":
             return None
-        return OperatorPolicyValue.model_validate(self.value)
+        return OperatorPolicyParameterValue.model_validate(self.value)
 
 
-class DefinitionQueueArguments(RabbitMQBase):
+class ExportQueueArguments(RabbitMQBase):
     model_config = RabbitMQBase.model_config | {"extra": "allow"}
 
     queue_type: QueueType | None = Field(None, alias="x-queue-type")
@@ -282,7 +255,7 @@ class DefinitionQueueArguments(RabbitMQBase):
 
     @property
     def effective_dead_letter_strategy(self) -> DeadLetterStrategy | None:
-        """Same broker rule as DefinitionPolicyDefinition: at-least-once
+        """Same broker rule as ExportPolicySettings: at-least-once
         silently falls back to at-most-once unless overflow is explicitly
         reject-publish. Applies whether the pair was set via a policy or
         directly as queue-declare arguments.
@@ -295,15 +268,15 @@ class DefinitionQueueArguments(RabbitMQBase):
         return self.dead_letter_strategy
 
 
-class DefinitionQueue(RabbitMQBase):
+class ClusterExportQueue(RabbitMQBase):
     name: str
     vhost: str
     durable: bool
     auto_delete: bool
-    arguments: DefinitionQueueArguments = Field(default_factory=DefinitionQueueArguments)
+    arguments: ExportQueueArguments = Field(default_factory=ExportQueueArguments)
 
 
-class DefinitionExchangeArguments(RabbitMQBase):
+class ExportExchangeArguments(RabbitMQBase):
     """Strongly typed arguments for exchanges.
 
     extra="allow" ensures that plugin arguments
@@ -316,7 +289,7 @@ class DefinitionExchangeArguments(RabbitMQBase):
     alternate_exchange: str | None = Field(None, alias="alternate-exchange")
 
 
-class DefinitionExchange(RabbitMQBase):
+class ClusterExportExchange(RabbitMQBase):
     name: str
     vhost: str
     type: str
@@ -327,23 +300,23 @@ class DefinitionExchange(RabbitMQBase):
     durable: bool
     auto_delete: bool
     internal: bool
-    arguments: DefinitionExchangeArguments = Field(default_factory=DefinitionExchangeArguments)
+    arguments: ExportExchangeArguments = Field(default_factory=ExportExchangeArguments)
 
 
-class DefinitionBindingArguments(RabbitMQBase):
+class ExportBindingArguments(RabbitMQBase):
     model_config = RabbitMQBase.model_config | {"extra": "allow"}
 
     # Used in headers exchanges
     x_match: HeadersMatchMode | None = Field(None, alias="x-match")
 
 
-class DefinitionBinding(RabbitMQBase):
+class ClusterExportBinding(RabbitMQBase):
     source: str
     vhost: str
     destination: str
     destination_type: Literal["queue", "exchange"] = Field(alias="destination_type")
     routing_key: str
-    arguments: DefinitionBindingArguments = Field(default_factory=DefinitionBindingArguments)
+    arguments: ExportBindingArguments = Field(default_factory=ExportBindingArguments)
 
 
 # ---------------------------------------------------------------------------
@@ -370,16 +343,16 @@ class ClusterDefinitionsResponse(RabbitMQBase):
     original_cluster_name: str | None = None
     explanation: str | None = None
 
-    users: list[DefinitionUser] = Field(default_factory=list)
-    vhosts: list[DefinitionVhost] = Field(default_factory=list)
-    permissions: list[DefinitionPermission] = Field(default_factory=list)
-    topic_permissions: list[DefinitionTopicPermission] = Field(default_factory=list)
-    global_parameters: list[DefinitionGlobalParameter] = Field(default_factory=list)
-    parameters: list[DefinitionParameter] = Field(default_factory=list)
-    policies: list[DefinitionPolicy] = Field(default_factory=list)
-    queues: list[DefinitionQueue] = Field(default_factory=list)
-    exchanges: list[DefinitionExchange] = Field(default_factory=list)
-    bindings: list[DefinitionBinding] = Field(default_factory=list)
+    users: list[ClusterExportUser] = Field(default_factory=list)
+    vhosts: list[ClusterExportVhost] = Field(default_factory=list)
+    permissions: list[ClusterExportPermission] = Field(default_factory=list)
+    topic_permissions: list[ClusterExportTopicPermission] = Field(default_factory=list)
+    global_parameters: list[ClusterExportGlobalParameter] = Field(default_factory=list)
+    parameters: list[ClusterExportParameter] = Field(default_factory=list)
+    policies: list[ClusterExportPolicy] = Field(default_factory=list)
+    queues: list[ClusterExportQueue] = Field(default_factory=list)
+    exchanges: list[ClusterExportExchange] = Field(default_factory=list)
+    bindings: list[ClusterExportBinding] = Field(default_factory=list)
 
     @property
     def cluster_name(self) -> str | None:
@@ -425,41 +398,41 @@ class ClusterDefinitionsResponse(RabbitMQBase):
 # ---------------------------------------------------------------------------
 
 
-class VhostDefinitionsQueue(RabbitMQBase):
+class VhostExportQueue(RabbitMQBase):
     """Queue entry in a vhost-scoped export. No 'vhost' field."""
 
     name: str
     durable: bool
     auto_delete: bool
-    arguments: DefinitionQueueArguments = Field(default_factory=DefinitionQueueArguments)
+    arguments: ExportQueueArguments = Field(default_factory=ExportQueueArguments)
 
 
-class VhostDefinitionsExchange(RabbitMQBase):
+class VhostExportExchange(RabbitMQBase):
     name: str
     type: str
     durable: bool
     auto_delete: bool
     internal: bool
-    arguments: DefinitionExchangeArguments = Field(default_factory=DefinitionExchangeArguments)
+    arguments: ExportExchangeArguments = Field(default_factory=ExportExchangeArguments)
 
 
-class VhostDefinitionsBinding(RabbitMQBase):
+class VhostExportBinding(RabbitMQBase):
     source: str
     destination: str
     destination_type: str
     routing_key: str
-    arguments: DefinitionBindingArguments = Field(default_factory=DefinitionBindingArguments)
+    arguments: ExportBindingArguments = Field(default_factory=ExportBindingArguments)
 
 
-class VhostDefinitionsPolicy(RabbitMQBase):
+class VhostExportPolicy(RabbitMQBase):
     name: str
     pattern: str
-    definition: dict[str, object]
+    definition: ExportPolicySettings
     priority: int = 0
     apply_to: PolicyApplyTo = Field(PolicyApplyTo.ALL, alias="apply-to")
 
 
-class VhostDefinitionsParameter(RabbitMQBase):
+class VhostExportParameter(RabbitMQBase):
     """Includes plugin parameters (shovel, federation) and a synthetic
     'vhost-limits' parameter that echoes the vhost's connection/queue
     limits.
@@ -472,20 +445,20 @@ class VhostDefinitionsParameter(RabbitMQBase):
     def is_shovel(self) -> bool:
         return self.component == "shovel"
 
-    def as_operator_policy(self) -> OperatorPolicyValue | None:
+    def as_operator_policy(self) -> OperatorPolicyParameterValue | None:
         """Typed view of `value` when component == 'operator_policy'."""
         if self.component != "operator_policy":
             return None
-        return OperatorPolicyValue.model_validate(self.value)
+        return OperatorPolicyParameterValue.model_validate(self.value)
 
 
-class VhostMetadata(RabbitMQBase):
+class VhostExportMetadata(RabbitMQBase):
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     default_queue_type: str | None = None
 
 
-class VhostLimits(RabbitMQBase):
+class VhostExportLimits(RabbitMQBase):
     """Extra allowed: limit keys are broker-defined and may grow."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -512,12 +485,12 @@ class VhostDefinitionsResponse(RabbitMQBase):
     rabbitmq_definition_format: Literal["single_virtual_host"]
     original_vhost_name: str
     explanation: str
-    metadata: VhostMetadata
+    metadata: VhostExportMetadata
     description: str = ""
-    limits: VhostLimits = Field(default_factory=VhostLimits)
+    limits: VhostExportLimits = Field(default_factory=VhostExportLimits)
 
-    parameters: list[VhostDefinitionsParameter] = Field(default_factory=list)
-    policies: list[VhostDefinitionsPolicy] = Field(default_factory=list)
-    queues: list[VhostDefinitionsQueue] = Field(default_factory=list)
-    exchanges: list[VhostDefinitionsExchange] = Field(default_factory=list)
-    bindings: list[VhostDefinitionsBinding] = Field(default_factory=list)
+    parameters: list[VhostExportParameter] = Field(default_factory=list)
+    policies: list[VhostExportPolicy] = Field(default_factory=list)
+    queues: list[VhostExportQueue] = Field(default_factory=list)
+    exchanges: list[VhostExportExchange] = Field(default_factory=list)
+    bindings: list[VhostExportBinding] = Field(default_factory=list)

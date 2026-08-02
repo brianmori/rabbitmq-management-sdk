@@ -11,10 +11,8 @@ are configuration evidence; they do not prove runtime delivery.
 from collections.abc import Mapping
 
 from rabbitmq_management_sdk.exceptions import TopologyParseError
-from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import (
-    DefinitionPolicy,
-    PolicyApplyTo,
-)
+from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterExportPolicy
+from rabbitmq_management_sdk.resources.v4.policies.schemas.common import PolicyApplyTo
 from rabbitmq_management_sdk.topology.models import NodeId, NodeKind
 
 type UserPolicySelections = Mapping[NodeId, str | None]
@@ -46,9 +44,9 @@ def _observed_user_policy(
     *,
     node_id: NodeId,
     queue_type: str | None,
-    policies: list[DefinitionPolicy],
+    policies: list[ClusterExportPolicy],
     user_policy_selections: UserPolicySelections,
-) -> tuple[bool, DefinitionPolicy | None]:
+) -> tuple[bool, ClusterExportPolicy | None]:
     """Return observed regular-policy evidence without evaluating a pattern."""
     if node_id not in user_policy_selections:
         return False, None
@@ -78,9 +76,9 @@ def _policies_that_can_set(
     vhost: str,
     kind: NodeKind,
     queue_type: str | None,
-    policies: list[DefinitionPolicy],
+    policies: list[ClusterExportPolicy],
     definition_field: str,
-) -> tuple[DefinitionPolicy, ...]:
+) -> tuple[ClusterExportPolicy, ...]:
     """Return policies that could set one topology-relevant definition key.
 
     Without an observed broker selection, compatible vhost and ``apply-to``
@@ -103,7 +101,7 @@ def _require_user_policy_selection(
     name: str,
     kind: NodeKind,
     route_setting: str,
-    policies: tuple[DefinitionPolicy, ...],
+    policies: tuple[ClusterExportPolicy, ...],
 ) -> None:
     """Raise a precise error when policy pattern evaluation would be required."""
     names = ", ".join(sorted(policy.name for policy in policies))
@@ -120,7 +118,7 @@ def resolve_dead_letter_values(
     queue_type: str | None,
     declared_exchange: str | None,
     declared_routing_key: str | None,
-    policies: list[DefinitionPolicy],
+    policies: list[ClusterExportPolicy],
     user_policy_selections: UserPolicySelections,
 ) -> tuple[str | None, str | None]:
     """Resolve dead-letter settings from direct arguments and policy evidence.
@@ -185,7 +183,7 @@ def resolve_alternate_exchange(
     *,
     exchange_id: NodeId,
     declared_alternate_exchange: str | None,
-    policies: list[DefinitionPolicy],
+    policies: list[ClusterExportPolicy],
     user_policy_selections: UserPolicySelections,
 ) -> str | None:
     """Resolve an alternate exchange from direct arguments and policy evidence.

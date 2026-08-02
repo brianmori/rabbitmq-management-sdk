@@ -7,18 +7,16 @@ from typing import Annotated, Literal
 from pydantic import Field, field_validator, model_validator
 
 from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.v4.common import DeadLetterStrategy, OverflowBehaviour
 
 # ---------------------------------------------------------------------------
 # Arguments — per queue type (request side)
 # ---------------------------------------------------------------------------
 
 
-class DeadLetterStrategy(StrEnum):
-    AT_MOST_ONCE = "at-most-once"
-    AT_LEAST_ONCE = "at-least-once"
+class QuorumQueueOverflow(StrEnum):
+    """Overflow behaviours supported by quorum queue declarations."""
 
-
-class Overflow(StrEnum):
     DROP_HEAD = "drop-head"
     REJECT_PUBLISH = "reject-publish"
 
@@ -42,7 +40,7 @@ class ClassicQueueRequest(RabbitMQBase):
     message_ttl: int | None = Field(None, alias="x-message-ttl")
     max_length: int | None = Field(None, alias="x-max-length")
     max_length_bytes: int | None = Field(None, alias="x-max-length-bytes")
-    overflow: Overflow | None = Field(Overflow.DROP_HEAD, alias="x-overflow")
+    overflow: OverflowBehaviour | None = Field(OverflowBehaviour.DROP_HEAD, alias="x-overflow")
     dead_letter_exchange: str | None = Field(None, alias="x-dead-letter-exchange")
     dead_letter_routing_key: str | None = Field(None, alias="x-dead-letter-routing-key")
     single_active_consumer: bool | None = Field(None, alias="x-single-active-consumer")
@@ -58,6 +56,7 @@ class QuorumQueueRequest(RabbitMQBase):
         dead_letter_exchange: Exchange to route failed or expired messages.
         dead_letter_routing_key: Routing key used for the dead-letter exchange.
         dead_letter_strategy: Routing strategy ("at-most-once", "at-least-once").
+        overflow: Strategy ("drop-head", "reject-publish") when limits hit.
         single_active_consumer: If True, restricts consumption to one node at a time.
         max_length: Limit on total message count before overflow logic triggers.
         initial_cluster_size: Number of nodes the queue should be hosted on.
@@ -68,7 +67,7 @@ class QuorumQueueRequest(RabbitMQBase):
     dead_letter_exchange: str | None = Field(None, alias="x-dead-letter-exchange")
     dead_letter_routing_key: str | None = Field(None, alias="x-dead-letter-routing-key")
     dead_letter_strategy: DeadLetterStrategy | None = Field(None, alias="x-dead-letter-strategy")
-    overflow: Overflow | None = Field(Overflow.DROP_HEAD, alias="x-overflow")
+    overflow: QuorumQueueOverflow | None = Field(QuorumQueueOverflow.DROP_HEAD, alias="x-overflow")
     single_active_consumer: bool | None = Field(None, alias="x-single-active-consumer")
     max_length: int | None = Field(None, alias="x-max-length")
     initial_cluster_size: int | None = Field(None, alias="x-initial-cluster-size")
@@ -81,10 +80,13 @@ class QuorumQueueRequest(RabbitMQBase):
         Raises:
             ValueError: If 'at-least-once' dead lettering is used with non-'reject-publish' overflow.
         """
-        if self.dead_letter_strategy == DeadLetterStrategy.AT_LEAST_ONCE and self.overflow != Overflow.REJECT_PUBLISH:
+        if (
+            self.dead_letter_strategy == DeadLetterStrategy.AT_LEAST_ONCE
+            and self.overflow != QuorumQueueOverflow.REJECT_PUBLISH
+        ):
             raise ValueError(
                 f"dead_letter_strategy '{DeadLetterStrategy.AT_LEAST_ONCE}' "
-                f"requires overflow to be set to '{Overflow.REJECT_PUBLISH}'."
+                f"requires overflow to be set to '{QuorumQueueOverflow.REJECT_PUBLISH}'."
             )
 
         if self.dead_letter_strategy is not None and self.dead_letter_exchange is None:

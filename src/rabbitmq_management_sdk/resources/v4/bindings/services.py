@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from rabbitmq_management_sdk.resources.v4.bindings.schemas.binding_request import BindingRequest
 
 
-class BindingManagerV4:
+class BindingManager:
     def __init__(self, http_client: HttpAdapter, vhost: str, strict: bool) -> None:
         self._ha = http_client
         self._vhost = vhost
