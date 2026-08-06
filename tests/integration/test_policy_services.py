@@ -33,9 +33,11 @@ def _adapter(handler: httpx.MockTransport) -> HttpxAdapter:
 
 @pytest.mark.integration
 def test_regular_policy_manager_crud_and_listing() -> None:
+    policy_name = "orders/team?primary#blue"
+    encoded_policy_name = "orders%2Fteam%3Fprimary%23blue"
     wire_policy = {
         "vhost": "/",
-        "name": "orders-policy",
+        "name": policy_name,
         "pattern": "^orders\\.q$",
         "definition": {"dead-letter-exchange": "orders.dlx"},
         "priority": 10,
@@ -46,7 +48,7 @@ def test_regular_policy_manager_crud_and_listing() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content) if request.content else None
         calls.append((request.method, request.url.raw_path.decode(), body))
-        if request.method == "GET" and request.url.raw_path.endswith(b"/orders-policy"):
+        if request.method == "GET" and request.url.raw_path.endswith(encoded_policy_name.encode()):
             return httpx.Response(200, json=wire_policy)
         if request.method == "GET":
             return httpx.Response(200, json=[wire_policy])
@@ -64,19 +66,19 @@ def test_regular_policy_manager_crud_and_listing() -> None:
         apply_to=PolicyApplyTo.QUEUES,
     )
 
-    assert manager.get("orders-policy").name == "orders-policy"
-    assert [policy.name for policy in manager.list_by_vhost()] == ["orders-policy"]
-    assert [policy.name for policy in manager.list_all()] == ["orders-policy"]
-    manager.create("orders-policy", request)
-    manager.delete("orders-policy")
+    assert manager.get(policy_name).name == policy_name
+    assert [policy.name for policy in manager.list_by_vhost()] == [policy_name]
+    assert [policy.name for policy in manager.list_all()] == [policy_name]
+    manager.create(policy_name, request)
+    manager.delete(policy_name)
 
     assert calls == [
-        ("GET", "/api/policies/%2F/orders-policy", None),
+        ("GET", f"/api/policies/%2F/{encoded_policy_name}", None),
         ("GET", "/api/policies/%2F", None),
         ("GET", "/api/policies", None),
         (
             "PUT",
-            "/api/policies/%2F/orders-policy",
+            f"/api/policies/%2F/{encoded_policy_name}",
             {
                 "pattern": "^orders\\.q$",
                 "definition": {"dead-letter-exchange": "orders.dlx"},
@@ -84,15 +86,17 @@ def test_regular_policy_manager_crud_and_listing() -> None:
                 "apply-to": "queues",
             },
         ),
-        ("DELETE", "/api/policies/%2F/orders-policy", None),
+        ("DELETE", f"/api/policies/%2F/{encoded_policy_name}", None),
     ]
 
 
 @pytest.mark.integration
 def test_operator_policy_manager_uses_operator_endpoints() -> None:
+    policy_name = "queue/limit?primary#blue"
+    encoded_policy_name = "queue%2Flimit%3Fprimary%23blue"
     wire_policy = {
         "vhost": "policy",
-        "name": "queue-limit",
+        "name": policy_name,
         "pattern": ".*",
         "definition": {"max-length": 1000},
         "priority": 20,
@@ -103,7 +107,7 @@ def test_operator_policy_manager_uses_operator_endpoints() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content) if request.content else None
         calls.append((request.method, request.url.raw_path.decode(), body))
-        if request.method == "GET" and request.url.raw_path.endswith(b"/queue-limit"):
+        if request.method == "GET" and request.url.raw_path.endswith(encoded_policy_name.encode()):
             return httpx.Response(200, json=wire_policy)
         if request.method == "GET":
             return httpx.Response(200, json=[wire_policy])
@@ -121,18 +125,18 @@ def test_operator_policy_manager_uses_operator_endpoints() -> None:
         apply_to=OperatorPolicyApplyTo.QUEUES,
     )
 
-    assert manager.get("queue-limit").definition.max_length == 1000
-    assert [policy.name for policy in manager.list_by_vhost()] == ["queue-limit"]
-    assert [policy.name for policy in manager.list_all()] == ["queue-limit"]
-    manager.create("queue-limit", request)
-    manager.delete("queue-limit")
+    assert manager.get(policy_name).definition.max_length == 1000
+    assert [policy.name for policy in manager.list_by_vhost()] == [policy_name]
+    assert [policy.name for policy in manager.list_all()] == [policy_name]
+    manager.create(policy_name, request)
+    manager.delete(policy_name)
 
     assert [call[:2] for call in calls] == [
-        ("GET", "/api/operator-policies/policy/queue-limit"),
+        ("GET", f"/api/operator-policies/policy/{encoded_policy_name}"),
         ("GET", "/api/operator-policies/policy"),
         ("GET", "/api/operator-policies"),
-        ("PUT", "/api/operator-policies/policy/queue-limit"),
-        ("DELETE", "/api/operator-policies/policy/queue-limit"),
+        ("PUT", f"/api/operator-policies/policy/{encoded_policy_name}"),
+        ("DELETE", f"/api/operator-policies/policy/{encoded_policy_name}"),
     ]
     assert calls[3][2] == {
         "pattern": ".*",

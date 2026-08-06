@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from http import HTTPMethod
 from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 from rabbitmq_management_sdk.resources.base import parse_list, parse_one
 from rabbitmq_management_sdk.resources.v4.policies.schemas.policy_response import (
@@ -17,6 +18,10 @@ if TYPE_CHECKING:
     )
 
 
+def _policy_path(resource: str, vhost: str, name: str) -> str:
+    return f"/api/{resource}/{vhost}/{quote(name, safe='')}"
+
+
 class PolicyManager:
     """Manage regular RabbitMQ policies."""
 
@@ -28,7 +33,7 @@ class PolicyManager:
     def get(self, name: str) -> PolicyResponse:
         """Return one policy by name in the configured virtual host."""
         return parse_one(
-            self._ha.request(method=HTTPMethod.GET, path=f"/api/policies/{self._vhost}/{name}"),
+            self._ha.request(method=HTTPMethod.GET, path=_policy_path("policies", self._vhost, name)),
             PolicyResponse,
         )
 
@@ -50,7 +55,7 @@ class PolicyManager:
         """Declare or update a policy in the configured virtual host."""
         self._ha.request(
             method=HTTPMethod.PUT,
-            path=f"/api/policies/{self._vhost}/{name}",
+            path=_policy_path("policies", self._vhost, name),
             json=request.model_dump(
                 by_alias=True,
                 exclude_none=True,
@@ -60,7 +65,7 @@ class PolicyManager:
 
     def delete(self, name: str) -> None:
         """Delete a policy from the configured virtual host."""
-        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/policies/{self._vhost}/{name}")
+        self._ha.request(method=HTTPMethod.DELETE, path=_policy_path("policies", self._vhost, name))
 
 
 class OperatorPolicyManager:
@@ -74,7 +79,10 @@ class OperatorPolicyManager:
     def get(self, name: str) -> OperatorPolicyResponse:
         """Return one operator policy by name in the configured virtual host."""
         return parse_one(
-            self._ha.request(method=HTTPMethod.GET, path=f"/api/operator-policies/{self._vhost}/{name}"),
+            self._ha.request(
+                method=HTTPMethod.GET,
+                path=_policy_path("operator-policies", self._vhost, name),
+            ),
             OperatorPolicyResponse,
         )
 
@@ -96,7 +104,7 @@ class OperatorPolicyManager:
         """Declare or update an operator policy in the configured virtual host."""
         self._ha.request(
             method=HTTPMethod.PUT,
-            path=f"/api/operator-policies/{self._vhost}/{name}",
+            path=_policy_path("operator-policies", self._vhost, name),
             json=request.model_dump(
                 by_alias=True,
                 exclude_none=True,
@@ -106,4 +114,7 @@ class OperatorPolicyManager:
 
     def delete(self, name: str) -> None:
         """Delete an operator policy from the configured virtual host."""
-        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/operator-policies/{self._vhost}/{name}")
+        self._ha.request(
+            method=HTTPMethod.DELETE,
+            path=_policy_path("operator-policies", self._vhost, name),
+        )
