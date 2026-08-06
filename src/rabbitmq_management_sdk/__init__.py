@@ -51,15 +51,33 @@ from rabbitmq_management_sdk.resources.v4.admin.schemas.vhost_response import (
 from rabbitmq_management_sdk.resources.v4.bindings.schemas.binding_request import BindingRequest
 from rabbitmq_management_sdk.resources.v4.bindings.schemas.binding_response import BindingResponse
 from rabbitmq_management_sdk.resources.v4.bindings.schemas.common import BindingDestinationType
+from rabbitmq_management_sdk.resources.v4.common import (
+    DeadLetterStrategy,
+    OverflowBehaviour,
+    QueueLeaderLocator,
+)
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.common import ExchangeType
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_request import ExchangeArguments, ExchangeRequest
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
+from rabbitmq_management_sdk.resources.v4.policies.schemas.common import (
+    OperatorPolicyApplyTo,
+    PolicyApplyTo,
+)
+from rabbitmq_management_sdk.resources.v4.policies.schemas.policy_request import (
+    OperatorPolicyRequest,
+    PolicyDefinition,
+    PolicyRequest,
+)
+from rabbitmq_management_sdk.resources.v4.policies.schemas.policy_response import (
+    OperatorPolicyResponse,
+    PolicyDefinitionResponse,
+    PolicyResponse,
+)
 from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_request import (
     ClassicQueueRequest,
-    DeadLetterStrategy,
-    Overflow,
     QueueDeleteOptions,
     QueueRequest,
+    QuorumQueueOverflow,
     QuorumQueueRequest,
     StreamQueueRequest,
 )
@@ -109,12 +127,22 @@ __all__ = [
     "MalformedResponseError",
     "MethodNotAllowedError",
     "NotFoundError",
-    "Overflow",
+    "OperatorPolicyApplyTo",
+    "OperatorPolicyRequest",
+    "OperatorPolicyResponse",
+    "OverflowBehaviour",
     "Page",
+    "PolicyApplyTo",
+    "PolicyDefinition",
+    "PolicyDefinitionResponse",
+    "PolicyRequest",
+    "PolicyResponse",
     "PreconditionFailedError",
     "QueueDeleteOptions",
+    "QueueLeaderLocator",
     "QueueRequest",
     "QueueResponse",
+    "QuorumQueueOverflow",
     "QuorumQueueRequest",
     "RabbitMQClient",
     "RabbitMQError",

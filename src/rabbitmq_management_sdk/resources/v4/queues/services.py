@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_request import QueueRequest
 
 
-class QueueManagerV4:
+class QueueManager:
     def __init__(self, http_client: HttpAdapter, vhost: str, strict: bool) -> None:
         self._ha = http_client
         self._vhost = vhost

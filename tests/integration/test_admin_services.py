@@ -1,4 +1,4 @@
-"""Integration tests for AdminManagerV4 against a mocked HTTP transport."""
+"""Integration tests for AdminManager against a mocked HTTP transport."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
-from rabbitmq_management_sdk.resources.v4.admin.services import AdminManagerV4
+from rabbitmq_management_sdk.resources.v4.admin.services import AdminManager
 
 
 def _adapter_returning(body: bytes, status: int = 200) -> HttpxAdapter:
@@ -24,7 +24,7 @@ def test_get_vhost_limits_empty_returns_none() -> None:
     The previous ``.pop()`` implementation raised a bare ``IndexError`` that
     escaped the SDK's ``RabbitMQError`` boundary.
     """
-    manager = AdminManagerV4(http_client=_adapter_returning(b"[]"), strict=False)
+    manager = AdminManager(http_client=_adapter_returning(b"[]"), strict=False)
 
     assert manager.get_vhost_limits("missing") is None
 
@@ -32,7 +32,7 @@ def test_get_vhost_limits_empty_returns_none() -> None:
 @pytest.mark.integration
 def test_get_vhost_limits_returns_single_entry() -> None:
     body = b'[{"vhost": "test", "value": {"max-connections": 3, "max-queues": 5}}]'
-    manager = AdminManagerV4(http_client=_adapter_returning(body), strict=False)
+    manager = AdminManager(http_client=_adapter_returning(body), strict=False)
 
     result = manager.get_vhost_limits("test")
 

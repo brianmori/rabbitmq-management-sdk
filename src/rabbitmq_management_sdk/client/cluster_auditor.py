@@ -74,7 +74,7 @@ class TopologyAuditReport:
 class ClusterAuditor:
     """Primary public facade for auditing a RabbitMQ definitions export.
 
-    Construct this class from :meth:`AdminManagerV4.export_definitions` and
+    Construct this class from :meth:`AdminManager.export_definitions` and
     optional normalized queue and exchange observations. Use its named
     methods for individual findings or :meth:`audit` for a complete,
     consistent report.

@@ -15,9 +15,9 @@ from rabbitmq_management_sdk.exceptions import TopologyValidationError
 from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
-from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManagerV4
+from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManager
 from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QueueResponse
-from rabbitmq_management_sdk.resources.v4.queues.services import QueueManagerV4
+from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
 from rabbitmq_management_sdk.topology.models import EdgeKind, NodeId, NodeKind
 
 _FIXTURE_DIRECTORY = Path(__file__).parent / "rmq-4.2"
@@ -128,7 +128,7 @@ def test_queue_list_page_sends_pagination_filter_and_disable_stats() -> None:
         seen.append(request.url.params)
         return httpx.Response(200, json=_page([_queue("orders.q")], page=2, page_count=2, page_size=50))
 
-    manager = QueueManagerV4(
+    manager = QueueManager(
         http_client=HttpxAdapter(host="localhost", port=15672, transport=httpx.MockTransport(handler)),
         vhost="%2F",
         strict=False,
@@ -165,7 +165,7 @@ def test_exchange_list_all_fetches_every_page() -> None:
             return httpx.Response(200, json=_page([_exchange("first")], page=1, page_count=2, page_size=1))
         return httpx.Response(200, json=_page([_exchange("second")], page=2, page_count=2, page_size=1))
 
-    manager = ExchangeManagerV4(
+    manager = ExchangeManager(
         http_client=HttpxAdapter(host="localhost", port=15672, transport=httpx.MockTransport(handler)),
         vhost="%2F",
         strict=False,
@@ -185,7 +185,7 @@ def test_get_with_disable_stats_sends_the_flag() -> None:
         seen.append(request.url.params)
         return httpx.Response(200, json=_exchange("events"))
 
-    manager = ExchangeManagerV4(
+    manager = ExchangeManager(
         http_client=HttpxAdapter(host="localhost", port=15672, transport=httpx.MockTransport(handler)),
         vhost="policy",
         strict=False,

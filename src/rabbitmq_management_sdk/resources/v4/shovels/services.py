@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     )
 
 
-class ShovelManagerV4:
+class ShovelManager:
     def __init__(self, http_client: HttpAdapter, vhost: str, strict: bool) -> None:
         self._ha = http_client
         self._vhost = vhost

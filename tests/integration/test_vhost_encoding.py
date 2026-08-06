@@ -13,9 +13,9 @@ import httpx
 import pytest
 
 from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
-from rabbitmq_management_sdk.resources.v4.bindings.services import BindingManagerV4
-from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManagerV4
-from rabbitmq_management_sdk.resources.v4.queues.services import QueueManagerV4
+from rabbitmq_management_sdk.resources.v4.bindings.services import BindingManager
+from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManager
+from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
 
 
 def _adapter_with_path_capture(seen_urls: list[str], *, response_body: bytes = b"{}") -> HttpxAdapter:
@@ -42,7 +42,7 @@ def test_queue_path_contains_encoded_vhost(raw: str, encoded: str) -> None:
     seen: list[str] = []
     # Use DELETE (returns None, no response parsing) so the mock body doesn't matter
     adapter = _adapter_with_path_capture(seen)
-    manager = QueueManagerV4(http_client=adapter, vhost=quote(raw, safe=""), strict=False)
+    manager = QueueManager(http_client=adapter, vhost=quote(raw, safe=""), strict=False)
 
     manager.delete("test-queue")
 
@@ -55,7 +55,7 @@ def test_queue_path_contains_encoded_vhost(raw: str, encoded: str) -> None:
 def test_exchange_path_contains_encoded_vhost(raw: str, encoded: str) -> None:
     seen: list[str] = []
     adapter = _adapter_with_path_capture(seen)
-    manager = ExchangeManagerV4(http_client=adapter, vhost=quote(raw, safe=""), strict=False)
+    manager = ExchangeManager(http_client=adapter, vhost=quote(raw, safe=""), strict=False)
 
     manager.delete("amq.direct")
 
@@ -69,7 +69,7 @@ def test_binding_list_path_contains_encoded_vhost(raw: str, encoded: str) -> Non
     seen: list[str] = []
     # list_by_vhost parses a list — return "[]" so validation succeeds
     adapter = _adapter_with_path_capture(seen, response_body=b"[]")
-    manager = BindingManagerV4(http_client=adapter, vhost=quote(raw, safe=""), strict=False)
+    manager = BindingManager(http_client=adapter, vhost=quote(raw, safe=""), strict=False)
 
     manager.list_by_vhost()
 
@@ -83,7 +83,7 @@ def test_default_vhost_slash_encodes_to_percent_2f() -> None:
     seen: list[str] = []
     adapter = _adapter_with_path_capture(seen)
     vhost_safe = quote("/", safe="")
-    manager = QueueManagerV4(http_client=adapter, vhost=vhost_safe, strict=False)
+    manager = QueueManager(http_client=adapter, vhost=vhost_safe, strict=False)
 
     manager.delete("any-queue")
 
@@ -99,7 +99,7 @@ def test_no_double_encoding() -> None:
 
     seen: list[str] = []
     adapter = _adapter_with_path_capture(seen)
-    manager = QueueManagerV4(http_client=adapter, vhost=once, strict=False)
+    manager = QueueManager(http_client=adapter, vhost=once, strict=False)
     manager.delete("q")
 
     assert "%252F" not in seen[0], "Double-encoding detected — vhost was encoded twice"

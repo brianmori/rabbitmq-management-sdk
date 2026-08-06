@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_request import ExchangeRequest
 
 
-class ExchangeManagerV4:
+class ExchangeManager:
     def __init__(self, http_client: HttpAdapter, vhost: str, strict: bool) -> None:
         self._ha = http_client
         self._vhost = vhost

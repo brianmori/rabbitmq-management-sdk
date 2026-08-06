@@ -9,11 +9,12 @@ from rabbitmq_management_sdk.client.utils import create_ssl_context
 from rabbitmq_management_sdk.exceptions import MalformedResponseError, RabbitMQError
 from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse, factory
 from rabbitmq_management_sdk.http_adapter.config import BasicAuthentication
-from rabbitmq_management_sdk.resources.v4.admin.services import AdminManagerV4
-from rabbitmq_management_sdk.resources.v4.bindings.services import BindingManagerV4
-from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManagerV4
-from rabbitmq_management_sdk.resources.v4.queues.services import QueueManagerV4
-from rabbitmq_management_sdk.resources.v4.shovels.services import ShovelManagerV4
+from rabbitmq_management_sdk.resources.v4.admin.services import AdminManager
+from rabbitmq_management_sdk.resources.v4.bindings.services import BindingManager
+from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManager
+from rabbitmq_management_sdk.resources.v4.policies.services import OperatorPolicyManager, PolicyManager
+from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
+from rabbitmq_management_sdk.resources.v4.shovels.services import ShovelManager
 
 if TYPE_CHECKING:
     import ssl
@@ -125,39 +126,51 @@ class RabbitMQClient:
         return self._version
 
     @property
-    def queues(self) -> QueueManagerV4:
+    def queues(self) -> QueueManager:
         if self._version.major == RabbitMQMajorVersion.V4:
-            return QueueManagerV4(
+            return QueueManager(http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict)
+        raise NotImplementedError(f"Version {self._version} not supported")
+
+    @property
+    def admin(self) -> AdminManager:
+        if self._version.major == RabbitMQMajorVersion.V4:
+            return AdminManager(http_client=self._ha, strict=self._config.strict)
+        raise NotImplementedError(f"Version {self._version} not supported")
+
+    @property
+    def exchanges(self) -> ExchangeManager:
+        if self._version.major == RabbitMQMajorVersion.V4:
+            return ExchangeManager(
                 http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict
             )
         raise NotImplementedError(f"Version {self._version} not supported")
 
     @property
-    def admin(self) -> AdminManagerV4:
+    def bindings(self) -> BindingManager:
         if self._version.major == RabbitMQMajorVersion.V4:
-            return AdminManagerV4(http_client=self._ha, strict=self._config.strict)
-        raise NotImplementedError(f"Version {self._version} not supported")
-
-    @property
-    def exchanges(self) -> ExchangeManagerV4:
-        if self._version.major == RabbitMQMajorVersion.V4:
-            return ExchangeManagerV4(
+            return BindingManager(
                 http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict
             )
         raise NotImplementedError(f"Version {self._version} not supported")
 
     @property
-    def bindings(self) -> BindingManagerV4:
+    def shovels(self) -> ShovelManager:
         if self._version.major == RabbitMQMajorVersion.V4:
-            return BindingManagerV4(
-                http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict
-            )
+            return ShovelManager(http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict)
         raise NotImplementedError(f"Version {self._version} not supported")
 
     @property
-    def shovels(self) -> ShovelManagerV4:
+    def policies(self) -> PolicyManager:
+        """Regular policies scoped to the configured virtual host."""
         if self._version.major == RabbitMQMajorVersion.V4:
-            return ShovelManagerV4(
+            return PolicyManager(http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict)
+        raise NotImplementedError(f"Version {self._version} not supported")
+
+    @property
+    def operator_policies(self) -> OperatorPolicyManager:
+        """Operator policies scoped to the configured virtual host."""
+        if self._version.major == RabbitMQMajorVersion.V4:
+            return OperatorPolicyManager(
                 http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict
             )
         raise NotImplementedError(f"Version {self._version} not supported")
