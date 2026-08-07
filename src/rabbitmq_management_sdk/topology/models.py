@@ -137,6 +137,11 @@ class ExchangeNode:
         if self.id.kind != NodeKind.EXCHANGE:
             raise TopologyValidationError(f"ExchangeNode.id.kind must be NodeKind.EXCHANGE, got {self.id.kind!r}")
 
+    @property
+    def is_default(self) -> bool:
+        """Whether this is the virtual host's nameless default exchange."""
+        return self.id.name == ""
+
 
 @dataclass(frozen=True, slots=True)
 class QueueNode:
@@ -459,6 +464,34 @@ class ClusterTopology:
         object.__setattr__(self, "_nodes", nodes)
         object.__setattr__(self, "_all_node_ids", frozenset(seen))
         object.__setattr__(self, "_nodes_by_id", MappingProxyType(dict(seen)))
+
+    def __reduce__(
+        self,
+    ) -> tuple[
+        type["ClusterTopology"],
+        tuple[
+            frozenset[ExchangeNode],
+            frozenset[QueueNode],
+            frozenset[ShovelNode],
+            frozenset[TopologyEdge],
+            str | None,
+            str | None,
+            str | None,
+        ],
+    ]:
+        """Serialize canonical graph data and rebuild derived caches on load."""
+        return (
+            type(self),
+            (
+                self.exchanges,
+                self.queues,
+                self.shovels,
+                self.edges,
+                self.cluster_id,
+                self.cluster_name,
+                self.cluster_label,
+            ),
+        )
 
     @property
     def all_node_ids(self) -> frozenset[NodeId]:
