@@ -182,6 +182,24 @@ def test_cluster_identity_metadata_is_available_from_the_facade() -> None:
     assert auditor.topology.cluster_label == auditor.cluster_label
 
 
+def test_from_topology_reuses_the_complete_graph_without_retaining_definitions() -> None:
+    definitions_auditor = ClusterAuditor(_definitions())
+
+    topology_auditor = ClusterAuditor.from_topology(definitions_auditor.topology)
+
+    assert topology_auditor.topology is definitions_auditor.topology
+    assert topology_auditor.audit() == definitions_auditor.audit()
+    with pytest.raises(TopologyAnalysisError, match="Definitions are unavailable"):
+        _ = topology_auditor.definitions
+
+
+def test_from_topology_rejects_an_invalid_domain_value() -> None:
+    with pytest.raises(TopologyAnalysisError, match="topology must be ClusterTopology") as error:
+        ClusterAuditor.from_topology("not-a-topology")  # type: ignore[arg-type]
+
+    assert isinstance(error.value, RabbitMQError)
+
+
 def test_facade_exposes_complete_and_cyclic_scc_views() -> None:
     auditor = ClusterAuditor(_definitions())
 

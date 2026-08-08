@@ -46,7 +46,7 @@ def black_hole_exchanges(topology: ClusterTopology) -> tuple[ExchangeNode, ...]:
     out_degree = _out_degree(topology)
     return tuple(
         sorted(
-            (e for e in topology.exchanges if e.id.name != "" and out_degree[e.id] == 0),
+            (e for e in topology.exchanges if not e.is_default and out_degree[e.id] == 0),
             key=lambda e: node_sort_key(e.id),
         )
     )

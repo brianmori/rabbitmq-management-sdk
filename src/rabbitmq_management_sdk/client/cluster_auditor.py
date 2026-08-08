@@ -24,6 +24,7 @@ from rabbitmq_management_sdk.topology.cycles import (
     find_structural_cycles,
     message_loop_candidates_from_complete_result,
 )
+from rabbitmq_management_sdk.topology.models import ClusterTopology
 from rabbitmq_management_sdk.topology.ordering import edge_sort_key
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 from rabbitmq_management_sdk.topology.reachability import (
@@ -41,7 +42,6 @@ if TYPE_CHECKING:
 
     from rabbitmq_management_sdk.topology.cycles import StronglyConnectedComponent
     from rabbitmq_management_sdk.topology.models import (
-        ClusterTopology,
         ExchangeNode,
         QueueNode,
         ShovelNode,
@@ -72,11 +72,12 @@ class TopologyAuditReport:
 
 
 class ClusterAuditor:
-    """Primary public facade for auditing a RabbitMQ definitions export.
+    """Primary public facade for constructing and auditing cluster topology.
 
     Construct this class from :meth:`AdminManager.export_definitions` and
-    optional normalized queue and exchange observations. Use its named
-    methods for individual findings or :meth:`audit` for a complete,
+    optional normalized queue and exchange observations, or reconstruct it
+    from an existing :class:`ClusterTopology` with :meth:`from_topology`. Use
+    its named methods for individual findings or :meth:`audit` for a complete,
     consistent report.
 
     Args:
@@ -105,7 +106,7 @@ class ClusterAuditor:
     ) -> None:
         if (queues is None) != (exchanges is None):
             raise TopologyAnalysisError("queues and exchanges must be supplied together or both omitted")
-        self._definitions = definitions
+        self._definitions: ClusterDefinitionsResponse | None = definitions
         self._topology = parse_cluster_topology(
             definitions,
             in_cluster_amqp_hosts=in_cluster_amqp_hosts,
@@ -121,6 +122,33 @@ class ClusterAuditor:
                 else None
             ),
         )
+
+    @classmethod
+    def from_topology(cls, topology: ClusterTopology) -> ClusterAuditor:
+        """Construct an analysis facade around an existing immutable topology.
+
+        This path does not retain or reconstruct the definitions export from
+        which the topology may have been built. It validates the argument's
+        domain type, but cannot establish the completeness or provenance of
+        the captured evidence represented by the topology.
+
+        Args:
+            topology: Existing SDK topology to analyze without modification.
+
+        Returns:
+            An auditor whose analysis methods operate on ``topology``.
+
+        Raises:
+            TopologyAnalysisError: If ``topology`` is not a
+                :class:`ClusterTopology`.
+        """
+        if not isinstance(topology, ClusterTopology):
+            raise TopologyAnalysisError(f"topology must be ClusterTopology, got {type(topology).__name__}")
+
+        auditor = cls.__new__(cls)
+        auditor._definitions = None
+        auditor._topology = topology
+        return auditor
 
     @classmethod
     def from_files(
@@ -231,8 +259,14 @@ class ClusterAuditor:
 
     @property
     def definitions(self) -> ClusterDefinitionsResponse:
-        """Raw validated export, for callers needing data parse_cluster_topology
-        doesn't include into the graph (users, permissions, policies, ...)."""
+        """Return the raw validated export retained during graph construction.
+
+        Raises:
+            TopologyAnalysisError: If this auditor was constructed with
+                :meth:`from_topology` and therefore has no definitions.
+        """
+        if self._definitions is None:
+            raise TopologyAnalysisError("Definitions are unavailable for an auditor constructed from topology")
         return self._definitions
 
     def strongly_connected_components(self) -> tuple[StronglyConnectedComponent, ...]:

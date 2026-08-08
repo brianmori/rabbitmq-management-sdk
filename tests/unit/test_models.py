@@ -8,6 +8,7 @@ ShovelNode.is_cross_vhost's three-state logic, TopologyEdge equality
 id-collision guard.
 """
 
+import pickle
 from dataclasses import replace
 
 import pytest
@@ -127,6 +128,17 @@ class TestExchangeNode:
     def test_valid_construction(self) -> None:
         node = _exchange("v", "ex1", exchange_type="topic")
         assert node.exchange_type == "topic"
+
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            ("", True),
+            ("events", False),
+            ("amq.direct", False),
+        ],
+    )
+    def test_classifies_default_exchange_by_its_empty_name(self, name: str, expected: bool) -> None:
+        assert _exchange("v", name).is_default is expected
 
     def test_rejects_mismatched_kind(self) -> None:
         with pytest.raises(TopologyValidationError, match="EXCHANGE"):
@@ -524,6 +536,52 @@ class TestTopologyEdge:
 
 
 class TestClusterTopology:
+    def test_pickle_round_trip_rebuilds_derived_caches(self) -> None:
+        cluster_id = "cluster-id"
+        exchange = ExchangeNode(
+            id=NodeId(cluster_id=cluster_id, vhost="v", name="events", kind=NodeKind.EXCHANGE),
+            exchange_type="topic",
+            internal=False,
+            durable=True,
+        )
+        queue = QueueNode(
+            id=NodeId(cluster_id=cluster_id, vhost="v", name="orders", kind=NodeKind.QUEUE),
+            queue_type="quorum",
+            durable=True,
+        )
+        shovel = ShovelNode(
+            id=NodeId(cluster_id=cluster_id, vhost="v", name="replicate", kind=NodeKind.SHOVEL),
+            source=_endpoint("v"),
+            destination=_endpoint("v"),
+        )
+        edge = TopologyEdge(
+            source=exchange.id,
+            target=queue.id,
+            kind=EdgeKind.BINDING,
+            routing_key="orders.created",
+        )
+        topology = ClusterTopology(
+            exchanges=frozenset({exchange}),
+            queues=frozenset({queue}),
+            shovels=frozenset({shovel}),
+            edges=frozenset({edge}),
+            cluster_id=cluster_id,
+            cluster_name="rabbit@cluster",
+            cluster_label="production",
+        )
+
+        restored = pickle.loads(pickle.dumps(topology, protocol=pickle.HIGHEST_PROTOCOL))
+
+        assert isinstance(restored, ClusterTopology)
+        assert restored == topology
+        assert restored.cluster_label == topology.cluster_label
+        assert restored.nodes == topology.nodes
+        assert restored.all_node_ids == topology.all_node_ids
+        assert restored.nodes_by_id == topology.nodes_by_id
+        assert restored.nodes_by_id is not topology.nodes_by_id
+        with pytest.raises(TypeError):
+            restored.nodes_by_id[exchange.id] = exchange  # type: ignore[index]
+
     def test_cluster_label_does_not_change_graph_equality_or_hash(self) -> None:
         topology = ClusterTopology(
             exchanges=frozenset(),
