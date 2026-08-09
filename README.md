@@ -278,10 +278,6 @@ reinterpreting RabbitMQ policy regular expressions locally. The exchange
 observations also resolve referenced predeclared, system, and plugin exchanges
 that RabbitMQ omits from definitions exports.
 
-The [topology documentation index](docs/README.md) routes readers to the user
-guide, graph-construction guide, concise cycle-analysis guide, or detailed
-Tarjan and Johnson tutorial.
-
 #### Topology serialization
 
 `ClusterTopology` values can be serialized with `pickle` for trusted storage or
