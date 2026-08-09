@@ -12,6 +12,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   quality:
     name: Quality
@@ -65,6 +68,33 @@ jobs:
 
       - name: Run Tests
         run: uv run pytest -m "unit or integration" --cov --cov-report=xml -v
+
+  live-tests:
+    name: RabbitMQ live tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@v4
+        with:
+          just-version: "1.46.0"
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --locked --group dev
+
+      - name: Run live tests
+        run: just test-live
 
   package:
     name: Build package

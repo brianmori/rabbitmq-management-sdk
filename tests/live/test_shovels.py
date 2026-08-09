@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 import pytest
 from tests.shared.constants import VhostTest
@@ -17,6 +18,8 @@ from rabbitmq_management_sdk.resources.v4.shovels.schemas.shovel_request import 
 )
 
 if TYPE_CHECKING:
+    from tests.conftest import RabbitSettings
+
     from rabbitmq_management_sdk import RabbitMQClient
 
 
@@ -70,7 +73,9 @@ def test_create_destroy_shovel_amqp091(
 
 @pytest.mark.live
 def test_create_destroy_shovel_amqp10(
-    rabbitmq_client_strict_vhost_src: RabbitMQClient, rabbitmq_client_strict_vhost_dest: RabbitMQClient
+    rabbitmq_client_strict_vhost_src: RabbitMQClient,
+    rabbitmq_client_strict_vhost_dest: RabbitMQClient,
+    rabbit_config: RabbitSettings,
 ) -> None:
 
     shovel_name = "test.shovel.10"
@@ -91,8 +96,10 @@ def test_create_destroy_shovel_amqp10(
         queue = rabbitmq_client_strict_vhost_dest.queues.get(queue_dst_name)
         assert queue.state == "running"
 
-        shovel_src_uri = f"amqp://lab:lab@localhost:5672?hostname=vhost:{vhost_src_name}&sasl=plain"
-        shovel_dst_uri = f"amqp://lab:lab@localhost:5672?hostname=vhost:{vhost_dst_name}&sasl=plain"
+        username = quote(rabbit_config.username, safe="")
+        password = quote(rabbit_config.password, safe="")
+        shovel_src_uri = f"amqp://{username}:{password}@localhost:5672?hostname=vhost:{vhost_src_name}&sasl=plain"
+        shovel_dst_uri = f"amqp://{username}:{password}@localhost:5672?hostname=vhost:{vhost_dst_name}&sasl=plain"
 
         rabbitmq_client_strict_vhost_src.shovels.create(
             name=shovel_name,

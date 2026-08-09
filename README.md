@@ -1,8 +1,9 @@
 # rabbitmq-management-sdk
 
 A modern, fully-typed Python SDK for the [RabbitMQ HTTP Management API](https://www.rabbitmq.com/docs/management).
-Declare, inspect, and manage queues, exchanges, bindings, virtual hosts, limits, and shovels with
-Pydantic-validated models and a clean, predictable error hierarchy.
+Declare, inspect, and manage queues, exchanges, bindings, virtual hosts, limits, policies, operator policies, and
+shovels. Audit exported topologies for routing cycles and structural risks with Pydantic-validated models and a
+clean, predictable error hierarchy.
 
 [![CI](https://github.com/brianmori/rabbitmq-management-sdk/actions/workflows/ci.yaml/badge.svg)](https://github.com/brianmori/rabbitmq-management-sdk/actions/workflows/ci.yaml)
 [![PyPI](https://img.shields.io/pypi/v/rabbitmq-management-sdk.svg)](https://pypi.org/project/rabbitmq-management-sdk/)
@@ -17,28 +18,47 @@ Pydantic-validated models and a clean, predictable error hierarchy.
 
 ## Why this SDK?
 
-The RabbitMQ Management API is a flat HTTP/JSON surface using hyphenated keys (`x-queue-type`,
-`dead-letter-exchange`), `%2F`-encoded vhosts, and per-resource quirks. This SDK wraps it so you get:
+RabbitMQ exposes configuration as flat resources, but the operational questions
+are graph-shaped: Where can a message travel? Can dead-lettering or a shovel
+send it back to where it started? Which declared routes point to missing
+resources? This SDK turns captured configuration into evidence you can inspect,
+test, and audit:
 
-- **Typed requests and responses** — Pydantic v2 models with field validation, discriminated unions
-  for queue/shovel variants, and IDE autocomplete instead of raw dicts.
-- **An exception hierarchy** — every failure is a `RabbitMQError`; HTTP status codes map to
-  specific subclasses (`NotFoundError`, `ConflictError`, `PreconditionFailedError`, …). `httpx`,
-  `json`, and `pydantic` exceptions never leak.
-- **Automatic version detection** — the client reads the broker version and routes to the right
-  resource managers (with an override for proxied setups).
-- **Resilience built in** — connection pooling and exponential-backoff retries via `httpx`.
-- **Ships type information** — `py.typed` is included, so downstream `mypy` sees the annotations.
+- **Reconstruct routing topology** — build an immutable graph of exchanges,
+  queues, bindings, dead-letter routes, alternate exchanges, and confirmed-local
+  shovel hops from a definitions export and optional resource observations.
+- **Find actionable routing risks** — distinguish structural cycles from
+  message-loop candidates that cross a dead-letter or shovel republishing
+  boundary, with bounded searches and explicit truncation reporting.
+- **Audit more than cycles** — report dangling routes, black-hole exchanges,
+  unreachable internal exchanges, queues without captured ingress, cross-vhost
+  shovels, and unresolved or unconfirmed shovel endpoints.
+- **Respect broker evidence** — direct arguments take precedence, while complete
+  queue and exchange observations identify broker-selected policies without
+  reimplementing RabbitMQ's policy matching rules in Python.
+- **Run deterministic offline analysis** — load sanitized captures from files,
+  retain stable cluster identity, produce consistently ordered findings, and
+  serialize trusted topology values for analysis in another process.
+- **Manage the same resources with typed APIs** — Pydantic v2 request and
+  response models cover queues, exchanges, bindings, virtual hosts, limits,
+  policies, operator policies, and shovels while preserving plugin-defined
+  values where RabbitMQ is extensible.
+- **Keep failures predictable** — transport, HTTP, response-parsing,
+  topology-loading, and topology-analysis failures share the `RabbitMQError`
+  hierarchy; the client also provides version routing, connection pooling, and
+  exponential-backoff retries.
 
 ## Features
 
 | Resource | Operations                                                                             |
 |---|----------------------------------------------------------------------------------------|
-| **Queues** | Create / Get / Delete — classic, quorum, and stream types with type-specific arguments |
+| **Queues** | Create / Get / List / Delete — classic, quorum, and stream types with type-specific arguments |
 | **Exchanges** | Create / Get / Delete / list (per-vhost and cluster-wide)                              |
 | **Bindings** | Create / List / Delete exchange→queue and exchange→exchange                            |
 | **Virtual hosts** | Create / Get / Delete, deletion-protection, per-vhost limits                           |
+| **Policies** | Create / Get / List / Delete regular and operator policies with typed core settings and preserved plugin keys |
 | **Shovels** | Create / Get / Delete, status queries — AMQP 0-9-1, AMQP 1.0, and `local` protocols    |
+| **Topology audit** | Detect routing cycles, dangling hops, unreachable internal exchanges, and shovel vhost boundaries |
 
 ## Requirements
 
@@ -57,7 +77,7 @@ uv add rabbitmq-management-sdk
 ## Quickstart
 
 ```python
-from rabbitmq_management_sdk import Config, RabbitMQClient
+from rabbitmq_management_sdk import Config, RabbitMQClient, RabbitMQVersion
 
 # On construction the client calls GET /api/overview to detect the broker
 # version and route to the matching resource managers.
@@ -69,7 +89,7 @@ print("Connected to RabbitMQ", client.version)
 ```
 
 > The broker must be reachable when the client is constructed (that is when version detection runs).
-> Behind a proxy that strips version headers? Pin it with
+> If `/api/overview` is unavailable or its `rabbitmq_version` field is unusable, pin the version with
 > `Config(..., version_override=RabbitMQVersion.parse("4.3.0"))`.
 
 ## Usage
@@ -136,6 +156,65 @@ client.admin.apply_vhost_limit(
 limits = client.admin.get_vhost_limits("billing")  # VhostLimitResponse | None
 ```
 
+### Policies
+
+Regular and operator policies are scoped to the virtual host configured on the
+client. `list_by_vhost()` lists that virtual host; `list_all()` lists policies
+across the cluster.
+
+```python
+from rabbitmq_management_sdk import (
+    OperatorPolicyApplyTo,
+    OperatorPolicyRequest,
+    PolicyApplyTo,
+    PolicyDefinition,
+    PolicyRequest,
+)
+
+policy_request = PolicyRequest(
+    pattern=r"^orders\.",
+    definition=PolicyDefinition(
+        dead_letter_exchange="orders.dlx",
+        message_ttl=60_000,
+    ),
+    priority=10,
+    apply_to=PolicyApplyTo.QUEUES,
+)
+client.policies.create("orders-policy", policy_request)
+
+client.operator_policies.create(
+    "queue-limit",
+    OperatorPolicyRequest(
+        pattern=".*",
+        definition=PolicyDefinition(max_length=100_000),
+        priority=100,
+        apply_to=OperatorPolicyApplyTo.QUEUES,
+    ),
+)
+
+for policy in client.policies.list_by_vhost():
+    print(policy.name, policy.definition)
+```
+
+Resource managers serialize policy requests automatically. Known core settings
+are typed, while unknown definition keys are retained so settings contributed
+by RabbitMQ plugins or newer broker versions survive validation and wire
+serialization:
+
+```python
+plugin_definition = PolicyDefinition.model_validate(
+    {
+        "dead-letter-exchange": "orders.dlx",
+        "federation-upstream-set": "all",
+    }
+)
+
+assert plugin_definition.model_dump(by_alias=True, exclude_none=True) == {
+    "dead-letter-exchange": "orders.dlx",
+    "federation-upstream-set": "all",
+}
+```
+
 ### Shovels
 
 ```python
@@ -158,6 +237,68 @@ client.shovels.create(
 for status in client.shovels.get_all_shovel_statuses():
     print(status)
 ```
+
+### Topology auditing
+
+Use `ClusterAuditor` to inspect a RabbitMQ definitions export for circular
+message routes and other configuration risks. You do not need to understand
+graphs to use it.
+
+```python
+from rabbitmq_management_sdk import ClusterAuditor
+
+auditor = ClusterAuditor(
+    client.admin.export_definitions(),
+    queues=client.queues.list_all(disable_stats=True),
+    exchanges=client.exchanges.list_all(disable_stats=True),
+    cluster_label="production-eu-west-1",
+    in_cluster_amqp_hosts={"rabbit-1.internal", "rabbit-2.internal"},
+)
+
+report = auditor.audit(max_cycles=100)
+for cycle in report.message_loop_candidates.cycles:
+    print("Possible message loop:", cycle)
+
+if report.message_loop_candidates.truncated:
+    print("More message-loop candidates exist.")
+if report.structural_cycles.truncated:
+    print("More structural cycles exist.")
+
+# Immutable, presentation-agnostic nodes and edges for other consumers.
+topology = auditor.topology
+
+# Complete SCC partition plus the cycle-containing subset.
+components = auditor.strongly_connected_components()
+cyclic_components = auditor.cyclic_components()
+```
+
+Queue and exchange observations let the auditor use the broker-selected user
+policy for dead-letter and alternate-exchange routes. This avoids
+reinterpreting RabbitMQ policy regular expressions locally. The exchange
+observations also resolve referenced predeclared, system, and plugin exchanges
+that RabbitMQ omits from definitions exports.
+
+#### Topology serialization
+
+`ClusterTopology` values can be serialized with `pickle` for trusted storage or
+transfer to another Python process. Derived lookup caches are rebuilt when the
+topology is loaded, and `ClusterAuditor.from_topology()` provides the same
+analysis facade without requiring the original definitions export:
+
+```python
+import pickle
+
+payload = pickle.dumps(auditor.topology, protocol=pickle.HIGHEST_PROTOCOL)
+restored_topology = pickle.loads(payload)  # Only load data from a trusted source.
+restored_auditor = ClusterAuditor.from_topology(restored_topology)
+
+report = restored_auditor.audit(max_cycles=100)
+```
+
+An auditor reconstructed this way does not retain the definitions export, so
+its `definitions` property is unavailable. Use the same SDK version when
+loading a serialized topology; cross-version pickle compatibility is not
+guaranteed. Never unpickle untrusted data.
 
 ## Authentication
 
@@ -186,8 +327,11 @@ client = RabbitMQClient(
 
 ## Error handling
 
-Every error raised by the SDK derives from `RabbitMQError`, a single `except` is enough to be
-safe — and you can narrow to specific HTTP outcomes when you need to.
+Use `RabbitMQError` to catch HTTP request, transport, response-parsing,
+topology-loading, and topology-analysis failures. You can narrow it to
+specific HTTP outcomes when needed. Validation performed while you directly
+construct a Pydantic request or configuration model uses
+`pydantic.ValidationError`.
 
 ```python
 from rabbitmq_management_sdk import ConflictError, NotFoundError, RabbitMQError
@@ -219,15 +363,23 @@ RabbitMQError
 │   ├── TooManyRequestsError         429
 │   └── ServerError                  5xx
 │       └── ServiceUnavailableError  503
-└── MalformedResponseError      (success status, unexpected body)
+├── MalformedResponseError      (success status, unexpected body)
+└── TopologyError               (definitions-export topology analysis)
+    ├── TopologyLoadError       (file I/O, decoding, or JSON errors)
+    ├── TopologyDefinitionsError (definitions do not match the wire schema)
+    ├── TopologyResourceSnapshotError (queue or exchange dump has invalid data)
+    ├── TopologyParseError      (validated definitions cannot form a graph)
+    ├── TopologyValidationError (inconsistent caller-constructed graph model)
+    └── TopologyAnalysisError   (invalid topology-analysis request)
 ```
 
 ## Strict vs. compatibility mode
 
 `Config(strict=...)` controls how default-valued fields are sent on `PUT` (declare) calls:
 
-- **`strict=False` (default)** — default values are omitted, so re-declaring an existing resource
-  won't trip a `406 Precondition Failed` conflict. Best for idempotent provisioning.
+- **`strict=False` (default)** — default values are omitted, reducing
+  redeclaration conflicts when an existing resource uses broker defaults.
+  Best for idempotent provisioning.
 - **`strict=True`** — every field is sent explicitly. Best for fresh deployments where you want the
   broker state to match your request exactly.
 
@@ -251,13 +403,19 @@ just audit               # pip-audit dependency vulnerability scan
 | `integration` | `tests/integration/` | no (uses `httpx.MockTransport`) |
 | `live` | `tests/live/` | yes |
 
-Live tests read credentials from a `.env` file (see [`.env.example`](.env.example)) and can run
-against a disposable broker:
+The Just recipes start disposable brokers and configure their test credentials
+automatically:
 
 ```bash
+just test                # runs unit and integration tests without a broker
+just test-live           # runs live tests against RabbitMQ 4.2 and 4.3
 just test-live-rmq42     # spins up RabbitMQ 4.2 via Docker, runs live tests, tears down
 just test-live-rmq43     # same, for RabbitMQ 4.3
 ```
+
+To run the live tests directly against an existing broker, copy
+[`.env.example`](.env.example) to `.env`, adjust the connection settings, and
+run `uv run pytest -m live`.
 
 ## Contributing
 

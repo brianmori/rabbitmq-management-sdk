@@ -1,7 +1,7 @@
 [project]
 name = "rabbitmq-management-sdk"
-version = "0.1.0"
-description = "Python SDK for the RabbitMQ Management HTTP API to manage queues, exchanges, bindings, users, and policies."
+version = "0.2.0"
+description = "Typed Python SDK for managing RabbitMQ through the Management HTTP API and auditing exported cluster topology."
 readme = "README.md"
 authors = [
     { name = "brianmori", email = "52781411+brianmori@users.noreply.github.com" }
@@ -26,6 +26,8 @@ keywords = [
     "rabbitmq admin",
     "rabbitmq management",
     "rabbitmq provisioning",
+    "rabbitmq topology",
+    "rabbitmq audit",
 ]
 
 requires-python = ">=3.12"
@@ -51,7 +53,6 @@ dev = [
     "pytest-cov>=7.1.0,<8.0.0",
     "mypy>=2.1.0,<3.0.0",
     "pip-audit>=2.10.0,<3.0.0",
-    "python-dotenv>=1.2.2,<2.0.0",
     "pytest-dotenv>=0.5.0,<1.0.0"
 ]
 

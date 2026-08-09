@@ -6,8 +6,8 @@ services:
     hostname: rabbitmq-test-42
     container_name: rabbitmq-test-42
     environment:
-      RABBITMQ_DEFAULT_USER: lab
-      RABBITMQ_DEFAULT_PASS: lab
+      RABBITMQ_DEFAULT_USER: sdk_test
+      RABBITMQ_DEFAULT_PASS: sdk_test
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -15,6 +15,12 @@ services:
     configs:
       - source: rabbitmq-plugins
         target: /etc/rabbitmq/enabled_plugins
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+      start_period: 10s
 
 configs:
   rabbitmq-plugins:
