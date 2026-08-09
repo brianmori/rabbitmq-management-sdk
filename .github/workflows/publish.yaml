@@ -21,6 +21,21 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Verify release version
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          package_version="$(uv version --short)"
+          tag_version="${TAG_NAME#v}"
+
+          if [[ "$package_version" != "$tag_version" ]]; then
+            echo "::error::Tag ${TAG_NAME} does not match pyproject.toml version ${package_version}"
+            exit 1
+          fi
+
+          uv lock --check
+
       - name: Build package
         run: uv build
 

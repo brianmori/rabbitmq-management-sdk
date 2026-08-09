@@ -299,7 +299,7 @@ class ClusterExportExchange(RabbitMQBase):
     """
     durable: bool
     auto_delete: bool
-    internal: bool
+    internal: bool = False
     arguments: ExportExchangeArguments = Field(default_factory=ExportExchangeArguments)
 
 
@@ -412,7 +412,7 @@ class VhostExportExchange(RabbitMQBase):
     type: str
     durable: bool
     auto_delete: bool
-    internal: bool
+    internal: bool = False
     arguments: ExportExchangeArguments = Field(default_factory=ExportExchangeArguments)
 
 
