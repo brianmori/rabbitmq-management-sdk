@@ -1,5 +1,6 @@
 """Tests for the public ClusterAuditor facade and aggregate report."""
 
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -264,6 +265,44 @@ def test_from_files_wraps_invalid_definitions_json_in_a_topology_load_error(tmp_
 
     assert isinstance(error.value, RabbitMQError)
     assert error.value.__cause__ is not None
+
+
+@pytest.mark.parametrize("resource", ["definitions", "queues", "exchanges"])
+def test_from_files_wraps_oversized_json_integers(tmp_path: Path, resource: str) -> None:
+    paths = {name: tmp_path / f"{name}.json" for name in ("definitions", "queues", "exchanges")}
+    paths["definitions"].write_text("{}", encoding="utf-8")
+    paths["queues"].write_text("[]", encoding="utf-8")
+    paths["exchanges"].write_text("[]", encoding="utf-8")
+    limit = sys.int_info.str_digits_check_threshold
+    paths[resource].write_text('{"unused":' + "7" * (limit + 1) + "}", encoding="utf-8")
+
+    previous_limit = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(limit)
+        with pytest.raises(TopologyLoadError, match="Could not load") as error:
+            ClusterAuditor.from_files(
+                paths["definitions"], queues_path=paths["queues"], exchanges_path=paths["exchanges"]
+            )
+    finally:
+        sys.set_int_max_str_digits(previous_limit)
+
+    assert isinstance(error.value, RabbitMQError)
+    assert isinstance(error.value.__cause__, ValueError)
+
+
+@pytest.mark.parametrize("decoder_error", [ValueError("decoder rejected value"), RecursionError("nested JSON")])
+def test_from_files_preserves_decoder_failure_cause(tmp_path: Path, decoder_error: Exception) -> None:
+    dump_path = tmp_path / "definitions.json"
+    dump_path.write_text("{}", encoding="utf-8")
+
+    with (
+        patch("rabbitmq_management_sdk.client.cluster_auditor.json.load", side_effect=decoder_error),
+        pytest.raises(TopologyLoadError) as error,
+    ):
+        ClusterAuditor.from_files(dump_path)
+
+    assert isinstance(error.value, RabbitMQError)
+    assert error.value.__cause__ is decoder_error
 
 
 def test_from_files_wraps_definitions_schema_errors_in_a_topology_definitions_error(tmp_path: Path) -> None:

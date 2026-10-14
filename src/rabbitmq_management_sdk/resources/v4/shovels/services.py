@@ -3,6 +3,7 @@ from __future__ import annotations
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
+from rabbitmq_management_sdk._paths import quote_path_segment
 from rabbitmq_management_sdk.resources.base import parse_list, parse_one
 from rabbitmq_management_sdk.resources.v4.shovels.schemas.shovel_response import (
     ShovelParameterResponse,
@@ -24,19 +25,23 @@ class ShovelManager:
 
     def get(self, name: str) -> ShovelParameterResponse:
         return parse_one(
-            self._ha.request(method=HTTPMethod.GET, path=f"/api/parameters/shovel/{self._vhost}/{name}"),
+            self._ha.request(
+                method=HTTPMethod.GET, path=f"/api/parameters/shovel/{self._vhost}/{quote_path_segment(name)}"
+            ),
             ShovelParameterResponse,
         )
 
     def create(self, name: str, request: ShovelRequest) -> None:
         self._ha.request(
             method=HTTPMethod.PUT,
-            path=f"/api/parameters/shovel/{self._vhost}/{name}",
+            path=f"/api/parameters/shovel/{self._vhost}/{quote_path_segment(name)}",
             json={"value": request.to_api_value()},
         )
 
     def delete(self, name: str) -> None:
-        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/parameters/shovel/{self._vhost}/{name}")
+        self._ha.request(
+            method=HTTPMethod.DELETE, path=f"/api/parameters/shovel/{self._vhost}/{quote_path_segment(name)}"
+        )
 
     def get_all_shovel_statuses(self) -> list[ShovelStatusResponse]:
         return parse_list(self._ha.request(method=HTTPMethod.GET, path="/api/shovels"), ShovelStatusResponse)
@@ -49,7 +54,9 @@ class ShovelManager:
         )
 
     def get_shovel_status(self, name: str) -> ShovelStatusResponse:
-        resp = self._ha.request(method=HTTPMethod.GET, path=f"/api/shovels/vhost/{self._vhost}/{name}")
+        resp = self._ha.request(
+            method=HTTPMethod.GET, path=f"/api/shovels/vhost/{self._vhost}/{quote_path_segment(name)}"
+        )
         return parse_one(
             resp,
             ShovelStatusResponse,

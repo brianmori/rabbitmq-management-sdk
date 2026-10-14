@@ -14,14 +14,16 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.live
-def test_create_destroy_direct_exchange(rabbitmq_client_compatibility: RabbitMQClient) -> None:
+@pytest.mark.parametrize("auto_delete", [False, True])
+def test_create_destroy_direct_exchange(rabbitmq_client_compatibility: RabbitMQClient, auto_delete: bool) -> None:
     exchange_name = "test_direct_exchange"
 
-    exchange_req = ExchangeRequest(type=ExchangeType.DIRECT, durable=True, auto_delete=False)
+    exchange_req = ExchangeRequest(type=ExchangeType.DIRECT, durable=True, auto_delete=auto_delete)
     rabbitmq_client_compatibility.exchanges.create(exchange_name, exchange_req)
 
     exc: ExchangeResponse = rabbitmq_client_compatibility.exchanges.get(exchange_name)
     assert exc.durable
+    assert exc.auto_delete is auto_delete
     rabbitmq_client_compatibility.exchanges.delete(exchange_name)
 
 

@@ -2,15 +2,30 @@ from __future__ import annotations
 
 from http import HTTPMethod
 from typing import TYPE_CHECKING
+from urllib.parse import unquote, urlsplit
 
+from rabbitmq_management_sdk._paths import quote_path_segment
 from rabbitmq_management_sdk.exceptions import MalformedResponseError
 from rabbitmq_management_sdk.resources.base import parse_list
 from rabbitmq_management_sdk.resources.v4.bindings.schemas.binding_response import BindingResponse
 from rabbitmq_management_sdk.resources.v4.bindings.schemas.common import BindingDestinationType
 
 if TYPE_CHECKING:
-    from rabbitmq_management_sdk.http_adapter import HttpAdapter
+    from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse
     from rabbitmq_management_sdk.resources.v4.bindings.schemas.binding_request import BindingRequest
+
+
+def _properties_key(response: HttpResponse) -> str:
+    """Decode the server's Location key to match binding-list responses."""
+    location = next((value for name, value in response.headers.items() if name.casefold() == "location"), None)
+    if location:
+        try:
+            key = urlsplit(location).path.rsplit("/", 1)[-1]
+            if key:
+                return unquote(key, errors="strict")
+        except (UnicodeDecodeError, ValueError):
+            pass
+    raise MalformedResponseError("RabbitMQ did not return a valid Location header after binding creation")
 
 
 class BindingManager:
@@ -46,7 +61,10 @@ class BindingManager:
 
         """
         return parse_list(
-            self._ha.request(method=HTTPMethod.GET, path=f"/api/bindings/{self._vhost}/e/{exchange}/q/{queue}"),
+            self._ha.request(
+                method=HTTPMethod.GET,
+                path=f"/api/bindings/{self._vhost}/e/{quote_path_segment(exchange)}/q/{quote_path_segment(queue)}",
+            ),
             BindingResponse,
         )
 
@@ -67,7 +85,10 @@ class BindingManager:
 
         """
         return parse_list(
-            self._ha.request(method=HTTPMethod.GET, path=f"/api/bindings/{self._vhost}/e/{source}/e/{destination}"),
+            self._ha.request(
+                method=HTTPMethod.GET,
+                path=f"/api/bindings/{self._vhost}/e/{quote_path_segment(source)}/e/{quote_path_segment(destination)}",
+            ),
             BindingResponse,
         )
 
@@ -92,16 +113,9 @@ class BindingManager:
         """
         response = self._ha.request(
             method=HTTPMethod.POST,
-            path=f"/api/bindings/{self._vhost}/e/{exchange}/q/{queue}",
+            path=f"/api/bindings/{self._vhost}/e/{quote_path_segment(exchange)}/q/{quote_path_segment(queue)}",
             json=request.model_dump(exclude_none=True, by_alias=True),
         )
-
-        location = response.headers.get("location")
-        if not location:
-            raise MalformedResponseError(
-                "RabbitMQ did not return a Location header after binding creation",
-            )
-        props_key = location.split("/")[-1]
 
         return BindingResponse(
             source=exchange,
@@ -109,8 +123,8 @@ class BindingManager:
             destination_type=BindingDestinationType.QUEUE,
             routing_key=request.routing_key,
             arguments=request.arguments,
-            properties_key=props_key,
-            vhost=self._vhost,
+            properties_key=_properties_key(response),
+            vhost=unquote(self._vhost),
         )
 
     def create_exchange_to_exchange(
@@ -137,16 +151,9 @@ class BindingManager:
         """
         response = self._ha.request(
             method=HTTPMethod.POST,
-            path=f"/api/bindings/{self._vhost}/e/{source}/e/{destination}",
+            path=f"/api/bindings/{self._vhost}/e/{quote_path_segment(source)}/e/{quote_path_segment(destination)}",
             json=request.model_dump(exclude_none=True, by_alias=True),
         )
-
-        location = response.headers.get("location")
-        if not location:
-            raise MalformedResponseError(
-                "RabbitMQ did not return a Location header after binding creation",
-            )
-        props_key = location.split("/")[-1]
 
         return BindingResponse(
             source=source,
@@ -154,8 +161,8 @@ class BindingManager:
             destination_type=BindingDestinationType.EXCHANGE,
             routing_key=request.routing_key,
             arguments=request.arguments,
-            properties_key=props_key,
-            vhost=self._vhost,
+            properties_key=_properties_key(response),
+            vhost=unquote(self._vhost),
         )
 
     def delete_exchange_to_queue(
@@ -177,7 +184,9 @@ class BindingManager:
             when the binding was created.
         """
         self._ha.request(
-            method=HTTPMethod.DELETE, path=f"/api/bindings/{self._vhost}/e/{exchange}/q/{queue}/{properties_key}"
+            method=HTTPMethod.DELETE,
+            path=f"/api/bindings/{self._vhost}/e/{quote_path_segment(exchange)}/q/{quote_path_segment(queue)}"
+            f"/{quote_path_segment(properties_key)}",
         )
 
     def delete_exchange_to_exchange(
@@ -197,5 +206,7 @@ class BindingManager:
 
         """
         self._ha.request(
-            method=HTTPMethod.DELETE, path=f"/api/bindings/{self._vhost}/e/{source}/e/{destination}/{properties_key}"
+            method=HTTPMethod.DELETE,
+            path=f"/api/bindings/{self._vhost}/e/{quote_path_segment(source)}/e/{quote_path_segment(destination)}"
+            f"/{quote_path_segment(properties_key)}",
         )

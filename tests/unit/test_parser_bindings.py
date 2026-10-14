@@ -1,5 +1,7 @@
 """Tests for binding edges and referenced exchange supplements."""
 
+import json
+
 import pytest
 from tests.shared.parser_fixtures import _exchange, _queue, _response, _vhost
 
@@ -65,6 +67,39 @@ class TestBindingEdges:
         (edge,) = parse_cluster_topology(response).edges
 
         assert edge.arguments == '{"plugin-option": null}'
+
+    def test_extended_headers_match_modes_preserve_parallel_bindings(self) -> None:
+        response = _response(
+            vhosts=[_vhost("v")],
+            exchanges=[_exchange("headers", "v", type_="headers")],
+            queues=[_queue("queue", "v")],
+            bindings=[
+                {
+                    "source": "headers",
+                    "vhost": "v",
+                    "destination": "queue",
+                    "destination_type": "queue",
+                    "routing_key": "",
+                    "arguments": {"x-match": match_mode, "x-region": "eu"},
+                }
+                for match_mode in ("all-with-x", "any-with-x")
+            ],
+        )
+
+        topology = parse_cluster_topology(response)
+
+        assert len(topology.edges) == 2
+        assert topology.dangling_edges() == frozenset()
+        assert {json.loads(edge.arguments or "{}")["x-match"] for edge in topology.edges} == {
+            "all-with-x",
+            "any-with-x",
+        }
+        for edge in topology.edges:
+            assert edge.source.name == "headers"
+            assert edge.target.name == "queue"
+            assert edge.kind == EdgeKind.BINDING
+            assert edge.routing_key == ""
+            assert json.loads(edge.arguments or "{}")["x-region"] == "eu"
 
 
 class TestReferencedPredeclaredExchanges:

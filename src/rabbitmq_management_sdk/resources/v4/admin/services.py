@@ -3,6 +3,7 @@ from __future__ import annotations
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
+from rabbitmq_management_sdk._paths import quote_path_segment
 from rabbitmq_management_sdk.resources.base import parse_list, parse_one
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import (
     ClusterDefinitionsResponse,
@@ -25,22 +26,28 @@ class AdminManager:
         self._strict = strict
 
     def get_vhost(self, name: str) -> VhostResponse:
-        return parse_one(self._ha.request(method=HTTPMethod.GET, path=f"/api/vhosts/{name}"), VhostResponse)
+        return parse_one(
+            self._ha.request(method=HTTPMethod.GET, path=f"/api/vhosts/{quote_path_segment(name)}"), VhostResponse
+        )
 
     def get_all_vhosts(self) -> list[VhostResponse]:
         return parse_list(self._ha.request(method=HTTPMethod.GET, path="/api/vhosts"), VhostResponse)
 
     def create_vhost(self, name: str, request: VhostRequest) -> None:
-        self._ha.request(method=HTTPMethod.PUT, path=f"/api/vhosts/{name}", json=request.model_dump(exclude_none=True))
+        self._ha.request(
+            method=HTTPMethod.PUT,
+            path=f"/api/vhosts/{quote_path_segment(name)}",
+            json=request.model_dump(exclude_none=True),
+        )
 
     def delete_vhost(self, name: str) -> None:
-        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/vhosts/{name}")
+        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/vhosts/{quote_path_segment(name)}")
 
     def enable_vhost_deletion_protection(self, name: str) -> None:
-        self._ha.request(method=HTTPMethod.POST, path=f"/api/vhosts/{name}/deletion/protection")
+        self._ha.request(method=HTTPMethod.POST, path=f"/api/vhosts/{quote_path_segment(name)}/deletion/protection")
 
     def disable_vhost_deletion_protection(self, name: str) -> None:
-        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/vhosts/{name}/deletion/protection")
+        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/vhosts/{quote_path_segment(name)}/deletion/protection")
 
     def get_all_vhosts_limits(self) -> list[VhostLimitResponse]:
         return parse_list(self._ha.request(method=HTTPMethod.GET, path="/api/vhost-limits"), VhostLimitResponse)
@@ -55,19 +62,20 @@ class AdminManager:
             The vhost's limits, or ``None`` when no limits are set.
         """
         limits = parse_list(
-            self._ha.request(method=HTTPMethod.GET, path=f"/api/vhost-limits/{vhost}"), VhostLimitResponse
+            self._ha.request(method=HTTPMethod.GET, path=f"/api/vhost-limits/{quote_path_segment(vhost)}"),
+            VhostLimitResponse,
         )
         return limits[0] if limits else None
 
     def apply_vhost_limit(self, vhost: str, limit_name: VhostLimitName, request: VhostLimitRequest) -> None:
         self._ha.request(
             method=HTTPMethod.PUT,
-            path=f"/api/vhost-limits/{vhost}/{limit_name}",
+            path=f"/api/vhost-limits/{quote_path_segment(vhost)}/{limit_name}",
             json=request.model_dump(exclude_none=True, by_alias=True),
         )
 
     def delete_vhost_limit(self, vhost: str, limit_name: VhostLimitName) -> None:
-        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/vhost-limits/{vhost}/{limit_name}")
+        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/vhost-limits/{quote_path_segment(vhost)}/{limit_name}")
 
     def export_definitions(self) -> ClusterDefinitionsResponse:
         """GET /api/definitions — exports all cluster-wide definitions."""
@@ -79,6 +87,6 @@ class AdminManager:
     def export_vhost_definitions(self, vhost: str) -> VhostDefinitionsResponse:
         """GET /api/definitions/{vhost} — exports definitions scoped to one vhost."""
         return parse_one(
-            self._ha.request(method=HTTPMethod.GET, path=f"/api/definitions/{vhost}"),
+            self._ha.request(method=HTTPMethod.GET, path=f"/api/definitions/{quote_path_segment(vhost)}"),
             VhostDefinitionsResponse,
         )

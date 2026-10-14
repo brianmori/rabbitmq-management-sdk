@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, JsonValue, model_validator
 
 from rabbitmq_management_sdk.resources.base import RabbitMQBase
 from rabbitmq_management_sdk.resources.v4.common import (
@@ -34,6 +34,8 @@ class QueueType(StrEnum):
 class HeadersMatchMode(StrEnum):
     ALL = "all"  # default if x-match is omitted
     ANY = "any"
+    ALL_WITH_X = "all-with-x"
+    ANY_WITH_X = "any-with-x"
 
 
 # ---------------------------------------------------------------------------
@@ -218,16 +220,16 @@ class OperatorPolicyParameterValue(_ExportPolicyBase):
 
 class ClusterExportParameter(RabbitMQBase):
     """Vhost-scoped runtime parameter (shovels, operator policies, vhost
-    limits, federation upstreams, ...). `value` stays a generic dict since
-    its shape depends entirely on `component` and covers several unrelated
-    payload types; use the typed accessor(s) below for the ones this SDK
-    models explicitly.
+    limits, federation upstreams, ...). `value` preserves arbitrary JSON since
+    its shape depends on `component`: cleared limits can be an empty list,
+    and federation upstream sets are arrays of objects. Use the typed
+    accessor(s) below for the ones this SDK models explicitly.
     """
 
     component: str
     vhost: str
     name: str
-    value: dict[str, object]
+    value: JsonValue
 
     def as_operator_policy(self) -> OperatorPolicyParameterValue | None:
         """Typed view of `value` when component == 'operator_policy'."""
@@ -435,12 +437,12 @@ class VhostExportPolicy(RabbitMQBase):
 class VhostExportParameter(RabbitMQBase):
     """Includes plugin parameters (shovel, federation) and a synthetic
     'vhost-limits' parameter that echoes the vhost's connection/queue
-    limits.
+    limits. Values preserve their component-specific JSON shape.
     """
 
     component: str
     name: str
-    value: dict[str, object]
+    value: JsonValue
 
     def is_shovel(self) -> bool:
         return self.component == "shovel"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import ConfigDict, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
 from rabbitmq_management_sdk.resources.base import RabbitMQBase
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.common import ExchangeType
@@ -38,7 +38,7 @@ class ExchangeResponse(RabbitMQBase):
     vhost: str
     type: ExchangeType | str
     durable: bool
-    auto_delete: bool = Field(alias="auto-delete")
+    auto_delete: bool = Field(validation_alias=AliasChoices("auto_delete", "auto-delete"))
     internal: bool
     policy: str | None = None
 

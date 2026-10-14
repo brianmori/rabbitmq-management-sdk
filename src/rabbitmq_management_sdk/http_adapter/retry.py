@@ -56,6 +56,8 @@ class RetryTransport:
                 return self._transport.request(method=method, path=path, params=params, json=json, headers=headers)
             except self._retryable_exceptions as e:
                 last_exc = e
+                if attempt + 1 == self._max_attempts:
+                    break
                 wait = self._backoff.wait_time(attempt)
                 if wait > 0:
                     sleep(wait)

@@ -253,9 +253,16 @@ def _find_cycles(
     *,
     max_cycles: int,
     cycle_filter: CyclePathFilter | None = None,
+    required_edges: frozenset[tuple[NodeId, NodeId]] | None = None,
 ) -> CycleSearchResult:
     """Run one optionally bounded cycle search over the contained-node graph."""
     _validate_max_cycles(max_cycles)
+    if required_edges is not None and not required_edges:
+        return CycleSearchResult(cycles=(), truncated=False)
+
+    required_targets: dict[NodeId, set[NodeId]] = {}
+    for source, target in required_edges or ():
+        required_targets.setdefault(source, set()).add(target)
     adjacency = _adjacency(topology)
     representative_edges = _representative_edges(topology, adjacency)
 
@@ -263,6 +270,10 @@ def _find_cycles(
     truncated = False
     for component in _find_strongly_connected_components(topology, adjacency):
         if not component.is_cyclic:
+            continue
+        if required_edges is not None and not any(
+            target in component.nodes for source in component.nodes for target in required_targets.get(source, ())
+        ):
             continue
         remaining = None if max_cycles == 0 else max_cycles - len(node_paths)
         paths, truncated = _johnson(
@@ -341,4 +352,5 @@ def find_message_loop_candidates(topology: ClusterTopology, *, max_cycles: int =
         topology,
         max_cycles=max_cycles,
         cycle_filter=has_republishing_edge,
+        required_edges=republishing_pairs,
     )

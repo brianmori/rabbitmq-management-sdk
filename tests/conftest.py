@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import pytest
 
 from rabbitmq_management_sdk.client.config import Config
 from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
 from tests.shared.constants import VhostTest
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @dataclass
@@ -29,7 +33,7 @@ def rabbit_config() -> RabbitSettings:
 
 
 @pytest.fixture
-def rabbitmq_client_compatibility(rabbit_config: RabbitSettings) -> RabbitMQClient:
+def rabbitmq_client_compatibility(rabbit_config: RabbitSettings) -> Iterator[RabbitMQClient]:
     """Universal fixture for a RabbitMQ Manager in Compatibility Mode."""
     config = Config(
         host=rabbit_config.host,
@@ -38,11 +42,12 @@ def rabbitmq_client_compatibility(rabbit_config: RabbitSettings) -> RabbitMQClie
         password=rabbit_config.password,
         strict=False,
     )
-    return RabbitMQClient(config)
+    with RabbitMQClient(config) as client:
+        yield client
 
 
 @pytest.fixture
-def rabbitmq_client_strict(rabbit_config: RabbitSettings) -> RabbitMQClient:
+def rabbitmq_client_strict(rabbit_config: RabbitSettings) -> Iterator[RabbitMQClient]:
     """Universal fixture for a RabbitMQ Manager in Strict Mode."""
     config = Config(
         host=rabbit_config.host,
@@ -51,11 +56,12 @@ def rabbitmq_client_strict(rabbit_config: RabbitSettings) -> RabbitMQClient:
         password=rabbit_config.password,
         strict=True,
     )
-    return RabbitMQClient(config)
+    with RabbitMQClient(config) as client:
+        yield client
 
 
 @pytest.fixture
-def rabbitmq_client_strict_vhost_src(rabbit_config: RabbitSettings) -> RabbitMQClient:
+def rabbitmq_client_strict_vhost_src(rabbit_config: RabbitSettings) -> Iterator[RabbitMQClient]:
     """Universal fixture for a RabbitMQ Manager in Strict Mode."""
     config = Config(
         host=rabbit_config.host,
@@ -65,11 +71,12 @@ def rabbitmq_client_strict_vhost_src(rabbit_config: RabbitSettings) -> RabbitMQC
         strict=True,
         virtual_host=VhostTest.SRC,
     )
-    return RabbitMQClient(config)
+    with RabbitMQClient(config) as client:
+        yield client
 
 
 @pytest.fixture
-def rabbitmq_client_strict_vhost_dest(rabbit_config: RabbitSettings) -> RabbitMQClient:
+def rabbitmq_client_strict_vhost_dest(rabbit_config: RabbitSettings) -> Iterator[RabbitMQClient]:
     """Universal fixture for a RabbitMQ Manager in Strict Mode."""
     config = Config(
         host=rabbit_config.host,
@@ -79,4 +86,5 @@ def rabbitmq_client_strict_vhost_dest(rabbit_config: RabbitSettings) -> RabbitMQ
         strict=True,
         virtual_host=VhostTest.DST,
     )
-    return RabbitMQClient(config)
+    with RabbitMQClient(config) as client:
+        yield client

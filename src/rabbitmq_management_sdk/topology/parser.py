@@ -282,6 +282,10 @@ class _TopologyBuilder:
         for parameter in self.response.parameters:
             if parameter.component != "shovel":
                 continue
+            if not isinstance(parameter.value, dict):
+                raise TopologyParseError(
+                    f"Shovel {parameter.name!r} in vhost {parameter.vhost!r} requires a JSON object value"
+                )
 
             shovel_id = self._node_id(
                 vhost=parameter.vhost,

@@ -1,20 +1,24 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import pytest
 
+from rabbitmq_management_sdk import Config, RabbitMQClient, VhostRequest
 from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse, factory
 from rabbitmq_management_sdk.http_adapter.config import BasicAuthentication
 from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_request import (
     ClassicQueueRequest,
     QueueRequest,
     QuorumQueueRequest,
+    StreamQueueRequest,
 )
 
 if TYPE_CHECKING:
+    from typing import Literal
+
     from conftest import RabbitSettings
-    from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
 
 
 @pytest.mark.live
@@ -36,22 +40,45 @@ def test_rabbitmq_overview(rabbitmq_client_compatibility: RabbitMQClient) -> Non
     assert version.major == 4
 
 
-# Queue creation and retrieval test
 @pytest.mark.live
-def test_create_destroy_classic_queue(rabbitmq_client_compatibility: RabbitMQClient) -> None:
-    queue_name = "test_classic_queue"
-    queue_req = QueueRequest(durable=True, auto_delete=False, arguments=ClassicQueueRequest())
-    rabbitmq_client_compatibility.queues.create(queue_name, queue_req)
-    queue = rabbitmq_client_compatibility.queues.get(queue_name)
-    assert queue.state == "running"
-    rabbitmq_client_compatibility.queues.delete(queue_name)
+@pytest.mark.parametrize("strict", [False, True], ids=["compatibility", "strict"])
+@pytest.mark.parametrize("default_queue_type", ["classic", "quorum"])
+@pytest.mark.parametrize(
+    "arguments",
+    [ClassicQueueRequest(), QuorumQueueRequest(), StreamQueueRequest()],
+    ids=["classic", "quorum", "stream"],
+)
+def test_queue_type_survives_vhost_defaults(
+    rabbitmq_client_compatibility: RabbitMQClient,
+    rabbit_config: RabbitSettings,
+    strict: bool,
+    default_queue_type: Literal["classic", "quorum"],
+    arguments: ClassicQueueRequest | QuorumQueueRequest | StreamQueueRequest,
+) -> None:
+    vhost = f"sdk-queue-types-{uuid4().hex}"
+    admin = rabbitmq_client_compatibility.admin
+    admin.create_vhost(vhost, VhostRequest(default_queue_type=default_queue_type))
+    client: RabbitMQClient | None = None
+    try:
+        client = RabbitMQClient(
+            Config(
+                host=rabbit_config.host,
+                port=rabbit_config.port,
+                username=rabbit_config.username,
+                password=rabbit_config.password,
+                virtual_host=vhost,
+                strict=strict,
+            )
+        )
+        queue_name = "typed-queue"
+        client.queues.create(queue_name, QueueRequest(arguments=arguments))
+        queue = client.queues.get(queue_name)
 
-
-@pytest.mark.live
-def test_create_destroy_quorum_queue(rabbitmq_client_strict: RabbitMQClient) -> None:
-    queue_name = "test_quorum_queue"
-    queue_req = QueueRequest(durable=True, auto_delete=False, arguments=QuorumQueueRequest())
-    rabbitmq_client_strict.queues.create(queue_name, queue_req)
-    queue = rabbitmq_client_strict.queues.get(queue_name)
-    assert queue.state == "running"
-    rabbitmq_client_strict.queues.delete(queue_name)
+        assert queue.type == arguments.queue_type
+        assert queue.arguments.queue_type == arguments.queue_type
+        assert queue.state == "running"
+        assert admin.get_vhost(vhost).default_queue_type == default_queue_type
+    finally:
+        if client is not None:
+            client.close()
+        admin.delete_vhost(vhost)

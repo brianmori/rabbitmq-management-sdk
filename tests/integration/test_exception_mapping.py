@@ -33,7 +33,7 @@ from rabbitmq_management_sdk.exceptions import (
 )
 from rabbitmq_management_sdk.http_adapter.base import HttpResponse
 from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
-from rabbitmq_management_sdk.resources.base import RabbitMQBase, parse_list, parse_one
+from rabbitmq_management_sdk.resources.base import RabbitMQBase, parse_list, parse_one, parse_page
 
 
 def _adapter_for(handler: httpx.MockTransport | None = None, **kw: object) -> HttpxAdapter:
@@ -223,6 +223,35 @@ def test_parse_one_non_json_raises_malformed_response_error() -> None:
 
     with pytest.raises(MalformedResponseError):
         parse_one(response, _SampleModel)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("body", [b"null", b"{}", b'"text"', b"true", b"42", b"1.5"])
+def test_parse_list_rejects_non_array_json(body: bytes) -> None:
+    with pytest.raises(MalformedResponseError, match="JSON array"):
+        parse_list(HttpResponse(200, {}, body), _SampleModel)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("body", [b"null", b"[]", b'"text"', b"true", b"42"])
+def test_parse_object_and_page_reject_wrong_containers(body: bytes) -> None:
+    response = HttpResponse(200, {}, body)
+    with pytest.raises(MalformedResponseError):
+        parse_one(response, _SampleModel)
+    with pytest.raises(MalformedResponseError):
+        parse_page(response, _SampleModel)
+
+
+@pytest.mark.integration
+def test_parse_list_accepts_empty_array() -> None:
+    assert parse_list(HttpResponse(200, {}, b"[]"), _SampleModel) == []
+
+
+@pytest.mark.integration
+def test_http_json_returns_decoded_value_without_assuming_object() -> None:
+    assert HttpResponse(200, {}, b"null").json() is None
+    assert HttpResponse(200, {}, b"[]").json() == []
+    assert HttpResponse(200, {}, b'{"key":1}').json() == {"key": 1}
 
 
 # ---------------------------------------------------------------------------

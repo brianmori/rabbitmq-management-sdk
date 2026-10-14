@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json as _json
 from dataclasses import dataclass
-from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 from rabbitmq_management_sdk.exceptions import MalformedResponseError
@@ -20,10 +19,10 @@ class HttpResponse:
     headers: Mapping[str, str]
     body: bytes
 
-    def json(self) -> dict[str, Any]:
+    def json(self) -> object:
         try:
-            return cast("dict[str, Any]", _json.loads(self.body))
-        except (JSONDecodeError, UnicodeDecodeError) as e:
+            return cast("object", _json.loads(self.body))
+        except (ValueError, UnicodeDecodeError, RecursionError) as e:
             raise MalformedResponseError(f"Could not decode response body as JSON (status {self.status_code})") from e
 
 

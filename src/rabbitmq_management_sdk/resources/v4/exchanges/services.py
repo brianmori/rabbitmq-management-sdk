@@ -3,6 +3,7 @@ from __future__ import annotations
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
+from rabbitmq_management_sdk._paths import quote_path_segment
 from rabbitmq_management_sdk.resources.base import Page, parse_one, parse_page
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
 
@@ -27,7 +28,7 @@ class ExchangeManager:
         return parse_one(
             self._ha.request(
                 method=HTTPMethod.GET,
-                path=f"/api/exchanges/{self._vhost}/{name}",
+                path=f"/api/exchanges/{self._vhost}/{quote_path_segment(name)}",
                 params=self._stats_params(disable_stats),
             ),
             ExchangeResponse,
@@ -151,7 +152,7 @@ class ExchangeManager:
         data = request.model_dump(by_alias=True, exclude_none=True)
         self._ha.request(
             method=HTTPMethod.PUT,
-            path=f"/api/exchanges/{self._vhost}/{name}",
+            path=f"/api/exchanges/{self._vhost}/{quote_path_segment(name)}",
             json=data,
         )
 
@@ -172,7 +173,7 @@ class ExchangeManager:
         params = {"if-unused": "true"} if if_unused else {}
         self._ha.request(
             method=HTTPMethod.DELETE,
-            path=f"/api/exchanges/{self._vhost}/{name}",
+            path=f"/api/exchanges/{self._vhost}/{quote_path_segment(name)}",
             params=params,
         )
 

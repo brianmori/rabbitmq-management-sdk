@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import ConfigDict, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
 from rabbitmq_management_sdk.resources.base import RabbitMQBase
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.common import ExchangeType
@@ -46,6 +46,6 @@ class ExchangeRequest(RabbitMQBase):
         default=ExchangeType.DIRECT, description="Exchange type (e.g., 'direct', 'topic')."
     )
     durable: bool = Field(default=True, description="Exchange persists after restart.")
-    auto_delete: bool = Field(default=False, alias="auto-delete")
+    auto_delete: bool = Field(default=False, validation_alias=AliasChoices("auto_delete", "auto-delete"))
     internal: bool = Field(default=False)
     arguments: ExchangeArguments = Field(default_factory=ExchangeArguments)

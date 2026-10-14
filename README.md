@@ -88,11 +88,24 @@ client = RabbitMQClient(
 print("Connected to RabbitMQ", client.version)
 ```
 
+The client owns its HTTP connections. Use it as a context manager for scoped
+work, or call `client.close()` when finished:
+
+```python
+with RabbitMQClient(Config(host="localhost", username="guest", password="guest")) as scoped_client:
+    print(scoped_client.version)
+```
+
 > The broker must be reachable when the client is constructed (that is when version detection runs).
 > If `/api/overview` is unavailable or its `rabbitmq_version` field is unusable, pin the version with
 > `Config(..., version_override=RabbitMQVersion.parse("4.3.0"))`.
 
 ## Usage
+
+Pass virtual-host names, resource names, and binding `properties_key` values as
+raw strings. Managers encode URL path segments automatically; do not pre-encode
+names such as `/` or `orders/eu`. Binding creation and listing return matching
+raw vhost and key values.
 
 ### Queues
 
@@ -139,6 +152,7 @@ binding = client.bindings.create_exchange_to_queue(
 )
 
 # The server-assigned properties_key identifies a specific binding for deletion.
+# Pass it directly; the manager handles URL encoding.
 client.bindings.delete_exchange_to_queue("events", "orders", binding.properties_key)
 ```
 
@@ -383,6 +397,10 @@ RabbitMQError
 - **`strict=True`** — every field is sent explicitly. Best for fresh deployments where you want the
   broker state to match your request exactly.
 
+Queue declarations always include `arguments["x-queue-type"]` in both modes, so
+the requested classic, quorum, or stream type takes precedence over the vhost's
+default queue type. Compatibility mode still omits optional default arguments.
+
 ## Development
 
 This project uses [uv](https://docs.astral.sh/uv/) and [just](https://github.com/casey/just).
@@ -416,6 +434,9 @@ just test-live-rmq43     # same, for RabbitMQ 4.3
 To run the live tests directly against an existing broker, copy
 [`.env.example`](.env.example) to `.env`, adjust the connection settings, and
 run `uv run pytest -m live`.
+
+See [known broker limitations](docs/known-broker-limitations.md) for the
+non-ASCII virtual-host definitions-export failure observed on RabbitMQ 4.2/4.3.
 
 ## Contributing
 

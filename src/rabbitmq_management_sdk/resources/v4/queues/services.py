@@ -3,6 +3,7 @@ from __future__ import annotations
 from http import HTTPMethod
 from typing import TYPE_CHECKING, Any
 
+from rabbitmq_management_sdk._paths import quote_path_segment
 from rabbitmq_management_sdk.resources.base import Page, parse_one, parse_page
 from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QueueResponse
 
@@ -27,7 +28,7 @@ class QueueManager:
         return parse_one(
             self._ha.request(
                 method=HTTPMethod.GET,
-                path=f"/api/queues/{self._vhost}/{name}",
+                path=f"/api/queues/{self._vhost}/{quote_path_segment(name)}",
                 params=self._stats_params(disable_stats),
             ),
             QueueResponse,
@@ -131,11 +132,13 @@ class QueueManager:
 
     def create(self, name: str, request: QueueRequest) -> None:
         self._ha.request(
-            method=HTTPMethod.PUT, path=f"/api/queues/{self._vhost}/{name}", json=self._to_http_payload(request)
+            method=HTTPMethod.PUT,
+            path=f"/api/queues/{self._vhost}/{quote_path_segment(name)}",
+            json=self._to_http_payload(request),
         )
 
     def delete(self, name: str) -> None:
-        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/queues/{self._vhost}/{name}")
+        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/queues/{self._vhost}/{quote_path_segment(name)}")
 
     def _list_all_pages(
         self,
@@ -215,23 +218,24 @@ class QueueManager:
         return params
 
     def _to_http_payload(self, request: QueueRequest) -> dict[str, Any]:
-        """Convert a QueueRequest object to a dictionary because the queue_type has a default value
-        and stripped by model_dump in compatibility mode.
+        """Serialize a declaration while retaining its explicit queue type.
+
+        Compatibility mode omits optional default arguments, but the queue type
+        must stay inside ``arguments`` so the vhost default cannot override the
+        requested implementation.
 
         Returns:
             A dictionary with keys "durable", "auto_delete",
             and "arguments" that can be sent as JSON in an HTTP request.
         """
-        data = {
-            "x-queue-type": request.arguments.queue_type,
+        arguments = request.arguments.model_dump(
+            by_alias=True,
+            exclude_none=True,
+            exclude_defaults=not self._strict,
+        )
+        arguments["x-queue-type"] = request.arguments.queue_type
+        return {
             "durable": request.durable,
             "auto_delete": request.auto_delete,
-            "arguments": request.arguments.model_dump(
-                by_alias=True,
-                exclude_none=True,
-                exclude_defaults=not self._strict,
-                # When strict is False, defaults are excluded to avoid
-                # errors on queues created without explicit x-arguments.
-            ),
+            "arguments": arguments,
         }
-        return data

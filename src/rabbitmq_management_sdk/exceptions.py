@@ -165,7 +165,7 @@ def _parse_rabbitmq_body(body: bytes | None) -> tuple[str | None, str | None]:
         return None, None
     try:
         data = json.loads(body)
-    except (json.JSONDecodeError, UnicodeDecodeError):
+    except (ValueError, UnicodeDecodeError, RecursionError):
         return None, None
     if not isinstance(data, dict):
         return None, None

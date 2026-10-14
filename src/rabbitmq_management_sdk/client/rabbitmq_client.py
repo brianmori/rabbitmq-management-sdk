@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
 from rabbitmq_management_sdk.client.config import RabbitMQMajorVersion, RabbitMQVersion
 from rabbitmq_management_sdk.client.utils import create_ssl_context
-from rabbitmq_management_sdk.exceptions import MalformedResponseError, RabbitMQError
+from rabbitmq_management_sdk.exceptions import MalformedResponseError, RabbitMQError, TransportError
 from rabbitmq_management_sdk.http_adapter import HttpAdapter, HttpResponse, factory
 from rabbitmq_management_sdk.http_adapter.config import BasicAuthentication
 from rabbitmq_management_sdk.resources.v4.admin.services import AdminManager
@@ -18,6 +19,7 @@ from rabbitmq_management_sdk.resources.v4.shovels.services import ShovelManager
 
 if TYPE_CHECKING:
     import ssl
+    from types import TracebackType
 
     from rabbitmq_management_sdk.client.config import Config
 
@@ -36,13 +38,14 @@ class RabbitMQClient:
 
     def __init__(self, config: Config) -> None:
         self._config = config
+        self._closed = False
         self._ha: HttpAdapter
         self._basic_auth: BasicAuthentication
 
         default_headers: dict[str, str] = {}
         ssl_context: ssl.SSLContext | None = None
 
-        if config.password and config.username:
+        if config.password is not None and config.username is not None:
             self._basic_auth = BasicAuthentication(
                 username=config.username, password=config.password.get_secret_value()
             )
@@ -55,7 +58,12 @@ class RabbitMQClient:
             host=config.host, port=config.port, default_headers=default_headers, ssl_context=ssl_context
         )
 
-        self._version: RabbitMQVersion = self._get_version()
+        try:
+            self._version: RabbitMQVersion = self._get_version()
+        except BaseException:
+            with suppress(Exception):
+                self.close()
+            raise
 
         logger.debug(
             "RabbitMQClient initialized",
@@ -86,6 +94,8 @@ class RabbitMQClient:
             )
             raise
 
+        if not isinstance(data, dict):
+            raise MalformedResponseError("Expected a JSON object from /api/overview")
         rabbitmq_version = data.get("rabbitmq_version")
 
         if not isinstance(rabbitmq_version, str):
@@ -119,6 +129,25 @@ class RabbitMQClient:
                 f"Could not parse rabbitmq_version {rabbitmq_version!r}. "
                 f"Set version_override in Config to bypass detection."
             ) from e
+
+    def close(self) -> None:
+        """Release the owned HTTP adapter; repeated calls are harmless."""
+        if not self._closed:
+            self._ha.close()
+            self._closed = True
+
+    def __enter__(self) -> RabbitMQClient:
+        if self._closed:
+            raise TransportError("RabbitMQClient is closed")
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        self.close()
 
     @property
     def version(self) -> RabbitMQVersion:
