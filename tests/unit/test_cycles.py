@@ -1,10 +1,12 @@
 import random
 import time
+from unittest.mock import patch
 
 import pytest
 
-from rabbitmq_management_sdk import RabbitMQError, TopologyAnalysisError, TopologyValidationError
+from rabbitmq_management_sdk import ClusterAuditor, RabbitMQError, TopologyAnalysisError, TopologyValidationError
 from rabbitmq_management_sdk.topology import Cycle, CycleSearchResult, StronglyConnectedComponent
+from rabbitmq_management_sdk.topology._cycle_algorithms import _johnson
 from rabbitmq_management_sdk.topology.cycles import (
     find_cyclic_components,
     find_message_loop_candidates,
@@ -390,3 +392,41 @@ def test_long_single_cycle_is_fast() -> None:
     assert len(cycles) == 1
     assert len(cycles[0]) == node_count
     assert elapsed < 5.0
+
+
+@pytest.mark.parametrize("max_cycles", [0, 1])
+def test_candidate_search_skips_graphs_without_republishing(max_cycles: int) -> None:
+    a, b = _exchange("a"), _exchange("b")
+    auditor = ClusterAuditor.from_topology(_topology([_edge(a, b), _edge(b, a)]))
+    with patch("rabbitmq_management_sdk.topology.cycles._johnson") as johnson:
+        result = auditor.message_loop_candidates(max_cycles=max_cycles)
+    johnson.assert_not_called()
+    assert result == CycleSearchResult(cycles=(), truncated=False)
+
+
+def test_candidate_search_skips_scc_with_only_outgoing_republishing_edge() -> None:
+    a, b, dlx = _exchange("a"), _exchange("b"), _exchange("dlx")
+    queue, shovel = _queue("queue"), _shovel("shovel")
+    topology = _topology(
+        [
+            _edge(a, b),
+            _edge(b, a),
+            TopologyEdge(source=a, target=shovel, kind=EdgeKind.SHOVEL),
+            TopologyEdge(source=queue, target=dlx, kind=EdgeKind.DEAD_LETTER),
+            _edge(dlx, queue),
+        ]
+    )
+    with patch("rabbitmq_management_sdk.topology.cycles._johnson", wraps=_johnson) as johnson:
+        result = ClusterAuditor.from_topology(topology).message_loop_candidates(max_cycles=1)
+
+    assert johnson.call_count == 1
+    assert johnson.call_args.args[0] == frozenset({queue, dlx})
+    assert len(result.cycles) == 1
+    assert set(result.cycles[0].nodes) == {queue, dlx}
+    assert result.truncated is False
+
+
+@pytest.mark.parametrize("max_cycles", [-1, True, 1.5, "1"])
+def test_candidate_search_validates_limit_even_when_no_boundary_exists(max_cycles: object) -> None:
+    with pytest.raises(TopologyAnalysisError):
+        ClusterAuditor.from_topology(_topology([])).message_loop_candidates(max_cycles=max_cycles)  # type: ignore[arg-type]

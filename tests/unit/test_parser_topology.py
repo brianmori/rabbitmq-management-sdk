@@ -10,6 +10,29 @@ pytestmark = pytest.mark.unit
 
 
 class TestParseClusterTopologyEndToEnd:
+    def test_preserves_but_does_not_model_non_shovel_array_parameters(self) -> None:
+        response = _response(
+            vhosts=[_vhost("v")],
+            queues=[_queue("q", "v", **{"x-queue-type": "classic"})],
+            parameters=[
+                {"component": "vhost-limits", "vhost": "v", "name": "limits", "value": []},
+                {
+                    "component": "federation-upstream-set",
+                    "vhost": "v",
+                    "name": "regions",
+                    "value": [{"upstream": "east"}, {"upstream": "west"}],
+                },
+            ],
+        )
+
+        topology = parse_cluster_topology(response)
+
+        assert len(topology.queues) == 1
+        assert not topology.shovels
+        assert not topology.edges
+        assert response.parameters[0].value == []
+        assert response.parameters[1].value == [{"upstream": "east"}, {"upstream": "west"}]
+
     def test_scopes_node_identity_to_internal_cluster_id_and_keeps_label_separate(self) -> None:
         response = _response(
             original_cluster_name="name-recorded-by-the-export",

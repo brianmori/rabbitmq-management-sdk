@@ -25,20 +25,30 @@ from rabbitmq_management_sdk.topology.models import (
     TopologyEdge,
     TopologyNode,
 )
+from rabbitmq_management_sdk.topology.ordering import (
+    EdgeSortKey,
+    NodeSortKey,
+    edge_sort_key,
+    node_sort_key,
+)
 
 __all__ = [
     "ClusterTopology",
     "Cycle",
     "CycleSearchResult",
     "EdgeKind",
+    "EdgeSortKey",
     "EndpointAuthority",
     "ExchangeNode",
     "NodeId",
     "NodeKind",
+    "NodeSortKey",
     "QueueNode",
     "ResourceEndpoint",
     "ShovelNode",
     "StronglyConnectedComponent",
     "TopologyEdge",
     "TopologyNode",
+    "edge_sort_key",
+    "node_sort_key",
 ]

@@ -20,6 +20,8 @@ jobs:
     name: Quality
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      UV_PYTHON: "3.12"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -47,6 +49,8 @@ jobs:
     name: Tests ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -66,6 +70,10 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --group dev
 
+      - name: Verify Python version
+        run: |
+          uv run python -c 'import os, sys; expected = tuple(map(int, os.environ["UV_PYTHON"].split("."))); assert sys.version_info[:2] == expected, sys.version; print(sys.version)'
+
       - name: Run Tests
         run: uv run pytest -m "unit or integration" --cov --cov-report=xml -v
 
@@ -73,6 +81,8 @@ jobs:
     name: RabbitMQ live tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      UV_PYTHON: "3.12"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -100,6 +110,8 @@ jobs:
     name: Build package
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      UV_PYTHON: "3.12"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -111,3 +123,6 @@ jobs:
 
       - name: Build package
         run: uv build
+
+      - name: Verify distribution license files
+        run: uv run --no-project python tests/check_distributions.py dist

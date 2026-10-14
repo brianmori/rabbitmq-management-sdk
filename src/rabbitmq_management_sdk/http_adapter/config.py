@@ -22,7 +22,7 @@ class BasicAuthentication:
     @property
     def auth_header(self) -> str:
         credential = f"{self.username}:{self.password}"
-        token = base64.b64encode(credential.encode("ascii")).decode("ascii")
+        token = base64.b64encode(credential.encode("utf-8")).decode("ascii")
         return f"Basic {token}"
 
 

@@ -82,8 +82,11 @@ def parse_list[T: RabbitMQBase](response: HttpResponse, model: type[T]) -> list[
     Raises:
         MalformedResponseError: If the body cannot be decoded or an item does not match the schema.
     """
+    data = response.json()
+    if not isinstance(data, list):
+        raise MalformedResponseError(f"Expected a JSON array for list[{model.__name__}]")
     try:
-        return [model.model_validate(item) for item in response.json()]
+        return [model.model_validate(item) for item in data]
     except ValidationError as e:
         raise MalformedResponseError(f"Response body did not match list[{model.__name__}]") from e
 

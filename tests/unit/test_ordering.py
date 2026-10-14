@@ -2,8 +2,16 @@
 
 import pytest
 
-from rabbitmq_management_sdk.topology.models import EdgeKind, NodeId, NodeKind, TopologyEdge
-from rabbitmq_management_sdk.topology.ordering import edge_sort_key, node_sort_key
+from rabbitmq_management_sdk.topology import (
+    EdgeKind,
+    EdgeSortKey,
+    NodeId,
+    NodeKind,
+    NodeSortKey,
+    TopologyEdge,
+    edge_sort_key,
+    node_sort_key,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -29,6 +37,7 @@ def test_node_order_includes_cluster_identity() -> None:
         cluster_b,
         unscoped,
     ]
+    assert isinstance(node_sort_key(cluster_a), NodeSortKey)
 
 
 def test_resource_coordinates_order_nodes_within_each_cluster() -> None:
@@ -58,3 +67,4 @@ def test_edge_order_uses_the_same_cluster_aware_node_rule() -> None:
     cluster_b = binding("cluster-b")
 
     assert sorted((cluster_b, cluster_a), key=edge_sort_key) == [cluster_a, cluster_b]
+    assert isinstance(edge_sort_key(cluster_a), EdgeSortKey)

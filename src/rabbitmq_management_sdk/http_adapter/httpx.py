@@ -72,6 +72,8 @@ class HttpxAdapter:
         headers: dict[str, str] | None = None,
     ) -> HttpResponse:
 
+        if self._client.is_closed:
+            raise TransportError("HTTP adapter is closed")
         try:
             response = self._client.request(
                 method=method.upper(),

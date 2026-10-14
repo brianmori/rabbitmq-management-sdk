@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from http import HTTPMethod
 from typing import TYPE_CHECKING
-from urllib.parse import quote
 
+from rabbitmq_management_sdk._paths import quote_path_segment
 from rabbitmq_management_sdk.resources.base import parse_list, parse_one
 from rabbitmq_management_sdk.resources.v4.policies.schemas.policy_response import (
     OperatorPolicyResponse,
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 def _policy_path(resource: str, vhost: str, name: str) -> str:
-    return f"/api/{resource}/{vhost}/{quote(name, safe='')}"
+    return f"/api/{resource}/{vhost}/{quote_path_segment(name)}"
 
 
 class PolicyManager:

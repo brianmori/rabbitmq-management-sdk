@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import ssl
 from enum import IntEnum
-from urllib.parse import quote
 
 from pydantic import BaseModel, Field, FilePath, SecretStr, model_validator
+
+from rabbitmq_management_sdk._paths import quote_path_segment
 
 
 class SSLConfig(BaseModel):
@@ -68,7 +69,7 @@ class Config(BaseModel):
         The result is percent-encoded with ``safe=""`` so that ``/`` becomes
         ``%2F``. Managers receive this value and must NOT encode it again.
         """
-        return quote(self.virtual_host, safe="")
+        return quote_path_segment(self.virtual_host)
 
     strict: bool = Field(
         default=False,

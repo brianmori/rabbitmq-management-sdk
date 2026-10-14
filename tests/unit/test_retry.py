@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from typing import TYPE_CHECKING
 
 import pytest
@@ -17,7 +16,7 @@ from rabbitmq_management_sdk.exceptions import (
     TimeoutError,
 )
 from rabbitmq_management_sdk.http_adapter.base import HttpResponse
-from rabbitmq_management_sdk.http_adapter.config import NoBackoff
+from rabbitmq_management_sdk.http_adapter.config import ConstantBackoff, NoBackoff
 from rabbitmq_management_sdk.http_adapter.retry import RetryTransport
 
 
@@ -178,9 +177,24 @@ def test_no_backoff_completes_without_sleep(monkeypatch: pytest.MonkeyPatch) -> 
     def _record_sleep(seconds: float) -> None:
         sleep_calls.append(seconds)
 
-    monkeypatch.setattr(time, "sleep", _record_sleep)
+    monkeypatch.setattr("rabbitmq_management_sdk.http_adapter.retry.sleep", _record_sleep)
 
     adapter = _CountingAdapter(fail_times=2, exc=TimeoutError("transient"))
     _retry(adapter, max_attempts=3).request(method="GET", path="/api/test")
 
     assert sleep_calls == [], "NoBackoff should not invoke sleep"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("max_attempts", [1, 3])
+def test_retry_exhaustion_sleeps_only_between_attempts(monkeypatch: pytest.MonkeyPatch, max_attempts: int) -> None:
+    sleep_calls: list[float] = []
+    monkeypatch.setattr("rabbitmq_management_sdk.http_adapter.retry.sleep", sleep_calls.append)
+    adapter = _CountingAdapter(fail_times=max_attempts)
+    retry = RetryTransport(adapter, max_attempts=max_attempts, backoff_strategy=ConstantBackoff(wait=0.5))
+
+    with pytest.raises(TimeoutError):
+        retry.request(method="GET", path="/api/test")
+
+    assert adapter.calls == max_attempts
+    assert sleep_calls == [0.5] * (max_attempts - 1)

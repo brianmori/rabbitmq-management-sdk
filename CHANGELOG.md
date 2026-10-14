@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Public `RabbitMQClient.close()` and context-manager support for deterministic
+  connection cleanup, including cleanup after failed version discovery.
+
+### Changed
+- Binding creation returns raw virtual-host names and `properties_key` values,
+  matching binding-list responses. Pass names and binding keys without URL
+  pre-encoding; managers encode individual path segments.
+- `HttpResponse.json()` accurately exposes an arbitrary decoded JSON value as
+  `object`, rather than incorrectly annotating every response as a dictionary.
+- Updated locked runtime and development dependencies to address reported
+  advisories in AnyIO, IDNA, msgpack, pip, and urllib3.
+
+### Fixed
+- Definitions exports accept the `all-with-x` and `any-with-x` headers binding
+  modes, preserving their arguments and parallel topology edges.
+- Definitions parameters preserve component-specific JSON values, including
+  cleared vhost limits and array-valued federation upstream sets.
+- Queue declarations retain `x-queue-type` inside `arguments` in compatibility
+  mode, preventing the virtual host default from silently changing the requested
+  classic, quorum, or stream implementation.
+- Exchange declarations send `auto_delete` using the broker's correct wire key;
+  the former `auto-delete` spelling remains accepted during model validation.
+- Resource names, administrative vhost arguments, and binding keys are encoded
+  consistently, including URL delimiters, literal percent signs, UTF-8 names,
+  and dot-only path segments.
+- Malformed list and overview response containers raise SDK errors instead of
+  leaking Python exceptions or silently becoming empty resource lists.
+- Captured-file loading maps JSON decoder value and recursion failures to
+  `TopologyLoadError`, preserving the underlying cause.
+- CI explicitly selects each job's Python version and verifies matrix
+  interpreters before running tests.
+- Built wheels and source distributions include the Apache-2.0 license text,
+  with archive contents checked in CI.
+- Basic authentication supports UTF-8 usernames/passwords and sends credentials
+  even when the configured password is empty.
+- Operations on a closed HTTP adapter raise `TransportError`.
+- Message-loop candidate searches skip SCCs without an internal republishing
+  hop, avoiding unnecessary structural-cycle enumeration.
+- Retry backoff waits only between attempts, without delaying the final failure.
+
 ## [0.2.0] - 2026-08-08
 
 ### Added

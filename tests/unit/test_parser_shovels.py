@@ -3,6 +3,7 @@
 import pytest
 from tests.shared.parser_fixtures import _queue, _response, _shovel_param, _vhost
 
+from rabbitmq_management_sdk.exceptions import TopologyParseError
 from rabbitmq_management_sdk.topology.models import NodeKind
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 from rabbitmq_management_sdk.topology.reachability import shovels_with_unconfirmed_endpoints
@@ -11,6 +12,13 @@ pytestmark = pytest.mark.unit
 
 
 class TestShovels:
+    @pytest.mark.parametrize("value", [[], None, "invalid", 42])
+    def test_non_object_shovel_value_raises_contextual_sdk_error(self, value: object) -> None:
+        response = _response(parameters=[{"component": "shovel", "vhost": "v", "name": "bad", "value": value}])
+
+        with pytest.raises(TopologyParseError, match="Shovel 'bad' in vhost 'v' requires a JSON object value"):
+            parse_cluster_topology(response)
+
     def test_amqp091_queue_to_queue(self) -> None:
         """Matches the real 'test-shovel' parameter shape."""
         response = _response(

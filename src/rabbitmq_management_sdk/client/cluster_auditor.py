@@ -195,7 +195,7 @@ class ClusterAuditor:
         try:
             with path.open("r", encoding="utf-8") as f:
                 return json.load(f)
-        except (AttributeError, OSError, TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        except (AttributeError, OSError, TypeError, ValueError, RecursionError) as exc:
             raise TopologyLoadError(f"Could not load {description} {path}") from exc
 
     @overload
