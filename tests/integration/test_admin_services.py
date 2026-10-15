@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import httpx
 import pytest
+from pydantic import ValidationError
 
+from rabbitmq_management_sdk.exceptions import MalformedResponseError
 from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
 from rabbitmq_management_sdk.resources.v4.admin.services import AdminManager
 
@@ -40,3 +42,34 @@ def test_get_vhost_limits_returns_single_entry() -> None:
     assert result.vhost == "test"
     assert result.value.max_connections == 3
     assert result.value.max_queues == 5
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param(b"{}", id="empty-object"),
+        pytest.param(b'{"error": "not_authorised", "reason": "fixture"}', id="error-response"),
+        pytest.param(b'{"rabbitmq_definition_format": "single_virtual_host", "queues": []}', id="single-vhost"),
+        pytest.param(b'{"original_vhost_name": "/", "queues": []}', id="single-vhost-without-format"),
+        pytest.param(b'{"rabbitmq_definition_format": "unknown", "queues": []}', id="incompatible-format"),
+    ],
+)
+def test_export_definitions_wraps_invalid_envelopes(body: bytes) -> None:
+    with _adapter_returning(body) as adapter:
+        manager = AdminManager(http_client=adapter, strict=False)
+
+        with pytest.raises(MalformedResponseError, match="ClusterDefinitionsResponse") as error:
+            manager.export_definitions()
+
+    assert isinstance(error.value.__cause__, ValidationError)
+
+
+@pytest.mark.integration
+def test_export_definitions_accepts_an_empty_legacy_cluster() -> None:
+    with _adapter_returning(b'{"vhosts": [], "queues": [], "exchanges": [], "bindings": []}') as adapter:
+        definitions = AdminManager(http_client=adapter, strict=False).export_definitions()
+
+    assert definitions.rabbitmq_definition_format is None
+    assert definitions.vhosts == []
+    assert definitions.queues == []

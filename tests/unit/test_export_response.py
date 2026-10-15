@@ -1,8 +1,10 @@
 """Tests for RabbitMQ definitions-export response models."""
 
 import pytest
+from pydantic import ValidationError
 
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import (
+    ClusterDefinitionsResponse,
     ClusterExportBinding,
     ClusterExportExchange,
     ClusterExportParameter,
@@ -12,6 +14,52 @@ from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import (
 )
 
 pytestmark = pytest.mark.unit
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param({}, id="empty-object"),
+        pytest.param({"unrelated": []}, id="unknown-fields"),
+        pytest.param({"rabbitmq_definition_format": "cluster"}, id="metadata-only"),
+        pytest.param({"error": "not_authorised", "reason": "fixture"}, id="error-response"),
+        pytest.param({"error": "not_authorised", "queues": []}, id="error-with-definitions-section"),
+        pytest.param({"rabbitmq_definition_format": "single_virtual_host", "queues": []}, id="single-vhost-format"),
+        pytest.param({"original_vhost_name": "/", "queues": []}, id="single-vhost-without-format"),
+        pytest.param({"rabbitmq_definition_format": "unknown", "queues": []}, id="unknown-format"),
+        pytest.param({"queues": None}, id="null-section"),
+        pytest.param({"queues": {}}, id="object-section"),
+        pytest.param([], id="array"),
+        pytest.param(None, id="null"),
+    ],
+)
+def test_cluster_definitions_reject_invalid_envelopes(payload: object) -> None:
+    with pytest.raises(ValidationError):
+        ClusterDefinitionsResponse.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "section",
+    [
+        "users",
+        "vhosts",
+        "permissions",
+        "topic_permissions",
+        "global_parameters",
+        "parameters",
+        "policies",
+        "queues",
+        "exchanges",
+        "bindings",
+    ],
+)
+def test_cluster_definitions_accept_sparse_manual_sections(section: str) -> None:
+    definitions = ClusterDefinitionsResponse.model_validate({section: [], "future_broker_field": {"enabled": True}})
+
+    assert definitions.model_fields_set == {section}
+    assert definitions.rabbitmq_definition_format is None
+    assert definitions.queues == []
+    assert definitions.exchanges == []
 
 
 @pytest.mark.parametrize("model", [ClusterExportExchange, VhostExportExchange])

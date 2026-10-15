@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from enum import StrEnum
 from typing import Literal
 
@@ -331,13 +332,15 @@ class ClusterDefinitionsResponse(RabbitMQBase):
 
     Exports everything except messages: users, vhosts, permissions,
     exchanges, queues, bindings, policies, parameters, global parameters.
+    At least one definitions section must be supplied, even when empty.
+    Older and manual definitions may omit version and format metadata.
     """
 
     rabbit_version: str | None = None
     rabbitmq_version: str | None = None
     product_name: str | None = None
     product_version: str | None = None
-    rabbitmq_definition_format: str | None = None
+    rabbitmq_definition_format: Literal["cluster"] | None = None
     """
     Distinguishes a full cluster export ("cluster") from a single-vhost
     export via GET /api/definitions/{vhost} (different top-level shape).
@@ -355,6 +358,31 @@ class ClusterDefinitionsResponse(RabbitMQBase):
     queues: list[ClusterExportQueue] = Field(default_factory=list)
     exchanges: list[ClusterExportExchange] = Field(default_factory=list)
     bindings: list[ClusterExportBinding] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_envelope(cls, data: object) -> object:
+        if not isinstance(data, Mapping):
+            return data
+        if "error" in data:
+            raise ValueError("Expected cluster definitions, received an error response")
+        if "original_vhost_name" in data:
+            raise ValueError("Expected cluster definitions, received a single-vhost export")
+        sections = {
+            "users",
+            "vhosts",
+            "permissions",
+            "topic_permissions",
+            "global_parameters",
+            "parameters",
+            "policies",
+            "queues",
+            "exchanges",
+            "bindings",
+        }
+        if not sections.intersection(data):
+            raise ValueError("Cluster definitions must contain at least one definitions section")
+        return data
 
     @property
     def cluster_name(self) -> str | None:

@@ -70,7 +70,7 @@ class QuorumQueueRequest(RabbitMQBase):
     overflow: QuorumQueueOverflow | None = Field(QuorumQueueOverflow.DROP_HEAD, alias="x-overflow")
     single_active_consumer: bool | None = Field(None, alias="x-single-active-consumer")
     max_length: int | None = Field(None, alias="x-max-length")
-    initial_cluster_size: int | None = Field(None, alias="x-initial-cluster-size")
+    initial_cluster_size: int | None = Field(None, alias="x-quorum-initial-group-size")
 
     @model_validator(mode="after")
     def quorum_queue_validate(self) -> QuorumQueueRequest:

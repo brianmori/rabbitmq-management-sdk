@@ -35,7 +35,7 @@ class QuorumQueueResponse(RabbitMQBase):
     dead_letter_strategy: str | None = Field(None, alias="x-dead-letter-strategy")
     single_active_consumer: bool | None = Field(None, alias="x-single-active-consumer")
     max_length: int | None = Field(None, alias="x-max-length")
-    initial_cluster_size: int | None = Field(None, alias="x-initial-cluster-size")
+    initial_cluster_size: int | None = Field(None, alias="x-quorum-initial-group-size")
 
 
 class StreamQueueResponse(RabbitMQBase):

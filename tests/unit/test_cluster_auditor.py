@@ -1,10 +1,12 @@
 """Tests for the public ClusterAuditor facade and aggregate report."""
 
+import json
 import sys
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 from rabbitmq_management_sdk import (
     ClusterAuditor,
@@ -270,7 +272,7 @@ def test_from_files_wraps_invalid_definitions_json_in_a_topology_load_error(tmp_
 @pytest.mark.parametrize("resource", ["definitions", "queues", "exchanges"])
 def test_from_files_wraps_oversized_json_integers(tmp_path: Path, resource: str) -> None:
     paths = {name: tmp_path / f"{name}.json" for name in ("definitions", "queues", "exchanges")}
-    paths["definitions"].write_text("{}", encoding="utf-8")
+    paths["definitions"].write_text('{"vhosts": []}', encoding="utf-8")
     paths["queues"].write_text("[]", encoding="utf-8")
     paths["exchanges"].write_text("[]", encoding="utf-8")
     limit = sys.int_info.str_digits_check_threshold
@@ -314,6 +316,76 @@ def test_from_files_wraps_definitions_schema_errors_in_a_topology_definitions_er
 
     assert isinstance(error.value, RabbitMQError)
     assert error.value.__cause__ is not None
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param({}, id="empty-object"),
+        pytest.param({"unrelated": True}, id="unrecognized-object"),
+        pytest.param({"error": "not_authorised", "reason": "fixture"}, id="error-response"),
+        pytest.param({"error": "not_authorised", "queues": []}, id="error-with-definitions-section"),
+        pytest.param(
+            {
+                "rabbitmq_definition_format": "single_virtual_host",
+                "original_vhost_name": "/",
+                "queues": [],
+                "exchanges": [],
+                "bindings": [],
+            },
+            id="empty-single-vhost-export",
+        ),
+        pytest.param({"rabbitmq_definition_format": "single_virtual_host", "queues": []}, id="single-vhost-format"),
+        pytest.param({"original_vhost_name": "/", "queues": []}, id="single-vhost-without-format"),
+        pytest.param({"rabbitmq_definition_format": "future_format", "queues": []}, id="incompatible-format"),
+        pytest.param([], id="array"),
+        pytest.param(None, id="null"),
+    ],
+)
+def test_from_files_rejects_invalid_definitions_envelopes(tmp_path: Path, payload: object) -> None:
+    dump_path = tmp_path / "invalid-envelope.json"
+    dump_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(TopologyDefinitionsError, match="invalid schema") as error:
+        ClusterAuditor.from_files(dump_path)
+
+    assert isinstance(error.value, RabbitMQError)
+    assert isinstance(error.value.__cause__, ValidationError)
+
+
+def test_from_files_accepts_a_valid_empty_cluster_export(tmp_path: Path) -> None:
+    dump_path = tmp_path / "empty-cluster.json"
+    dump_path.write_text(
+        json.dumps(
+            {
+                "rabbitmq_definition_format": "cluster",
+                "vhosts": [],
+                "queues": [],
+                "exchanges": [],
+                "bindings": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    auditor = ClusterAuditor.from_files(dump_path)
+
+    empty_topology = ClusterTopology(exchanges=frozenset(), queues=frozenset(), shovels=frozenset(), edges=frozenset())
+    assert auditor.topology == empty_topology
+    assert auditor.audit() == ClusterAuditor.from_topology(empty_topology).audit()
+
+
+def test_from_files_preserves_legacy_definitions_without_version_or_format_metadata(tmp_path: Path) -> None:
+    data = _definitions().model_dump(by_alias=True, exclude_unset=True)
+    dump_path = tmp_path / "legacy-definitions.json"
+    dump_path.write_text(json.dumps(data), encoding="utf-8")
+
+    auditor = ClusterAuditor.from_files(dump_path)
+
+    assert "rabbitmq_definition_format" not in data
+    assert "rabbitmq_version" not in data
+    assert auditor.topology == ClusterAuditor(_definitions()).topology
+    assert len(auditor.audit().message_loop_candidates.cycles) == 1
 
 
 def test_in_memory_resource_observations_must_be_an_all_or_nothing_pair() -> None:

@@ -166,6 +166,14 @@ class ClusterAuditor:
         Each resource file must contain a normalized JSON array of Management
         API resource records; callers flatten paginated API responses before
         passing them here.
+
+        Definitions must contain at least one definitions section. Older or
+        manual definitions may omit version and format metadata, but error
+        responses and explicitly incompatible export formats are rejected.
+
+        Raises:
+            TopologyDefinitionsError: If the definitions schema or envelope
+                is invalid, including single-vhost exports.
         """
         if (queues_path is None) != (exchanges_path is None):
             raise TopologyAnalysisError("queues_path and exchanges_path must be supplied together or both omitted")

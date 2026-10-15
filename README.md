@@ -347,6 +347,11 @@ specific HTTP outcomes when needed. Validation performed while you directly
 construct a Pydantic request or configuration model uses
 `pydantic.ValidationError`.
 
+TLS certificate-loading failures during client initialization raise
+`TransportError`, preserving the original SSL or file I/O exception as
+`__cause__`. This includes invalid PEM files and certificate files that become
+unavailable after configuration validation.
+
 ```python
 from rabbitmq_management_sdk import ConflictError, NotFoundError, RabbitMQError
 

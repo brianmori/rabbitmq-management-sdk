@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   advisories in AnyIO, IDNA, msgpack, pip, and urllib3.
 
 ### Fixed
+- TLS certificate-loading failures during client initialization raise
+  `TransportError`, preserving the underlying SSL or file I/O exception.
+- Shovel response serialization round trips preserve nested endpoints and their
+  protocols with either alias setting.
+- Quorum queue requests and responses use `x-quorum-initial-group-size` for
+  `initial_cluster_size`, preserving the requested initial replication size.
 - Definitions exports accept the `all-with-x` and `any-with-x` headers binding
   modes, preserving their arguments and parallel topology edges.
 - Definitions parameters preserve component-specific JSON values, including

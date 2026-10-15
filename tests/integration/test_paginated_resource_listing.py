@@ -16,7 +16,7 @@ from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
 from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManager
-from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QueueResponse
+from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QueueResponse, QuorumQueueResponse
 from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
 from rabbitmq_management_sdk.topology.models import EdgeKind, NodeId, NodeKind
 
@@ -205,6 +205,9 @@ def test_no_stats_list_fixtures_accept_missing_policy() -> None:
 
     assert len(parsed_queues) == 13
     assert len(parsed_exchanges) == 76
+    quorum_queue = next(queue for queue in parsed_queues if queue.name == "fan.q")
+    assert isinstance(quorum_queue.arguments, QuorumQueueResponse)
+    assert quorum_queue.arguments.initial_cluster_size == 54
     assert next(queue for queue in parsed_queues if queue.name == "orders.q").policy == "tie-dlx-b"
     assert next(exchange for exchange in parsed_exchanges if exchange.name == "events").policy == "tie-ae-b"
     assert next(exchange for exchange in parsed_exchanges if exchange.name == "ae.a").policy is None

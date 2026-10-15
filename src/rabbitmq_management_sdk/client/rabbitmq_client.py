@@ -34,6 +34,9 @@ class RabbitMQClient:
       _ha: HTTP adapter for making API requests.
       _basic_auth: Basic authentication for API requests.
       _version: Semantic version of the RabbitMQ server.
+
+    Raises:
+        TransportError: If TLS certificate loading fails during initialization.
     """
 
     def __init__(self, config: Config) -> None:
@@ -52,7 +55,10 @@ class RabbitMQClient:
             default_headers["Authorization"] = self._basic_auth.auth_header
 
         if config.ssl_context:
-            ssl_context = create_ssl_context(config.ssl_context)
+            try:
+                ssl_context = create_ssl_context(config.ssl_context)
+            except OSError as exc:
+                raise TransportError("Could not initialize TLS context") from exc
 
         self._ha = factory.create_adapter(
             host=config.host, port=config.port, default_headers=default_headers, ssl_context=ssl_context
