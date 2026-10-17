@@ -7,9 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-17
+
 ### Added
-- Public `RabbitMQClient.close()` and context-manager support for deterministic
-  connection cleanup, including cleanup after failed version discovery.
+- `ClusterAuditor.competing_shovel_consumers()` identifies two or more shovels
+  configured to consume from the same confirmed-local queue. Results preserve
+  cluster and virtual-host identity, exclude known stream queues, and describe
+  potential contention rather than active consumers or proven message loss.
+  Immutable `CompetingShovelConsumers` results are also included in `audit()`.
+- `ClusterAuditor.fanout_exchange_bindings()` returns each fanout exchange and
+  its distinct, directly bound queues as immutable `FanoutExchangeBindings`
+  and `FanoutQueue` values, also included in `audit()`. Results keep virtual
+  hosts separate, deduplicate parallel bindings, and retain dangling queue
+  identities. Quorum replication factors use captured queue membership,
+  including the leader, and remain `None` when unavailable. Membership counts
+  are retained on `QueueNode.replication_factor` for offline graph analysis;
+  they are not physical disk-write estimates.
 
 ### Changed
 - Replaced HTTPX with HTTPX2 as the HTTP backend. The concrete adapter is now
@@ -18,6 +31,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `httpcore2.*`, and the default User-Agent is `python-httpx2/<version>`.
   Explicit SDK CA and mutual TLS configuration continues to use the supplied
   SSL context.
+
+### Fixed
+- TLS certificate-loading failures during client initialization raise
+  `TransportError`, preserving the underlying SSL or file I/O exception.
+- Shovel response serialization round trips preserve nested endpoints and their
+  protocols with either alias setting.
+- Quorum queue requests and responses use `x-quorum-initial-group-size` for
+  `initial_cluster_size`, preserving the requested initial replication size.
+- Cluster definitions parsing rejects error responses, empty objects,
+  single-vhost exports, and incompatible export formats instead of treating
+  them as empty cluster captures. Older exports without format metadata and
+  valid empty definitions sections remain accepted.
+
+## [0.3.0] - 2026-10-14
+
+### Added
+- Public `RabbitMQClient.close()` and context-manager support for deterministic
+  connection cleanup, including cleanup after failed version discovery.
+
+### Changed
 - Binding creation returns raw virtual-host names and `properties_key` values,
   matching binding-list responses. Pass names and binding keys without URL
   pre-encoding; managers encode individual path segments.
@@ -27,12 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   advisories in AnyIO, IDNA, msgpack, pip, and urllib3.
 
 ### Fixed
-- TLS certificate-loading failures during client initialization raise
-  `TransportError`, preserving the underlying SSL or file I/O exception.
-- Shovel response serialization round trips preserve nested endpoints and their
-  protocols with either alias setting.
-- Quorum queue requests and responses use `x-quorum-initial-group-size` for
-  `initial_cluster_size`, preserving the requested initial replication size.
 - Definitions exports accept the `all-with-x` and `any-with-x` headers binding
   modes, preserving their arguments and parallel topology edges.
 - Definitions parameters preserve component-specific JSON values, including
@@ -51,8 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `TopologyLoadError`, preserving the underlying cause.
 - CI explicitly selects each job's Python version and verifies matrix
   interpreters before running tests.
-- Built wheels and source distributions include the Apache-2.0 license text,
-  with archive contents checked in CI.
+- Built wheels and source distributions include the Apache-2.0 license text.
 - Basic authentication supports UTF-8 usernames/passwords and sends credentials
   even when the configured password is empty.
 - Operations on a closed HTTP adapter raise `TransportError`.
@@ -112,6 +138,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   broker-version detection, Basic-Auth and mTLS support, an exponential-backoff
   retry transport, and a `RabbitMQError` exception hierarchy.
 
-[Unreleased]: https://github.com/brianmori/rabbitmq-management-sdk/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/brianmori/rabbitmq-management-sdk/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/brianmori/rabbitmq-management-sdk/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/brianmori/rabbitmq-management-sdk/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/brianmori/rabbitmq-management-sdk/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/brianmori/rabbitmq-management-sdk/releases/tag/v0.1.0
