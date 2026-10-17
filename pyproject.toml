@@ -1,6 +1,6 @@
 [project]
 name = "rabbitmq-management-sdk"
-version = "0.3.0"
+version = "0.4.0"
 description = "Typed Python SDK for managing RabbitMQ through the Management HTTP API and auditing exported cluster topology."
 readme = "README.md"
 authors = [
