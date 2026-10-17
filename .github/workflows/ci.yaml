@@ -95,7 +95,7 @@ jobs:
       - name: Install just
         uses: extractions/setup-just@v4
         with:
-          just-version: "1.46.0"
+          just-version: "1.59.0"
 
       - name: Set up Python 3.12
         run: uv python install 3.12

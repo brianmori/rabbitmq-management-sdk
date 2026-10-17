@@ -339,6 +339,15 @@ client = RabbitMQClient(
 )
 ```
 
+The HTTP backend is HTTPX2. The concrete adapter is
+`rabbitmq_management_sdk.http_adapter.httpx2.Httpx2Adapter`; custom transports
+use HTTPX2 types such as `httpx2.MockTransport`. HTTP client logging uses
+`httpx2` and `httpcore2.*`.
+
+SDK TLS configuration continues to build an explicit `ssl.SSLContext` for CA
+verification and client certificates. HTTPX2's system trust store default applies
+when using its own `verify=True` behavior, rather than an explicit context.
+
 ## Error handling
 
 Use `RabbitMQError` to catch HTTP request, transport, response-parsing,
@@ -423,7 +432,7 @@ just audit               # pip-audit dependency vulnerability scan
 | Marker | Location | Needs a broker? |
 |---|---|---|
 | `unit` | `tests/unit/` | no |
-| `integration` | `tests/integration/` | no (uses `httpx.MockTransport`) |
+| `integration` | `tests/integration/` | no (uses `httpx2.MockTransport`) |
 | `live` | `tests/live/` | yes |
 
 The Just recipes start disposable brokers and configure their test credentials

@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   connection cleanup, including cleanup after failed version discovery.
 
 ### Changed
+- Replaced HTTPX with HTTPX2 as the HTTP backend. The concrete adapter is now
+  `http_adapter.httpx2.Httpx2Adapter`, and custom transports use HTTPX2 types
+  such as `httpx2.MockTransport`. HTTP client loggers are now named `httpx2` and
+  `httpcore2.*`, and the default User-Agent is `python-httpx2/<version>`.
+  Explicit SDK CA and mutual TLS configuration continues to use the supplied
+  SSL context.
 - Binding creation returns raw virtual-host names and `properties_key` values,
   matching binding-list responses. Pass names and binding keys without URL
   pre-encoding; managers encode individual path segments.

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import httpx
+import httpx2
 
 from rabbitmq_management_sdk.exceptions import (
     ConnectionError as RMQConnectionError,
@@ -22,10 +22,10 @@ if TYPE_CHECKING:
     from types import TracebackType
 
 
-class HttpxAdapter:
-    """HttpTransport implementation using httpx.
+class Httpx2Adapter:
+    """HTTP adapter implementation using HTTPX2.
 
-    Supports base URL, default headers, timeouts, and retries.
+    Custom transports must use HTTPX2 types. Retries are provided by the factory.
     Use as a context manager or call .close() explicitly.
     """
 
@@ -38,7 +38,7 @@ class HttpxAdapter:
         default_headers: dict[str, str] | None = None,
         ssl_context: ssl.SSLContext | None = None,
         max_redirects: int = 5,
-        transport: httpx.BaseTransport | None = None,
+        transport: httpx2.BaseTransport | None = None,
     ) -> None:
 
         scheme = "http"
@@ -47,9 +47,9 @@ class HttpxAdapter:
         base_url = f"{scheme}://{host}:{port}"
 
         to = timeout or TimeoutConfig()
-        self._client = httpx.Client(
+        self._client = httpx2.Client(
             base_url=base_url,
-            timeout=httpx.Timeout(
+            timeout=httpx2.Timeout(
                 connect=to.connect,
                 read=to.read,
                 write=to.write,
@@ -88,24 +88,24 @@ class HttpxAdapter:
                 headers=response.headers,
                 body=response.content,
             )
-        except httpx.HTTPStatusError as e:
+        except httpx2.HTTPStatusError as e:
             raise api_error_from_response(
                 status_code=e.response.status_code,
                 method=method.upper(),
                 path=path,
                 body=e.response.content,
             ) from e
-        except httpx.TimeoutException as e:
+        except httpx2.TimeoutException as e:
             raise RMQTimeoutError(f"Request timed out: {method.upper()} {path}") from e
-        except httpx.NetworkError as e:
+        except httpx2.NetworkError as e:
             raise RMQConnectionError(f"Network error: {method.upper()} {path}") from e
-        except httpx.HTTPError as e:
+        except httpx2.HTTPError as e:
             raise TransportError(f"HTTP error: {method.upper()} {path}") from e
 
     def close(self) -> None:
         self._client.close()
 
-    def __enter__(self) -> HttpxAdapter:
+    def __enter__(self) -> Httpx2Adapter:
         return self
 
     def __exit__(

@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-import httpx
+import httpx2
 import pytest
 from pydantic import ValidationError
 
 from rabbitmq_management_sdk.exceptions import MalformedResponseError
-from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
 from rabbitmq_management_sdk.resources.v4.admin.services import AdminManager
 
 
-def _adapter_returning(body: bytes, status: int = 200) -> HttpxAdapter:
-    def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(status, content=body)
+def _adapter_returning(body: bytes, status: int = 200) -> Httpx2Adapter:
+    def handler(_request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(status, content=body)
 
-    return HttpxAdapter(host="localhost", port=15672, transport=httpx.MockTransport(handler))
+    return Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler))
 
 
 @pytest.mark.integration

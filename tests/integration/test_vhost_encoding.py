@@ -9,23 +9,23 @@ from __future__ import annotations
 
 from urllib.parse import quote
 
-import httpx
+import httpx2
 import pytest
 
-from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
 from rabbitmq_management_sdk.resources.v4.bindings.services import BindingManager
 from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManager
 from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
 
 
-def _adapter_with_path_capture(seen_urls: list[str], *, response_body: bytes = b"{}") -> HttpxAdapter:
-    def handler(request: httpx.Request) -> httpx.Response:
+def _adapter_with_path_capture(seen_urls: list[str], *, response_body: bytes = b"{}") -> Httpx2Adapter:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         # str(request.url) preserves percent-encoding (e.g. %2F stays %2F).
         # request.url.path decodes it back to the original character — avoid that.
         seen_urls.append(str(request.url))
-        return httpx.Response(200, content=response_body)
+        return httpx2.Response(200, content=response_body)
 
-    return HttpxAdapter(host="localhost", port=15672, transport=httpx.MockTransport(handler))
+    return Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler))
 
 
 _VHOST_CASES = [

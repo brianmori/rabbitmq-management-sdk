@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 
-import httpx
+import httpx2
 import pytest
 
 from rabbitmq_management_sdk import ClassicQueueRequest, QueueRequest, QuorumQueueRequest, StreamQueueRequest
-from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
 from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QuorumQueueResponse, StreamQueueResponse
 from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
 
@@ -14,12 +14,12 @@ from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
 @pytest.mark.integration
 def test_create_queue_success() -> None:
     # 1. Setup Mock Handler
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(201, json={"status": "created"}, headers={"Content-Type": "application/json"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(201, json={"status": "created"}, headers={"Content-Type": "application/json"})
 
     # 2. Inject MockTransport into your Adapter
-    mock_transport = httpx.MockTransport(handler)
-    adapter = HttpxAdapter(host="localhost", port=15672, transport=mock_transport)
+    mock_transport = httpx2.MockTransport(handler)
+    adapter = Httpx2Adapter(host="localhost", port=15672, transport=mock_transport)
 
     # 3. Test the high-level request
     response = adapter.request("PUT", "/api/queues/%2f/my-queue", json={"durable": True})
@@ -40,13 +40,13 @@ def test_queue_declaration_sends_explicit_type_in_arguments(
 ) -> None:
     sent: list[dict[str, object]] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.method == "PUT"
         assert request.url.raw_path == b"/api/queues/%2F/typed-queue"
         sent.append(json.loads(request.content))
-        return httpx.Response(201)
+        return httpx2.Response(201)
 
-    with HttpxAdapter(host="localhost", port=15672, transport=httpx.MockTransport(handler)) as adapter:
+    with Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         manager = QueueManager(adapter, "%2F", strict)
         manager.create("typed-queue", QueueRequest(arguments=arguments))
 
@@ -83,11 +83,11 @@ def test_queue_declaration_preserves_nondefault_arguments(
 ) -> None:
     sent: list[dict[str, object]] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         sent.append(json.loads(request.content))
-        return httpx.Response(201)
+        return httpx2.Response(201)
 
-    with HttpxAdapter(host="localhost", port=15672, transport=httpx.MockTransport(handler)) as adapter:
+    with Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         QueueManager(adapter, "%2F", strict).create("configured-queue", QueueRequest(arguments=arguments))
 
     wire_arguments = sent[0]["arguments"]
@@ -114,12 +114,12 @@ def test_queue_declaration_sends_type_specific_initial_replication_size(
 ) -> None:
     sent: list[dict[str, object]] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.method == "PUT"
         sent.append(json.loads(request.content))
-        return httpx.Response(201)
+        return httpx2.Response(201)
 
-    with HttpxAdapter(host="localhost", port=15672, transport=httpx.MockTransport(handler)) as adapter:
+    with Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         QueueManager(adapter, "%2F", strict).create("replicated-queue", QueueRequest(arguments=arguments))
 
     wire_arguments = sent[0]["arguments"]
@@ -135,9 +135,9 @@ def test_queue_declaration_sends_type_specific_initial_replication_size(
     [("quorum", "x-quorum-initial-group-size"), ("stream", "x-initial-cluster-size")],
 )
 def test_queue_response_parses_type_specific_initial_replication_size(queue_type: str, wire_key: str) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.method == "GET"
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={
                 "name": "replicated-queue",
@@ -152,7 +152,7 @@ def test_queue_response_parses_type_specific_initial_replication_size(queue_type
             },
         )
 
-    with HttpxAdapter(host="localhost", port=15672, transport=httpx.MockTransport(handler)) as adapter:
+    with Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         queue = QueueManager(adapter, "%2F", False).get("replicated-queue")
 
     assert isinstance(queue.arguments, (QuorumQueueResponse, StreamQueueResponse))

@@ -6,13 +6,13 @@ import json
 from collections import Counter
 from pathlib import Path
 
-import httpx
+import httpx2
 import pytest
 
 from rabbitmq_management_sdk import ClusterAuditor
 from rabbitmq_management_sdk.client.policy_selection import build_user_policy_selections
 from rabbitmq_management_sdk.exceptions import TopologyValidationError
-from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
 from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManager
@@ -122,14 +122,14 @@ def _page(items: list[dict[str, object]], *, page: int, page_count: int, page_si
 
 @pytest.mark.integration
 def test_queue_list_page_sends_pagination_filter_and_disable_stats() -> None:
-    seen: list[httpx.QueryParams] = []
+    seen: list[httpx2.QueryParams] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen.append(request.url.params)
-        return httpx.Response(200, json=_page([_queue("orders.q")], page=2, page_count=2, page_size=50))
+        return httpx2.Response(200, json=_page([_queue("orders.q")], page=2, page_count=2, page_size=50))
 
     manager = QueueManager(
-        http_client=HttpxAdapter(host="localhost", port=15672, transport=httpx.MockTransport(handler)),
+        http_client=Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)),
         vhost="%2F",
         strict=False,
     )
@@ -158,15 +158,15 @@ def test_queue_list_page_sends_pagination_filter_and_disable_stats() -> None:
 def test_exchange_list_all_fetches_every_page() -> None:
     seen_pages: list[str | None] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         page = request.url.params.get("page")
         seen_pages.append(page)
         if page == "1":
-            return httpx.Response(200, json=_page([_exchange("first")], page=1, page_count=2, page_size=1))
-        return httpx.Response(200, json=_page([_exchange("second")], page=2, page_count=2, page_size=1))
+            return httpx2.Response(200, json=_page([_exchange("first")], page=1, page_count=2, page_size=1))
+        return httpx2.Response(200, json=_page([_exchange("second")], page=2, page_count=2, page_size=1))
 
     manager = ExchangeManager(
-        http_client=HttpxAdapter(host="localhost", port=15672, transport=httpx.MockTransport(handler)),
+        http_client=Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)),
         vhost="%2F",
         strict=False,
     )
@@ -179,14 +179,14 @@ def test_exchange_list_all_fetches_every_page() -> None:
 
 @pytest.mark.integration
 def test_get_with_disable_stats_sends_the_flag() -> None:
-    seen: list[httpx.QueryParams] = []
+    seen: list[httpx2.QueryParams] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen.append(request.url.params)
-        return httpx.Response(200, json=_exchange("events"))
+        return httpx2.Response(200, json=_exchange("events"))
 
     manager = ExchangeManager(
-        http_client=HttpxAdapter(host="localhost", port=15672, transport=httpx.MockTransport(handler)),
+        http_client=Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)),
         vhost="policy",
         strict=False,
     )

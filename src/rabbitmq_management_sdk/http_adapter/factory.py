@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from rabbitmq_management_sdk.http_adapter.config import BackoffStrategy, ExponentialBackoffWithJitter, TimeoutConfig
-from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
 from rabbitmq_management_sdk.http_adapter.retry import RetryTransport
 
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ def create_adapter(
     max_retries: int = 3,
     backoff_strategy: BackoffStrategy | None = None,
 ) -> HttpAdapter:
-    transport = HttpxAdapter(
+    transport = Httpx2Adapter(
         host=host,
         port=port,
         timeout=timeout,
