@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
+from tests.shared.parser_fixtures import _queue, _response, _shovel_param, _vhost
 
 from rabbitmq_management_sdk import (
     ClusterAuditor,
@@ -139,6 +140,97 @@ def test_audit_returns_all_findings_from_the_public_facade() -> None:
     assert report.shovels_with_unconfirmed_endpoints == ()
     assert report.shovels_with_unresolved_vhost == ()
     assert report.dangling_edges == ()
+    assert report.competing_shovel_consumers == ()
+
+
+@pytest.mark.parametrize(
+    "second_source",
+    [
+        {"src-protocol": "local", "src-uri": "amqp:///source", "src-queue": "shared"},
+        {"src-uri": "amqp:///source", "src-queue": "shared"},
+        {"src-uri": ["amqp://broker-a/source", "amqp://broker-b/source"], "src-queue": "shared"},
+        {
+            "src-protocol": "amqp10",
+            "src-uri": "amqp://broker-b?hostname=vhost:source",
+            "src-address": "/queues/shared",
+        },
+    ],
+)
+def test_competing_shovel_consumers_are_included_in_the_public_audit(second_source: dict[str, object]) -> None:
+    definitions = _response(
+        vhosts=[_vhost("source")],
+        queues=[_queue("shared", "source")],
+        parameters=[
+            _shovel_param(
+                name,
+                "source",
+                **source,
+                **{"dest-uri": "amqp://remote/destination", "dest-queue": "out"},
+            )
+            for name, source in (
+                ("first", {"src-uri": "amqp://broker-a/source", "src-queue": "shared"}),
+                ("second", second_source),
+            )
+        ],
+    )
+    auditor = ClusterAuditor(definitions, in_cluster_amqp_hosts={"broker-a", "broker-b"})
+
+    (group,) = auditor.competing_shovel_consumers()
+
+    assert group.queue.vhost == "source"
+    assert group.queue.name == "shared"
+    assert [shovel.id.name for shovel in group.shovels] == ["first", "second"]
+    assert auditor.audit().competing_shovel_consumers == (group,)
+    assert ClusterAuditor.from_topology(auditor.topology).competing_shovel_consumers() == (group,)
+
+
+def test_unconfirmed_failover_host_prevents_a_competing_consumer_finding() -> None:
+    definitions = _response(
+        parameters=[
+            _shovel_param(
+                name,
+                "source",
+                **{
+                    "src-uri": uri,
+                    "src-queue": "shared",
+                    "dest-uri": "amqp:///destination",
+                    "dest-queue": "out",
+                },
+            )
+            for name, uri in (
+                ("local", "amqp:///source"),
+                ("mixed-failover", ["amqp://broker-a/source", "amqp://unconfirmed/source"]),
+            )
+        ]
+    )
+
+    auditor = ClusterAuditor(definitions, in_cluster_amqp_hosts={"broker-a"})
+
+    assert auditor.competing_shovel_consumers() == ()
+
+
+def test_competing_shovels_to_an_undeclared_queue_also_retain_dangling_edges() -> None:
+    definitions = _response(
+        parameters=[
+            _shovel_param(
+                name,
+                "source",
+                **{
+                    "src-protocol": "local",
+                    "src-uri": "amqp:///source",
+                    "src-queue": "shared",
+                    "dest-uri": "amqp://remote/destination",
+                },
+            )
+            for name in ("one", "two")
+        ]
+    )
+
+    report = ClusterAuditor(definitions).audit()
+
+    (group,) = report.competing_shovel_consumers
+    assert len(report.dangling_edges) == 2
+    assert all(edge.source == group.queue for edge in report.dangling_edges)
 
 
 def test_audit_reuses_a_complete_structural_cycle_enumeration() -> None:

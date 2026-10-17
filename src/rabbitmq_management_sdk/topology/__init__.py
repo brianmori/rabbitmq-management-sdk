@@ -31,9 +31,11 @@ from rabbitmq_management_sdk.topology.ordering import (
     edge_sort_key,
     node_sort_key,
 )
+from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers
 
 __all__ = [
     "ClusterTopology",
+    "CompetingShovelConsumers",
     "Cycle",
     "CycleSearchResult",
     "EdgeKind",

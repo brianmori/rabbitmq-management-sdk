@@ -80,6 +80,13 @@ def _assert_captured_full_export_audit(auditor: ClusterAuditor) -> None:
     assert report.shovels_with_unconfirmed_endpoints == ()
     assert report.shovels_with_unresolved_vhost == ()
     assert report.dangling_edges == ()
+    (competition,) = report.competing_shovel_consumers
+    assert competition.queue == NodeId(cluster_id=auditor.cluster_id, vhost="src", name="src.q", kind=NodeKind.QUEUE)
+    assert [shovel.id.name for shovel in competition.shovels] == [
+        "test-shovel",
+        "test-shovel-local",
+        "test-shovel-local-multiple",
+    ]
 
 
 def _queue(name: str) -> dict[str, object]:

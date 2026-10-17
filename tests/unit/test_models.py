@@ -9,13 +9,14 @@ id-collision guard.
 """
 
 import pickle
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
 from rabbitmq_management_sdk import RabbitMQError, TopologyValidationError
 from rabbitmq_management_sdk.topology import (
     ClusterTopology,
+    CompetingShovelConsumers,
     EdgeKind,
     EndpointAuthority,
     ExchangeNode,
@@ -69,6 +70,78 @@ def _endpoint(
         routing_key=None,
         is_confirmed_local=is_confirmed_local,
     )
+
+
+class TestCompetingShovelConsumers:
+    def test_group_is_immutable_canonical_and_pickleable(self) -> None:
+        source = _endpoint("source", is_confirmed_local=True)
+        shovels = tuple(
+            ShovelNode(
+                id=NodeId(vhost="control", name=name, kind=NodeKind.SHOVEL),
+                source=source,
+                destination=_endpoint("destination"),
+            )
+            for name in ("z", "a")
+        )
+        queue = NodeId(vhost="source", name="queue", kind=NodeKind.QUEUE)
+
+        group = CompetingShovelConsumers(queue=queue, shovels=shovels)
+
+        assert group.shovels == shovels[::-1]
+        assert pickle.loads(pickle.dumps(group)) == group
+        assert hash(group) == hash(CompetingShovelConsumers(queue=queue, shovels=shovels[::-1]))
+        with pytest.raises(FrozenInstanceError):
+            setattr(group, "queue", queue)  # noqa: B010
+
+    @pytest.mark.parametrize(
+        "invalid",
+        [
+            "queue-kind",
+            "queue-type",
+            "empty",
+            "single",
+            "mutable",
+            "member",
+            "duplicate",
+            "source",
+            "unconfirmed",
+            "cluster",
+        ],
+    )
+    def test_rejects_inconsistent_or_mutable_groups(self, invalid: str) -> None:
+        source = _endpoint("source", is_confirmed_local=True)
+        first = ShovelNode(
+            id=NodeId(vhost="control", name="first", kind=NodeKind.SHOVEL),
+            source=source,
+            destination=_endpoint("destination"),
+        )
+        second = replace(first, id=replace(first.id, name="second"))
+        queue = NodeId(vhost="source", name="queue", kind=NodeKind.QUEUE)
+        shovels: tuple[ShovelNode, ...] = (first, second)
+        match invalid:
+            case "queue-kind":
+                queue = replace(queue, kind=NodeKind.EXCHANGE)
+            case "queue-type":
+                queue = "queue"  # type: ignore[assignment]
+            case "empty":
+                shovels = ()
+            case "single":
+                shovels = (first,)
+            case "mutable":
+                shovels = [first, second]  # type: ignore[assignment]
+            case "member":
+                shovels = (first, "second")  # type: ignore[assignment]
+            case "duplicate":
+                shovels = (first, first)
+            case "source":
+                shovels = (first, replace(second, source=replace(source, vhost="other")))
+            case "unconfirmed":
+                shovels = (first, replace(second, source=replace(source, is_confirmed_local=False)))
+            case "cluster":
+                shovels = (first, replace(second, id=replace(second.id, cluster_id="other")))
+
+        with pytest.raises(TopologyValidationError, match="CompetingShovelConsumers"):
+            CompetingShovelConsumers(queue=queue, shovels=shovels)
 
 
 # ---------------------------------------------------------------------------

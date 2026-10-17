@@ -35,6 +35,7 @@ from rabbitmq_management_sdk.topology.reachability import (
     shovels_with_unresolved_vhost,
     unreachable_internal_exchanges,
 )
+from rabbitmq_management_sdk.topology.shovel_audit import competing_shovel_consumers
 
 if TYPE_CHECKING:
     from collections.abc import Collection
@@ -47,6 +48,7 @@ if TYPE_CHECKING:
         ShovelNode,
         TopologyEdge,
     )
+    from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +71,7 @@ class TopologyAuditReport:
     shovels_with_unconfirmed_endpoints: tuple[ShovelNode, ...]
     shovels_with_unresolved_vhost: tuple[ShovelNode, ...]
     dangling_edges: tuple[TopologyEdge, ...]
+    competing_shovel_consumers: tuple[CompetingShovelConsumers, ...] = ()
 
 
 class ClusterAuditor:
@@ -324,6 +327,16 @@ class ClusterAuditor:
         """Return shovels whose resolved source and destination vhosts differ."""
         return cross_vhost_shovels(self._topology)
 
+    def competing_shovel_consumers(self) -> tuple[CompetingShovelConsumers, ...]:
+        """Return advisory groups of shovels sharing a local source queue.
+
+        Sharing can be intentional. For ordinary queues, destinations expecting
+        every message may receive only a subset. Known stream queues and
+        unconfirmed source endpoints are excluded; shovel runtime state is
+        not inspected.
+        """
+        return competing_shovel_consumers(self._topology)
+
     def shovels_with_unresolved_vhost(self) -> tuple[ShovelNode, ...]:
         """Return shovels for which one or both endpoint vhosts are unknown."""
         return shovels_with_unresolved_vhost(self._topology)
@@ -362,4 +375,5 @@ class ClusterAuditor:
             shovels_with_unconfirmed_endpoints=self.shovels_with_unconfirmed_endpoints(),
             shovels_with_unresolved_vhost=self.shovels_with_unresolved_vhost(),
             dangling_edges=self.dangling_edges(),
+            competing_shovel_consumers=self.competing_shovel_consumers(),
         )
