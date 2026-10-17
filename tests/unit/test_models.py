@@ -9,16 +9,19 @@ id-collision guard.
 """
 
 import pickle
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
 from rabbitmq_management_sdk import RabbitMQError, TopologyValidationError
 from rabbitmq_management_sdk.topology import (
     ClusterTopology,
+    CompetingShovelConsumers,
     EdgeKind,
     EndpointAuthority,
     ExchangeNode,
+    FanoutExchangeBindings,
+    FanoutQueue,
     NodeId,
     NodeKind,
     QueueNode,
@@ -69,6 +72,78 @@ def _endpoint(
         routing_key=None,
         is_confirmed_local=is_confirmed_local,
     )
+
+
+class TestCompetingShovelConsumers:
+    def test_group_is_immutable_canonical_and_pickleable(self) -> None:
+        source = _endpoint("source", is_confirmed_local=True)
+        shovels = tuple(
+            ShovelNode(
+                id=NodeId(vhost="control", name=name, kind=NodeKind.SHOVEL),
+                source=source,
+                destination=_endpoint("destination"),
+            )
+            for name in ("z", "a")
+        )
+        queue = NodeId(vhost="source", name="queue", kind=NodeKind.QUEUE)
+
+        group = CompetingShovelConsumers(queue=queue, shovels=shovels)
+
+        assert group.shovels == shovels[::-1]
+        assert pickle.loads(pickle.dumps(group)) == group
+        assert hash(group) == hash(CompetingShovelConsumers(queue=queue, shovels=shovels[::-1]))
+        with pytest.raises(FrozenInstanceError):
+            setattr(group, "queue", queue)  # noqa: B010
+
+    @pytest.mark.parametrize(
+        "invalid",
+        [
+            "queue-kind",
+            "queue-type",
+            "empty",
+            "single",
+            "mutable",
+            "member",
+            "duplicate",
+            "source",
+            "unconfirmed",
+            "cluster",
+        ],
+    )
+    def test_rejects_inconsistent_or_mutable_groups(self, invalid: str) -> None:
+        source = _endpoint("source", is_confirmed_local=True)
+        first = ShovelNode(
+            id=NodeId(vhost="control", name="first", kind=NodeKind.SHOVEL),
+            source=source,
+            destination=_endpoint("destination"),
+        )
+        second = replace(first, id=replace(first.id, name="second"))
+        queue = NodeId(vhost="source", name="queue", kind=NodeKind.QUEUE)
+        shovels: tuple[ShovelNode, ...] = (first, second)
+        match invalid:
+            case "queue-kind":
+                queue = replace(queue, kind=NodeKind.EXCHANGE)
+            case "queue-type":
+                queue = "queue"  # type: ignore[assignment]
+            case "empty":
+                shovels = ()
+            case "single":
+                shovels = (first,)
+            case "mutable":
+                shovels = [first, second]  # type: ignore[assignment]
+            case "member":
+                shovels = (first, "second")  # type: ignore[assignment]
+            case "duplicate":
+                shovels = (first, first)
+            case "source":
+                shovels = (first, replace(second, source=replace(source, vhost="other")))
+            case "unconfirmed":
+                shovels = (first, replace(second, source=replace(source, is_confirmed_local=False)))
+            case "cluster":
+                shovels = (first, replace(second, id=replace(second.id, cluster_id="other")))
+
+        with pytest.raises(TopologyValidationError, match="CompetingShovelConsumers"):
+            CompetingShovelConsumers(queue=queue, shovels=shovels)
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +230,21 @@ class TestExchangeNode:
 
 
 class TestQueueNode:
+    def test_quorum_replication_factor_is_optional_and_pickleable(self) -> None:
+        node = replace(_queue("v", "q", "quorum"), replication_factor=3)
+        assert pickle.loads(pickle.dumps(node)) == node
+        assert _queue("v", "q", "quorum").replication_factor is None
+
+    @pytest.mark.parametrize("factor", [0, -1, True, 3.0, "3"])
+    def test_invalid_replication_factor_is_rejected(self, factor: object) -> None:
+        with pytest.raises(TopologyValidationError, match="replication_factor"):
+            replace(_queue("v", "q", "quorum"), replication_factor=factor)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("queue_type", ["classic", "stream", "plugin"])
+    def test_replication_factor_requires_quorum(self, queue_type: str) -> None:
+        with pytest.raises(TopologyValidationError, match="requires a quorum"):
+            replace(_queue("v", "q", queue_type), replication_factor=3)
+
     def test_valid_construction(self) -> None:
         node = _queue("v", "q1", queue_type="quorum")
         assert node.queue_type == "quorum"
@@ -162,6 +252,54 @@ class TestQueueNode:
     def test_rejects_mismatched_kind(self) -> None:
         with pytest.raises(TopologyValidationError, match="QUEUE"):
             QueueNode(id=NodeId(vhost="v", name="x", kind=NodeKind.EXCHANGE), queue_type="classic", durable=True)
+
+
+class TestFanoutValues:
+    def test_results_are_canonical_immutable_and_pickleable(self) -> None:
+        exchange = _exchange("v", "events", "fanout")
+        queues = tuple(FanoutQueue(id=_queue("v", name).id) for name in ("z", "a"))
+        result = FanoutExchangeBindings(exchange=exchange, queues=queues)
+        assert result.queues == queues[::-1]
+        assert pickle.loads(pickle.dumps(result)) == result
+        assert hash(result) == hash(FanoutExchangeBindings(exchange=exchange, queues=queues[::-1]))
+        with pytest.raises(FrozenInstanceError):
+            setattr(result, "queues", ())  # noqa: B010
+        with pytest.raises(FrozenInstanceError):
+            setattr(queues[0], "replication_factor", 3)  # noqa: B010
+
+    @pytest.mark.parametrize("invalid", ["exchange", "mutable", "target", "duplicate", "vhost", "cluster"])
+    def test_invalid_exchange_groups_are_rejected(self, invalid: str) -> None:
+        exchange = _exchange("v", "events", "fanout")
+        queue = FanoutQueue(id=_queue("v", "q").id)
+        queues = (queue,)
+        match invalid:
+            case "exchange":
+                exchange = replace(exchange, exchange_type="direct")
+            case "mutable":
+                queues = [queue]  # type: ignore[assignment]
+            case "target":
+                queues = ("queue",)  # type: ignore[assignment]
+            case "duplicate":
+                queues = (queue, queue)  # type: ignore[assignment]
+            case "vhost":
+                queues = (replace(queue, id=replace(queue.id, vhost="other")),)
+            case "cluster":
+                queues = (replace(queue, id=replace(queue.id, cluster_id="other")),)
+        with pytest.raises(TopologyValidationError, match="FanoutExchangeBindings"):
+            FanoutExchangeBindings(exchange=exchange, queues=queues)
+
+    @pytest.mark.parametrize("factor", [0, -1, True, 2.5, "3"])
+    def test_invalid_target_replication_is_rejected(self, factor: object) -> None:
+        with pytest.raises(TopologyValidationError, match="replication_factor"):
+            FanoutQueue(id=_queue("v", "q").id, queue_type="quorum", replication_factor=factor)  # type: ignore[arg-type]
+
+    def test_target_identity_type_and_replication_must_be_consistent(self) -> None:
+        with pytest.raises(TopologyValidationError, match="queue NodeId"):
+            FanoutQueue(id=_exchange("v", "e").id)
+        with pytest.raises(TopologyValidationError, match="queue_type"):
+            FanoutQueue(id=_queue("v", "q").id, queue_type=3)  # type: ignore[arg-type]
+        with pytest.raises(TopologyValidationError, match="requires a quorum"):
+            FanoutQueue(id=_queue("v", "q").id, queue_type=None, replication_factor=3)
 
 
 class TestEndpointAuthority:

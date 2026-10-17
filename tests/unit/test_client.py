@@ -5,13 +5,13 @@ from __future__ import annotations
 import base64
 from unittest.mock import patch
 
-import httpx
+import httpx2
 import pytest
 
 from rabbitmq_management_sdk import Config, MalformedResponseError, RabbitMQClient, RabbitMQVersion, TransportError
 from rabbitmq_management_sdk.exceptions import ConnectionError
 from rabbitmq_management_sdk.http_adapter.base import HttpResponse
-from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
 
 pytestmark = pytest.mark.unit
 
@@ -118,10 +118,10 @@ def test_basic_auth_sends_utf8_credentials_including_empty_password(username: st
 
 
 def test_cached_manager_raises_sdk_error_after_client_closes() -> None:
-    adapter = HttpxAdapter(
+    adapter = Httpx2Adapter(
         host="localhost",
         port=15672,
-        transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"rabbitmq_version": "4.3.4"})),
+        transport=httpx2.MockTransport(lambda request: httpx2.Response(200, json={"rabbitmq_version": "4.3.4"})),
     )
     with (
         patch("rabbitmq_management_sdk.client.rabbitmq_client.factory.create_adapter", return_value=adapter),

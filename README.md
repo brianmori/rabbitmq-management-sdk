@@ -270,6 +270,7 @@ auditor = ClusterAuditor(
 )
 
 report = auditor.audit(max_cycles=100)
+fanout_groups = auditor.fanout_exchange_bindings()
 for cycle in report.message_loop_candidates.cycles:
     print("Possible message loop:", cycle)
 
@@ -339,6 +340,15 @@ client = RabbitMQClient(
 )
 ```
 
+The HTTP backend is HTTPX2. The concrete adapter is
+`rabbitmq_management_sdk.http_adapter.httpx2.Httpx2Adapter`; custom transports
+use HTTPX2 types such as `httpx2.MockTransport`. HTTP client logging uses
+`httpx2` and `httpcore2.*`.
+
+SDK TLS configuration continues to build an explicit `ssl.SSLContext` for CA
+verification and client certificates. HTTPX2's system trust store default applies
+when using its own `verify=True` behavior, rather than an explicit context.
+
 ## Error handling
 
 Use `RabbitMQError` to catch HTTP request, transport, response-parsing,
@@ -346,6 +356,11 @@ topology-loading, and topology-analysis failures. You can narrow it to
 specific HTTP outcomes when needed. Validation performed while you directly
 construct a Pydantic request or configuration model uses
 `pydantic.ValidationError`.
+
+TLS certificate-loading failures during client initialization raise
+`TransportError`, preserving the original SSL or file I/O exception as
+`__cause__`. This includes invalid PEM files and certificate files that become
+unavailable after configuration validation.
 
 ```python
 from rabbitmq_management_sdk import ConflictError, NotFoundError, RabbitMQError
@@ -418,7 +433,7 @@ just audit               # pip-audit dependency vulnerability scan
 | Marker | Location | Needs a broker? |
 |---|---|---|
 | `unit` | `tests/unit/` | no |
-| `integration` | `tests/integration/` | no (uses `httpx.MockTransport`) |
+| `integration` | `tests/integration/` | no (uses `httpx2.MockTransport`) |
 | `live` | `tests/live/` | yes |
 
 The Just recipes start disposable brokers and configure their test credentials

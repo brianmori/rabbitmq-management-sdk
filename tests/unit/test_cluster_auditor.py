@@ -1,10 +1,14 @@
 """Tests for the public ClusterAuditor facade and aggregate report."""
 
+import json
+import pickle
 import sys
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
+from tests.shared.parser_fixtures import _exchange, _observed_queue, _queue, _response, _shovel_param, _vhost
 
 from rabbitmq_management_sdk import (
     ClusterAuditor,
@@ -137,6 +141,132 @@ def test_audit_returns_all_findings_from_the_public_facade() -> None:
     assert report.shovels_with_unconfirmed_endpoints == ()
     assert report.shovels_with_unresolved_vhost == ()
     assert report.dangling_edges == ()
+    assert report.competing_shovel_consumers == ()
+    assert report.fanout_exchange_bindings == auditor.fanout_exchange_bindings()
+    assert report.fanout_exchange_bindings[0].exchange.id.name == "discard"
+    assert report.fanout_exchange_bindings[0].queues == ()
+
+
+def test_fanout_replication_is_included_in_public_audit_and_graph_transfer() -> None:
+    definitions = _response(
+        vhosts=[_vhost("v")],
+        queues=[_queue("q", "v", **{"x-queue-type": "quorum"})],
+        exchanges=[_exchange("events", "v", "fanout")],
+        bindings=[
+            {
+                "vhost": "v",
+                "source": "events",
+                "destination": "q",
+                "destination_type": "queue",
+                "routing_key": "",
+                "arguments": {},
+            }
+        ],
+    )
+    observation = _observed_queue("q", "v", members=["a", "b", "c"])
+    auditor = ClusterAuditor(definitions, queues=[observation], exchanges=[])
+
+    (group,) = auditor.fanout_exchange_bindings()
+
+    assert group.queues[0].replication_factor == 3
+    assert group.queues[0].id.vhost == "v"
+    assert auditor.audit().fanout_exchange_bindings == (group,)
+    topology = pickle.loads(pickle.dumps(auditor.topology))
+    assert ClusterAuditor.from_topology(topology).fanout_exchange_bindings() == (group,)
+    assert observation.members is not None
+    observation.members.clear()
+    assert auditor.fanout_exchange_bindings() == (group,)
+    assert ClusterAuditor(definitions).fanout_exchange_bindings()[0].queues[0].replication_factor is None
+
+
+@pytest.mark.parametrize(
+    "second_source",
+    [
+        {"src-protocol": "local", "src-uri": "amqp:///source", "src-queue": "shared"},
+        {"src-uri": "amqp:///source", "src-queue": "shared"},
+        {"src-uri": ["amqp://broker-a/source", "amqp://broker-b/source"], "src-queue": "shared"},
+        {
+            "src-protocol": "amqp10",
+            "src-uri": "amqp://broker-b?hostname=vhost:source",
+            "src-address": "/queues/shared",
+        },
+    ],
+)
+def test_competing_shovel_consumers_are_included_in_the_public_audit(second_source: dict[str, object]) -> None:
+    definitions = _response(
+        vhosts=[_vhost("source")],
+        queues=[_queue("shared", "source")],
+        parameters=[
+            _shovel_param(
+                name,
+                "source",
+                **source,
+                **{"dest-uri": "amqp://remote/destination", "dest-queue": "out"},
+            )
+            for name, source in (
+                ("first", {"src-uri": "amqp://broker-a/source", "src-queue": "shared"}),
+                ("second", second_source),
+            )
+        ],
+    )
+    auditor = ClusterAuditor(definitions, in_cluster_amqp_hosts={"broker-a", "broker-b"})
+
+    (group,) = auditor.competing_shovel_consumers()
+
+    assert group.queue.vhost == "source"
+    assert group.queue.name == "shared"
+    assert [shovel.id.name for shovel in group.shovels] == ["first", "second"]
+    assert auditor.audit().competing_shovel_consumers == (group,)
+    assert ClusterAuditor.from_topology(auditor.topology).competing_shovel_consumers() == (group,)
+
+
+def test_unconfirmed_failover_host_prevents_a_competing_consumer_finding() -> None:
+    definitions = _response(
+        parameters=[
+            _shovel_param(
+                name,
+                "source",
+                **{
+                    "src-uri": uri,
+                    "src-queue": "shared",
+                    "dest-uri": "amqp:///destination",
+                    "dest-queue": "out",
+                },
+            )
+            for name, uri in (
+                ("local", "amqp:///source"),
+                ("mixed-failover", ["amqp://broker-a/source", "amqp://unconfirmed/source"]),
+            )
+        ]
+    )
+
+    auditor = ClusterAuditor(definitions, in_cluster_amqp_hosts={"broker-a"})
+
+    assert auditor.competing_shovel_consumers() == ()
+
+
+def test_competing_shovels_to_an_undeclared_queue_also_retain_dangling_edges() -> None:
+    definitions = _response(
+        parameters=[
+            _shovel_param(
+                name,
+                "source",
+                **{
+                    "src-protocol": "local",
+                    "src-uri": "amqp:///source",
+                    "src-queue": "shared",
+                    "dest-uri": "amqp://remote/destination",
+                },
+            )
+            for name in ("one", "two")
+        ]
+    )
+
+    report = ClusterAuditor(definitions).audit()
+
+    (group,) = report.competing_shovel_consumers
+    assert len(report.dangling_edges) == 2
+    assert all(edge.source == group.queue for edge in report.dangling_edges)
 
 
 def test_audit_reuses_a_complete_structural_cycle_enumeration() -> None:
@@ -270,7 +400,7 @@ def test_from_files_wraps_invalid_definitions_json_in_a_topology_load_error(tmp_
 @pytest.mark.parametrize("resource", ["definitions", "queues", "exchanges"])
 def test_from_files_wraps_oversized_json_integers(tmp_path: Path, resource: str) -> None:
     paths = {name: tmp_path / f"{name}.json" for name in ("definitions", "queues", "exchanges")}
-    paths["definitions"].write_text("{}", encoding="utf-8")
+    paths["definitions"].write_text('{"vhosts": []}', encoding="utf-8")
     paths["queues"].write_text("[]", encoding="utf-8")
     paths["exchanges"].write_text("[]", encoding="utf-8")
     limit = sys.int_info.str_digits_check_threshold
@@ -314,6 +444,76 @@ def test_from_files_wraps_definitions_schema_errors_in_a_topology_definitions_er
 
     assert isinstance(error.value, RabbitMQError)
     assert error.value.__cause__ is not None
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param({}, id="empty-object"),
+        pytest.param({"unrelated": True}, id="unrecognized-object"),
+        pytest.param({"error": "not_authorised", "reason": "fixture"}, id="error-response"),
+        pytest.param({"error": "not_authorised", "queues": []}, id="error-with-definitions-section"),
+        pytest.param(
+            {
+                "rabbitmq_definition_format": "single_virtual_host",
+                "original_vhost_name": "/",
+                "queues": [],
+                "exchanges": [],
+                "bindings": [],
+            },
+            id="empty-single-vhost-export",
+        ),
+        pytest.param({"rabbitmq_definition_format": "single_virtual_host", "queues": []}, id="single-vhost-format"),
+        pytest.param({"original_vhost_name": "/", "queues": []}, id="single-vhost-without-format"),
+        pytest.param({"rabbitmq_definition_format": "future_format", "queues": []}, id="incompatible-format"),
+        pytest.param([], id="array"),
+        pytest.param(None, id="null"),
+    ],
+)
+def test_from_files_rejects_invalid_definitions_envelopes(tmp_path: Path, payload: object) -> None:
+    dump_path = tmp_path / "invalid-envelope.json"
+    dump_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(TopologyDefinitionsError, match="invalid schema") as error:
+        ClusterAuditor.from_files(dump_path)
+
+    assert isinstance(error.value, RabbitMQError)
+    assert isinstance(error.value.__cause__, ValidationError)
+
+
+def test_from_files_accepts_a_valid_empty_cluster_export(tmp_path: Path) -> None:
+    dump_path = tmp_path / "empty-cluster.json"
+    dump_path.write_text(
+        json.dumps(
+            {
+                "rabbitmq_definition_format": "cluster",
+                "vhosts": [],
+                "queues": [],
+                "exchanges": [],
+                "bindings": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    auditor = ClusterAuditor.from_files(dump_path)
+
+    empty_topology = ClusterTopology(exchanges=frozenset(), queues=frozenset(), shovels=frozenset(), edges=frozenset())
+    assert auditor.topology == empty_topology
+    assert auditor.audit() == ClusterAuditor.from_topology(empty_topology).audit()
+
+
+def test_from_files_preserves_legacy_definitions_without_version_or_format_metadata(tmp_path: Path) -> None:
+    data = _definitions().model_dump(by_alias=True, exclude_unset=True)
+    dump_path = tmp_path / "legacy-definitions.json"
+    dump_path.write_text(json.dumps(data), encoding="utf-8")
+
+    auditor = ClusterAuditor.from_files(dump_path)
+
+    assert "rabbitmq_definition_format" not in data
+    assert "rabbitmq_version" not in data
+    assert auditor.topology == ClusterAuditor(_definitions()).topology
+    assert len(auditor.audit().message_loop_candidates.cycles) == 1
 
 
 def test_in_memory_resource_observations_must_be_an_all_or_nothing_pair() -> None:

@@ -2,11 +2,11 @@
 
 import json
 
-import httpx
+import httpx2
 import pytest
 
 from rabbitmq_management_sdk import ExchangeRequest, ExchangeResponse
-from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
 from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManager
 
 pytestmark = pytest.mark.integration
@@ -17,12 +17,12 @@ pytestmark = pytest.mark.integration
 def test_exchange_declaration_sends_underscored_auto_delete(key: str, auto_delete: bool) -> None:
     sent: list[dict[str, object]] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         sent.append(json.loads(request.content))
-        return httpx.Response(204)
+        return httpx2.Response(204)
 
     declaration = ExchangeRequest.model_validate({key: auto_delete})
-    with HttpxAdapter("localhost", port=15672, transport=httpx.MockTransport(handler)) as adapter:
+    with Httpx2Adapter("localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         ExchangeManager(adapter, "%2F", False).create("exchange", declaration)
 
     assert sent[0]["auto_delete"] is auto_delete

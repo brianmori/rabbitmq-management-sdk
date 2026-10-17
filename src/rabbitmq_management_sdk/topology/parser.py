@@ -25,6 +25,7 @@ from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import (
     ClusterExportQueue,
 )
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
+from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QueueResponse
 from rabbitmq_management_sdk.topology.models import (
     ClusterTopology,
     EdgeKind,
@@ -81,12 +82,21 @@ class _TopologyBuilder:
     cluster_label: str | None
     user_policy_selections: UserPolicySelections
     observed_exchanges: tuple[ExchangeResponse, ...]
+    observed_queues: tuple[QueueResponse, ...]
     cluster_id: str | None = field(init=False)
     default_queue_types: Mapping[str, str | None] = field(init=False, repr=False)
+    queues_by_id: Mapping[NodeId, QueueResponse] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Derive values shared by multiple construction phases."""
         object.__setattr__(self, "cluster_id", self.response.internal_cluster_id)
+        queues_by_id: dict[NodeId, QueueResponse] = {}
+        for queue in self.observed_queues:
+            queue_id = self._node_id(vhost=queue.vhost, name=queue.name, kind=NodeKind.QUEUE)
+            if queue_id in queues_by_id:
+                raise TopologyParseError(f"Duplicate queue observations for {queue_id}")
+            queues_by_id[queue_id] = queue
+        object.__setattr__(self, "queues_by_id", MappingProxyType(queues_by_id))
         object.__setattr__(
             self,
             "default_queue_types",
@@ -145,7 +155,22 @@ class _TopologyBuilder:
             id=self._node_id(vhost=queue.vhost, name=queue.name, kind=NodeKind.QUEUE),
             queue_type=queue_type,
             durable=queue.durable,
+            replication_factor=self._queue_replication_factor(queue, queue_type),
         )
+
+    def _queue_replication_factor(self, queue: ClusterExportQueue, queue_type: str) -> int | None:
+        """Read current quorum membership without inferring it from defaults."""
+        queue_id = self._node_id(vhost=queue.vhost, name=queue.name, kind=NodeKind.QUEUE)
+        observed = self.queues_by_id.get(queue_id)
+        if observed is None:
+            return None
+        if observed.type != queue_type:
+            raise TopologyParseError(f"Queue {queue_id} has inconsistent declared and observed queue types")
+        if queue_type != "quorum" or not observed.members:
+            return None
+        if any(not member for member in observed.members) or len(set(observed.members)) != len(observed.members):
+            raise TopologyParseError(f"Queue {queue_id} has invalid quorum membership")
+        return len(observed.members)
 
     def _resolved_queue_type(self, queue: ClusterExportQueue) -> str | None:
         """Resolve a queue's explicit type or its virtual-host default."""
@@ -339,6 +364,7 @@ def parse_cluster_topology(
     cluster_label: str | None = None,
     user_policy_selections: UserPolicySelections | None = None,
     observed_exchanges: Collection[ExchangeResponse] = (),
+    observed_queues: Collection[QueueResponse] = (),
 ) -> ClusterTopology:
     """Build a configuration graph for the cluster represented by ``response``.
 
@@ -384,6 +410,9 @@ def parse_cluster_topology(
             resource.
         observed_exchanges: Management API exchange observations used to
             supplement referenced exchanges.
+        observed_queues: Management API queue observations used to retain
+            quorum membership counts on declared queues. Missing or empty
+            membership means unknown; initial group sizes are not used.
 
     Returns:
         The parsed immutable configuration graph.
@@ -401,6 +430,7 @@ def parse_cluster_topology(
                 user_policy_selections if user_policy_selections is not None else _EMPTY_USER_POLICY_SELECTIONS
             ),
             observed_exchanges=tuple(observed_exchanges),
+            observed_queues=tuple(observed_queues),
         ).build()
     except TopologyError:
         raise

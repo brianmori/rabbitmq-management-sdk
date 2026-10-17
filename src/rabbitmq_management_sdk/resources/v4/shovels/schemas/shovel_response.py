@@ -107,7 +107,8 @@ class ShovelResponse(RabbitMQBase):
     body — so we parse it the same way ShovelRequest is constructed:
     common fields at the top level, protocol-specific topology nested
     into src_arguments / dest_arguments via a mode="before" validator
-    that splits the flat dict before Pydantic touches it.
+    that splits the flat dict before Pydantic touches it. Already nested
+    endpoint values are preserved when validating serialized responses.
 
     Mirrors QueueResponse containing QueueResponseArguments.
     """
@@ -134,6 +135,8 @@ class ShovelResponse(RabbitMQBase):
 
         This is the parsing-boundary reshape — mode="before" is correct
         here because we are reshaping raw input, not validating domain rules.
+        Existing nested endpoints pass through unchanged for validation and
+        serialization round trips.
         """
         if not isinstance(data, dict):
             return data
@@ -175,7 +178,9 @@ class ShovelResponse(RabbitMQBase):
 
         remainder = {k: v for k, v in data.items() if k not in src_keys and k not in dest_keys}
 
-        return remainder | {"src_arguments": src_arguments, "dest_arguments": dest_arguments}
+        remainder.setdefault("src_arguments", src_arguments)
+        remainder.setdefault("dest_arguments", dest_arguments)
+        return remainder
 
 
 class ShovelParameterResponse(RabbitMQBase):

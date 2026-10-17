@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-import httpx
+import httpx2
 import pytest
 
 from rabbitmq_management_sdk import (
@@ -16,7 +16,7 @@ from rabbitmq_management_sdk import (
     VhostLimitRequest,
     VhostRequest,
 )
-from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
 from rabbitmq_management_sdk.resources.v4.admin.services import AdminManager
 from rabbitmq_management_sdk.resources.v4.bindings.services import BindingManager
 from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManager
@@ -38,10 +38,10 @@ _NAMES = [
 def test_queue_crud_encodes_each_raw_name_once(name: str, encoded: str) -> None:
     seen: list[tuple[str, bytes]] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen.append((request.method, request.url.raw_path))
         if request.method == "GET":
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 json={
                     "name": name,
@@ -55,9 +55,9 @@ def test_queue_crud_encodes_each_raw_name_once(name: str, encoded: str) -> None:
                     "arguments": {"x-queue-type": "classic"},
                 },
             )
-        return httpx.Response(204)
+        return httpx2.Response(204)
 
-    with HttpxAdapter("localhost", port=15672, transport=httpx.MockTransport(handler)) as adapter:
+    with Httpx2Adapter("localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         manager = QueueManager(adapter, "%2F", False)
         manager.create(name, QueueRequest(arguments=ClassicQueueRequest()))
         assert manager.get(name).name == name
@@ -71,10 +71,10 @@ def test_queue_crud_encodes_each_raw_name_once(name: str, encoded: str) -> None:
 def test_exchange_crud_encodes_each_raw_name_once(name: str, encoded: str) -> None:
     seen: list[tuple[str, bytes]] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen.append((request.method, request.url.raw_path))
         if request.method == "GET":
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 json={
                     "name": name,
@@ -86,9 +86,9 @@ def test_exchange_crud_encodes_each_raw_name_once(name: str, encoded: str) -> No
                     "arguments": {},
                 },
             )
-        return httpx.Response(204)
+        return httpx2.Response(204)
 
-    with HttpxAdapter("localhost", port=15672, transport=httpx.MockTransport(handler)) as adapter:
+    with Httpx2Adapter("localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         manager = ExchangeManager(adapter, "%2F", False)
         manager.create(name, ExchangeRequest())
         assert manager.get(name).name == name
@@ -111,11 +111,11 @@ def test_policy_and_shovel_deletion_encode_resource_names(
 ) -> None:
     seen: list[bytes] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen.append(request.url.raw_path)
-        return httpx.Response(204)
+        return httpx2.Response(204)
 
-    with HttpxAdapter("localhost", port=15672, transport=httpx.MockTransport(handler)) as adapter:
+    with Httpx2Adapter("localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         manager_type(adapter, "%2F", False).delete(name)
 
     assert seen == [f"/api/{resource}/%2F/{encoded}".encode()]
@@ -125,12 +125,12 @@ def test_policy_and_shovel_deletion_encode_resource_names(
 def test_admin_methods_encode_raw_vhosts(vhost: str, encoded: str) -> None:
     seen: list[tuple[str, bytes]] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen.append((request.method, request.url.raw_path))
         if request.method != "GET":
-            return httpx.Response(204)
+            return httpx2.Response(204)
         if request.url.raw_path.startswith(b"/api/definitions/"):
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 json={
                     "rabbit_version": "4.3.4",
@@ -145,10 +145,10 @@ def test_admin_methods_encode_raw_vhosts(vhost: str, encoded: str) -> None:
                 },
             )
         if request.url.raw_path.startswith(b"/api/vhost-limits/"):
-            return httpx.Response(200, json=[{"vhost": vhost, "value": {"max-connections": 5}}])
-        return httpx.Response(200, json={"name": vhost, "tracing": False})
+            return httpx2.Response(200, json=[{"vhost": vhost, "value": {"max-connections": 5}}])
+        return httpx2.Response(200, json={"name": vhost, "tracing": False})
 
-    with HttpxAdapter("localhost", port=15672, transport=httpx.MockTransport(handler)) as adapter:
+    with Httpx2Adapter("localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         manager = AdminManager(adapter, False)
         manager.create_vhost(vhost, VhostRequest())
         assert manager.get_vhost(vhost).name == vhost
@@ -197,18 +197,18 @@ def test_binding_keys_and_vhost_match_broker_reads_and_encode_once(
         "properties_key": key,
     }
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen.append((request.method, request.url.raw_path))
         if request.method == "POST":
             assert json.loads(request.content)["routing_key"] == key
-            return httpx.Response(
+            return httpx2.Response(
                 201, headers={"Location": f"http://localhost{base_path}/{encoded}?ignored=1#fragment"}
             )
         if request.method == "GET":
-            return httpx.Response(200, json=[wire_binding])
-        return httpx.Response(204)
+            return httpx2.Response(200, json=[wire_binding])
+        return httpx2.Response(204)
 
-    with HttpxAdapter("localhost", port=15672, transport=httpx.MockTransport(handler)) as adapter:
+    with Httpx2Adapter("localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         manager = BindingManager(adapter, "v%2Fa%25", False)
         if destination_type == "queue":
             created = manager.create_exchange_to_queue("source/name", "target?#%", BindingRequest(routing_key=key))

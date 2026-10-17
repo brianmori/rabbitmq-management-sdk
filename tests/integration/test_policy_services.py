@@ -6,10 +6,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import pytest
 
-from rabbitmq_management_sdk.http_adapter.httpx import HttpxAdapter
+from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
 from rabbitmq_management_sdk.resources.v4.policies.schemas import (
     OperatorPolicyApplyTo,
     OperatorPolicyRequest,
@@ -27,8 +27,8 @@ from rabbitmq_management_sdk.resources.v4.policies.services import (
 _CAPTURE_PATH = Path(__file__).parent / "rmq-4.2" / "full-export-definitions.json"
 
 
-def _adapter(handler: httpx.MockTransport) -> HttpxAdapter:
-    return HttpxAdapter(host="localhost", port=15672, transport=handler)
+def _adapter(handler: httpx2.MockTransport) -> Httpx2Adapter:
+    return Httpx2Adapter(host="localhost", port=15672, transport=handler)
 
 
 @pytest.mark.integration
@@ -45,17 +45,17 @@ def test_regular_policy_manager_crud_and_listing() -> None:
     }
     calls: list[tuple[str, str, Any]] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         body = json.loads(request.content) if request.content else None
         calls.append((request.method, request.url.raw_path.decode(), body))
         if request.method == "GET" and request.url.raw_path.endswith(encoded_policy_name.encode()):
-            return httpx.Response(200, json=wire_policy)
+            return httpx2.Response(200, json=wire_policy)
         if request.method == "GET":
-            return httpx.Response(200, json=[wire_policy])
-        return httpx.Response(204)
+            return httpx2.Response(200, json=[wire_policy])
+        return httpx2.Response(204)
 
     manager = PolicyManager(
-        http_client=_adapter(httpx.MockTransport(handler)),
+        http_client=_adapter(httpx2.MockTransport(handler)),
         vhost="%2F",
         strict=False,
     )
@@ -104,17 +104,17 @@ def test_operator_policy_manager_uses_operator_endpoints() -> None:
     }
     calls: list[tuple[str, str, Any]] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         body = json.loads(request.content) if request.content else None
         calls.append((request.method, request.url.raw_path.decode(), body))
         if request.method == "GET" and request.url.raw_path.endswith(encoded_policy_name.encode()):
-            return httpx.Response(200, json=wire_policy)
+            return httpx2.Response(200, json=wire_policy)
         if request.method == "GET":
-            return httpx.Response(200, json=[wire_policy])
-        return httpx.Response(204)
+            return httpx2.Response(200, json=[wire_policy])
+        return httpx2.Response(204)
 
     manager = OperatorPolicyManager(
-        http_client=_adapter(httpx.MockTransport(handler)),
+        http_client=_adapter(httpx2.MockTransport(handler)),
         vhost="policy",
         strict=True,
     )

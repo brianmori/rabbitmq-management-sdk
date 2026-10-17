@@ -4,6 +4,7 @@ from types import MappingProxyType
 from typing import Any
 
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
+from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QueueResponse
 from rabbitmq_management_sdk.topology.models import NodeId, NodeKind
 from rabbitmq_management_sdk.topology.policy_routes import UserPolicySelections
 
@@ -39,6 +40,23 @@ def _vhost(name: str, default_queue_type: str | None = "classic") -> dict[str, o
 def _queue(name: str, vhost: str, **arguments: object) -> dict[str, object]:
     """Build a queue definition."""
     return {"name": name, "vhost": vhost, "durable": True, "auto_delete": False, "arguments": arguments}
+
+
+def _observed_queue(name: str, vhost: str, **overrides: object) -> QueueResponse:
+    """Build a quorum queue observation, optionally overriding wire fields."""
+    data: dict[str, object] = {
+        "name": name,
+        "vhost": vhost,
+        "durable": True,
+        "auto_delete": False,
+        "exclusive": False,
+        "type": "quorum",
+        "node": "rabbit@a",
+        "state": "running",
+        "arguments": {"x-queue-type": "quorum"},
+    }
+    data.update(overrides)
+    return QueueResponse.model_validate(data)
 
 
 def _exchange(name: str, vhost: str, type_: str = "direct", **arguments: object) -> dict[str, object]:

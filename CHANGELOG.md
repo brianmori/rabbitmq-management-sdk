@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   connection cleanup, including cleanup after failed version discovery.
 
 ### Changed
+- Replaced HTTPX with HTTPX2 as the HTTP backend. The concrete adapter is now
+  `http_adapter.httpx2.Httpx2Adapter`, and custom transports use HTTPX2 types
+  such as `httpx2.MockTransport`. HTTP client loggers are now named `httpx2` and
+  `httpcore2.*`, and the default User-Agent is `python-httpx2/<version>`.
+  Explicit SDK CA and mutual TLS configuration continues to use the supplied
+  SSL context.
 - Binding creation returns raw virtual-host names and `properties_key` values,
   matching binding-list responses. Pass names and binding keys without URL
   pre-encoding; managers encode individual path segments.
@@ -21,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   advisories in AnyIO, IDNA, msgpack, pip, and urllib3.
 
 ### Fixed
+- TLS certificate-loading failures during client initialization raise
+  `TransportError`, preserving the underlying SSL or file I/O exception.
+- Shovel response serialization round trips preserve nested endpoints and their
+  protocols with either alias setting.
+- Quorum queue requests and responses use `x-quorum-initial-group-size` for
+  `initial_cluster_size`, preserving the requested initial replication size.
 - Definitions exports accept the `all-with-x` and `any-with-x` headers binding
   modes, preserving their arguments and parallel topology edges.
 - Definitions parameters preserve component-specific JSON values, including
