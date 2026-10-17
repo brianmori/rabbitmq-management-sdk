@@ -1,13 +1,14 @@
 """Tests for the public ClusterAuditor facade and aggregate report."""
 
 import json
+import pickle
 import sys
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
-from tests.shared.parser_fixtures import _queue, _response, _shovel_param, _vhost
+from tests.shared.parser_fixtures import _exchange, _observed_queue, _queue, _response, _shovel_param, _vhost
 
 from rabbitmq_management_sdk import (
     ClusterAuditor,
@@ -141,6 +142,41 @@ def test_audit_returns_all_findings_from_the_public_facade() -> None:
     assert report.shovels_with_unresolved_vhost == ()
     assert report.dangling_edges == ()
     assert report.competing_shovel_consumers == ()
+    assert report.fanout_exchange_bindings == auditor.fanout_exchange_bindings()
+    assert report.fanout_exchange_bindings[0].exchange.id.name == "discard"
+    assert report.fanout_exchange_bindings[0].queues == ()
+
+
+def test_fanout_replication_is_included_in_public_audit_and_graph_transfer() -> None:
+    definitions = _response(
+        vhosts=[_vhost("v")],
+        queues=[_queue("q", "v", **{"x-queue-type": "quorum"})],
+        exchanges=[_exchange("events", "v", "fanout")],
+        bindings=[
+            {
+                "vhost": "v",
+                "source": "events",
+                "destination": "q",
+                "destination_type": "queue",
+                "routing_key": "",
+                "arguments": {},
+            }
+        ],
+    )
+    observation = _observed_queue("q", "v", members=["a", "b", "c"])
+    auditor = ClusterAuditor(definitions, queues=[observation], exchanges=[])
+
+    (group,) = auditor.fanout_exchange_bindings()
+
+    assert group.queues[0].replication_factor == 3
+    assert group.queues[0].id.vhost == "v"
+    assert auditor.audit().fanout_exchange_bindings == (group,)
+    topology = pickle.loads(pickle.dumps(auditor.topology))
+    assert ClusterAuditor.from_topology(topology).fanout_exchange_bindings() == (group,)
+    assert observation.members is not None
+    observation.members.clear()
+    assert auditor.fanout_exchange_bindings() == (group,)
+    assert ClusterAuditor(definitions).fanout_exchange_bindings()[0].queues[0].replication_factor is None
 
 
 @pytest.mark.parametrize(

@@ -270,6 +270,7 @@ auditor = ClusterAuditor(
 )
 
 report = auditor.audit(max_cycles=100)
+fanout_groups = auditor.fanout_exchange_bindings()
 for cycle in report.message_loop_candidates.cycles:
     print("Possible message loop:", cycle)
 

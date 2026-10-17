@@ -20,6 +20,8 @@ from rabbitmq_management_sdk.topology import (
     EdgeKind,
     EndpointAuthority,
     ExchangeNode,
+    FanoutExchangeBindings,
+    FanoutQueue,
     NodeId,
     NodeKind,
     QueueNode,
@@ -228,6 +230,21 @@ class TestExchangeNode:
 
 
 class TestQueueNode:
+    def test_quorum_replication_factor_is_optional_and_pickleable(self) -> None:
+        node = replace(_queue("v", "q", "quorum"), replication_factor=3)
+        assert pickle.loads(pickle.dumps(node)) == node
+        assert _queue("v", "q", "quorum").replication_factor is None
+
+    @pytest.mark.parametrize("factor", [0, -1, True, 3.0, "3"])
+    def test_invalid_replication_factor_is_rejected(self, factor: object) -> None:
+        with pytest.raises(TopologyValidationError, match="replication_factor"):
+            replace(_queue("v", "q", "quorum"), replication_factor=factor)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("queue_type", ["classic", "stream", "plugin"])
+    def test_replication_factor_requires_quorum(self, queue_type: str) -> None:
+        with pytest.raises(TopologyValidationError, match="requires a quorum"):
+            replace(_queue("v", "q", queue_type), replication_factor=3)
+
     def test_valid_construction(self) -> None:
         node = _queue("v", "q1", queue_type="quorum")
         assert node.queue_type == "quorum"
@@ -235,6 +252,54 @@ class TestQueueNode:
     def test_rejects_mismatched_kind(self) -> None:
         with pytest.raises(TopologyValidationError, match="QUEUE"):
             QueueNode(id=NodeId(vhost="v", name="x", kind=NodeKind.EXCHANGE), queue_type="classic", durable=True)
+
+
+class TestFanoutValues:
+    def test_results_are_canonical_immutable_and_pickleable(self) -> None:
+        exchange = _exchange("v", "events", "fanout")
+        queues = tuple(FanoutQueue(id=_queue("v", name).id) for name in ("z", "a"))
+        result = FanoutExchangeBindings(exchange=exchange, queues=queues)
+        assert result.queues == queues[::-1]
+        assert pickle.loads(pickle.dumps(result)) == result
+        assert hash(result) == hash(FanoutExchangeBindings(exchange=exchange, queues=queues[::-1]))
+        with pytest.raises(FrozenInstanceError):
+            setattr(result, "queues", ())  # noqa: B010
+        with pytest.raises(FrozenInstanceError):
+            setattr(queues[0], "replication_factor", 3)  # noqa: B010
+
+    @pytest.mark.parametrize("invalid", ["exchange", "mutable", "target", "duplicate", "vhost", "cluster"])
+    def test_invalid_exchange_groups_are_rejected(self, invalid: str) -> None:
+        exchange = _exchange("v", "events", "fanout")
+        queue = FanoutQueue(id=_queue("v", "q").id)
+        queues = (queue,)
+        match invalid:
+            case "exchange":
+                exchange = replace(exchange, exchange_type="direct")
+            case "mutable":
+                queues = [queue]  # type: ignore[assignment]
+            case "target":
+                queues = ("queue",)  # type: ignore[assignment]
+            case "duplicate":
+                queues = (queue, queue)  # type: ignore[assignment]
+            case "vhost":
+                queues = (replace(queue, id=replace(queue.id, vhost="other")),)
+            case "cluster":
+                queues = (replace(queue, id=replace(queue.id, cluster_id="other")),)
+        with pytest.raises(TopologyValidationError, match="FanoutExchangeBindings"):
+            FanoutExchangeBindings(exchange=exchange, queues=queues)
+
+    @pytest.mark.parametrize("factor", [0, -1, True, 2.5, "3"])
+    def test_invalid_target_replication_is_rejected(self, factor: object) -> None:
+        with pytest.raises(TopologyValidationError, match="replication_factor"):
+            FanoutQueue(id=_queue("v", "q").id, queue_type="quorum", replication_factor=factor)  # type: ignore[arg-type]
+
+    def test_target_identity_type_and_replication_must_be_consistent(self) -> None:
+        with pytest.raises(TopologyValidationError, match="queue NodeId"):
+            FanoutQueue(id=_exchange("v", "e").id)
+        with pytest.raises(TopologyValidationError, match="queue_type"):
+            FanoutQueue(id=_queue("v", "q").id, queue_type=3)  # type: ignore[arg-type]
+        with pytest.raises(TopologyValidationError, match="requires a quorum"):
+            FanoutQueue(id=_queue("v", "q").id, queue_type=None, replication_factor=3)
 
 
 class TestEndpointAuthority:

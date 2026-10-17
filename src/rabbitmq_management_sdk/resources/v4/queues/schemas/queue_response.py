@@ -120,6 +120,8 @@ class QueueResponse(RabbitMQBase):
     # -- Cluster placement (always present in v4) --
     node: str
     state: str
+    # Quorum membership, including the leader; optional in filtered captures.
+    members: list[str] | None = None
 
     # -- Arguments --
     arguments: QueueResponseArguments

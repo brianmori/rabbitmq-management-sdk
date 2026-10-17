@@ -12,6 +12,7 @@ from rabbitmq_management_sdk.topology.cycles import (
     CycleSearchResult,
     StronglyConnectedComponent,
 )
+from rabbitmq_management_sdk.topology.fanout import FanoutExchangeBindings, FanoutQueue
 from rabbitmq_management_sdk.topology.models import (
     ClusterTopology,
     EdgeKind,
@@ -42,6 +43,8 @@ __all__ = [
     "EdgeSortKey",
     "EndpointAuthority",
     "ExchangeNode",
+    "FanoutExchangeBindings",
+    "FanoutQueue",
     "NodeId",
     "NodeKind",
     "NodeSortKey",

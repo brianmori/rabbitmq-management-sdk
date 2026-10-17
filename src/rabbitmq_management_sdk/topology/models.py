@@ -152,11 +152,15 @@ class QueueNode:
         queue_type: Open string containing the queue implementation type, such
             as ``classic``, ``quorum``, or ``stream``.
         durable: Whether the queue survives broker restarts.
+        replication_factor: Captured quorum membership count, including the
+            leader. ``None`` means unknown or a non-quorum queue. This is not
+            the number of online members or a physical disk-write estimate.
     """
 
     id: NodeId
     queue_type: str
     durable: bool
+    replication_factor: int | None = None
 
     def __post_init__(self) -> None:
         """Validate queue attributes and node kind."""
@@ -165,6 +169,11 @@ class QueueNode:
         _require_instance(self.durable, bool, "QueueNode.durable")
         if self.id.kind != NodeKind.QUEUE:
             raise TopologyValidationError(f"QueueNode.id.kind must be NodeKind.QUEUE, got {self.id.kind!r}")
+        if self.replication_factor is not None:
+            if type(self.replication_factor) is not int or self.replication_factor < 1:
+                raise TopologyValidationError("QueueNode.replication_factor must be a positive int or None")
+            if self.queue_type != "quorum":
+                raise TopologyValidationError("QueueNode.replication_factor requires a quorum queue")
 
 
 @dataclass(frozen=True, slots=True)

@@ -24,6 +24,7 @@ from rabbitmq_management_sdk.topology.cycles import (
     find_structural_cycles,
     message_loop_candidates_from_complete_result,
 )
+from rabbitmq_management_sdk.topology.fanout import fanout_exchange_bindings
 from rabbitmq_management_sdk.topology.models import ClusterTopology
 from rabbitmq_management_sdk.topology.ordering import edge_sort_key
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
@@ -42,6 +43,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from rabbitmq_management_sdk.topology.cycles import StronglyConnectedComponent
+    from rabbitmq_management_sdk.topology.fanout import FanoutExchangeBindings
     from rabbitmq_management_sdk.topology.models import (
         ExchangeNode,
         QueueNode,
@@ -72,6 +74,7 @@ class TopologyAuditReport:
     shovels_with_unresolved_vhost: tuple[ShovelNode, ...]
     dangling_edges: tuple[TopologyEdge, ...]
     competing_shovel_consumers: tuple[CompetingShovelConsumers, ...] = ()
+    fanout_exchange_bindings: tuple[FanoutExchangeBindings, ...] = ()
 
 
 class ClusterAuditor:
@@ -87,7 +90,7 @@ class ClusterAuditor:
         definitions: Validated cluster-wide definitions export.
         queues: Queue observations from a complete broker snapshot. Supply
             this together with ``exchanges`` when policy-derived routing must
-            be resolved.
+            be resolved or captured quorum replication factors are needed.
         exchanges: Exchange observations from the same complete broker
             snapshot. They resolve broker-selected policies and referenced
             predeclared or system exchanges omitted by definitions exports.
@@ -115,6 +118,7 @@ class ClusterAuditor:
             in_cluster_amqp_hosts=in_cluster_amqp_hosts,
             cluster_label=cluster_label,
             observed_exchanges=exchanges if exchanges is not None else (),
+            observed_queues=queues if queues is not None else (),
             user_policy_selections=(
                 build_user_policy_selections(
                     queues=queues,
@@ -345,6 +349,18 @@ class ClusterAuditor:
         """Return shovels with an endpoint not confirmed as local."""
         return shovels_with_unconfirmed_endpoints(self._topology)
 
+    def fanout_exchange_bindings(self) -> tuple[FanoutExchangeBindings, ...]:
+        """Return fanout exchanges and their distinct, directly bound queues.
+
+        Results include exchanges without direct queue targets and preserve
+        dangling queue identities. Each target carries its queue type and,
+        when captured, its quorum membership count including the leader.
+        Unknown replication factors are ``None``. This is configuration
+        evidence for capacity review, not proof of a performance bottleneck
+        or an estimate of physical disk writes.
+        """
+        return fanout_exchange_bindings(self._topology)
+
     def dangling_edges(self) -> tuple[TopologyEdge, ...]:
         """Return declared routes whose source or target is absent from the export.
 
@@ -376,4 +392,5 @@ class ClusterAuditor:
             shovels_with_unresolved_vhost=self.shovels_with_unresolved_vhost(),
             dangling_edges=self.dangling_edges(),
             competing_shovel_consumers=self.competing_shovel_consumers(),
+            fanout_exchange_bindings=self.fanout_exchange_bindings(),
         )
