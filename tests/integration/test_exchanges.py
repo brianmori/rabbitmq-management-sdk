@@ -25,8 +25,9 @@ def test_exchange_declaration_sends_underscored_auto_delete(key: str, auto_delet
     with Httpx2Adapter("localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         ExchangeManager(adapter, "%2F", False).create("exchange", declaration)
 
-    assert sent[0]["auto_delete"] is auto_delete
-    assert "auto-delete" not in sent[0]
+    (payload,) = sent
+    assert payload["auto_delete"] is auto_delete
+    assert "auto-delete" not in payload
 
 
 @pytest.mark.parametrize("key", ["auto_delete", "auto-delete"])

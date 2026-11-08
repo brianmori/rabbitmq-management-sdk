@@ -1,0 +1,1901 @@
+{
+  "permissions": [
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "/",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "topology-demo.control",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "topology-demo.deadletter",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "topology-demo.diagnostics",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "topology-demo.fallback",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "topology-demo.loops",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "topology-demo.policies",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "topology-demo.region-a",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "topology-demo.region-b",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "topology-demo.region-c",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "topology-demo.routing",
+      "write": ".*"
+    }
+  ],
+  "rabbitmq_version": "4.3.6",
+  "product_name": "RabbitMQ",
+  "product_version": "4.3.6",
+  "rabbit_version": "4.3.6",
+  "exchanges": [
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "route.fanout",
+      "type": "fanout",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "argument.dlx",
+      "type": "fanout",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "binding.self",
+      "type": "fanout",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "route.headers",
+      "type": "headers",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "binding.c",
+      "type": "fanout",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "diag.blackhole",
+      "type": "direct",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {
+        "alternate-exchange": "mixed.b"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "mixed.a",
+      "type": "direct",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "compete.out",
+      "type": "fanout",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "shovel2.in",
+      "type": "fanout",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "shovel2.in",
+      "type": "fanout",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "amq.rabbitmq.log",
+      "type": "topic",
+      "vhost": "/"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "shovel3.in",
+      "type": "fanout",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "work.in",
+      "type": "direct",
+      "vhost": "topology-demo.deadletter"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "compete.in",
+      "type": "fanout",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "alias.out",
+      "type": "fanout",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "complex.work",
+      "type": "fanout",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "dead.a",
+      "type": "fanout",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "shovel3.in",
+      "type": "fanout",
+      "vhost": "topology-demo.region-c"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "uncertain.in",
+      "type": "fanout",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "pipeline.in",
+      "type": "topic",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {
+        "alternate-exchange": "dead-ae.fallback"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "dead-ae.entry",
+      "type": "direct",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "pipeline.in",
+      "type": "topic",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "poison.dlx",
+      "type": "fanout",
+      "vhost": "topology-demo.deadletter"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "argument.fallback",
+      "type": "fanout",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "dead.self",
+      "type": "fanout",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "policy.dlx",
+      "type": "fanout",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "route.direct",
+      "type": "direct",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {
+        "alternate-exchange": "argument.fallback"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "policy.override.exchange",
+      "type": "direct",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "dead.b",
+      "type": "fanout",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "alias.in",
+      "type": "fanout",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "uncertain.in",
+      "type": "fanout",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {
+        "alternate-exchange": "alternate.a"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "alternate.b",
+      "type": "direct",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "shovel3.in",
+      "type": "fanout",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "route.topic",
+      "type": "topic",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "policy.fallback",
+      "type": "fanout",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {
+        "alternate-exchange": "missing.alternate"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "diag.missing-ae",
+      "type": "direct",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "diag.entry",
+      "type": "direct",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "binding.b",
+      "type": "topic",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "policy.primary",
+      "type": "direct",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {
+        "alternate-exchange": "fallback.topic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "fallback.primary",
+      "type": "direct",
+      "vhost": "topology-demo.fallback"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "mixed.b",
+      "type": "fanout",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {
+        "alternate-exchange": "complex.fallback"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "complex.entry",
+      "type": "direct",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "complex.dlx",
+      "type": "fanout",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "dead-ae.fallback",
+      "type": "fanout",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "binding.a",
+      "type": "direct",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "complex.dlx",
+      "type": "fanout",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "pipeline.in",
+      "type": "headers",
+      "vhost": "topology-demo.region-c"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "fallback.parking",
+      "type": "fanout",
+      "vhost": "topology-demo.fallback"
+    },
+    {
+      "arguments": {
+        "alternate-exchange": "fallback.parking"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "fallback.topic",
+      "type": "topic",
+      "vhost": "topology-demo.fallback"
+    },
+    {
+      "arguments": {
+        "alternate-exchange": "alternate.b"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "alternate.a",
+      "type": "direct",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "policy.in",
+      "type": "direct",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "complex.fallback",
+      "type": "fanout",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "retry.in",
+      "type": "direct",
+      "vhost": "topology-demo.deadletter"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "diag.empty-fanout",
+      "type": "fanout",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "name": "compete.out",
+      "type": "fanout",
+      "vhost": "topology-demo.region-c"
+    }
+  ],
+  "vhosts": [
+    {
+      "limits": {},
+      "metadata": {
+        "description": "SDK topology demo: region-c",
+        "tags": [
+          "sdk-demo"
+        ],
+        "default_queue_type": "classic"
+      },
+      "name": "topology-demo.region-c"
+    },
+    {
+      "limits": {},
+      "metadata": {
+        "description": "SDK topology demo: deadletter",
+        "tags": [
+          "sdk-demo"
+        ],
+        "default_queue_type": "classic"
+      },
+      "name": "topology-demo.deadletter"
+    },
+    {
+      "limits": {},
+      "metadata": {
+        "description": "SDK topology demo: region-a",
+        "tags": [
+          "sdk-demo"
+        ],
+        "default_queue_type": "classic"
+      },
+      "name": "topology-demo.region-a"
+    },
+    {
+      "limits": {},
+      "metadata": {
+        "description": "Default virtual host",
+        "tags": [],
+        "default_queue_type": "classic"
+      },
+      "name": "/"
+    },
+    {
+      "limits": {},
+      "metadata": {
+        "description": "SDK topology demo: control",
+        "tags": [
+          "sdk-demo"
+        ],
+        "default_queue_type": "classic"
+      },
+      "name": "topology-demo.control"
+    },
+    {
+      "limits": {},
+      "metadata": {
+        "description": "SDK topology demo: diagnostics",
+        "tags": [
+          "sdk-demo"
+        ],
+        "default_queue_type": "classic"
+      },
+      "name": "topology-demo.diagnostics"
+    },
+    {
+      "limits": {},
+      "metadata": {
+        "description": "SDK topology demo: loops",
+        "tags": [
+          "sdk-demo"
+        ],
+        "default_queue_type": "classic"
+      },
+      "name": "topology-demo.loops"
+    },
+    {
+      "limits": {},
+      "metadata": {
+        "description": "SDK topology demo: region-b",
+        "tags": [
+          "sdk-demo"
+        ],
+        "default_queue_type": "classic"
+      },
+      "name": "topology-demo.region-b"
+    },
+    {
+      "limits": {},
+      "metadata": {
+        "description": "SDK topology demo: routing",
+        "tags": [
+          "sdk-demo"
+        ],
+        "default_queue_type": "classic"
+      },
+      "name": "topology-demo.routing"
+    },
+    {
+      "limits": {},
+      "metadata": {
+        "description": "SDK topology demo: policies",
+        "tags": [
+          "sdk-demo"
+        ],
+        "default_queue_type": "quorum"
+      },
+      "name": "topology-demo.policies"
+    },
+    {
+      "limits": {},
+      "metadata": {
+        "description": "SDK topology demo: fallback",
+        "tags": [
+          "sdk-demo"
+        ],
+        "default_queue_type": "classic"
+      },
+      "name": "topology-demo.fallback"
+    }
+  ],
+  "users": [
+    {
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "limits": {},
+      "name": "guest",
+      "password_hash": "4vKljHbLWxq7c52uQ1ySqEERGcwiyqLqKcREeTba5BAOLiGk",
+      "tags": [
+        "administrator"
+      ]
+    }
+  ],
+  "global_parameters": [
+    {
+      "name": "cluster_tags",
+      "value": []
+    }
+  ],
+  "parameters": [
+    {
+      "component": "shovel",
+      "name": "shovel2.ab",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-exchange": "shovel2.in",
+        "dest-exchange-key": "demo.route",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///topology-demo.region-b",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "shovel2.q",
+        "src-uri": "amqp:///topology-demo.region-a"
+      },
+      "vhost": "topology-demo.control"
+    },
+    {
+      "component": "shovel",
+      "name": "pipeline.ab",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-exchange": "pipeline.in",
+        "dest-exchange-key": "demo.route",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///topology-demo.region-b",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "pipeline.q",
+        "src-uri": "amqp:///topology-demo.region-a"
+      },
+      "vhost": "topology-demo.control"
+    },
+    {
+      "component": "shovel",
+      "name": "alias.unconfirmed",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-exchange": "alias.out",
+        "dest-exchange-key": "demo.route",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///topology-demo.region-b",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "alias.source",
+        "src-uri": "amqp://127.0.0.1/topology-demo.diagnostics"
+      },
+      "vhost": "topology-demo.control"
+    },
+    {
+      "component": "shovel",
+      "name": "shovel2.ba",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-exchange": "shovel2.in",
+        "dest-exchange-key": "demo.route",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///topology-demo.region-a",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "shovel2.q",
+        "src-uri": "amqp:///topology-demo.region-b"
+      },
+      "vhost": "topology-demo.control"
+    },
+    {
+      "component": "shovel",
+      "name": "complex.ab",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-exchange": "complex.entry",
+        "dest-exchange-key": "demo.route",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///topology-demo.region-b",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "complex.forward.q",
+        "src-uri": "amqp:///topology-demo.region-a"
+      },
+      "vhost": "topology-demo.control"
+    },
+    {
+      "component": "shovel",
+      "name": "shovel3.bc",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-exchange": "shovel3.in",
+        "dest-exchange-key": "demo.route",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///topology-demo.region-c",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "shovel3.q",
+        "src-uri": "amqp:///topology-demo.region-b"
+      },
+      "vhost": "topology-demo.control"
+    },
+    {
+      "component": "shovel",
+      "name": "compete.ac",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-exchange": "compete.out",
+        "dest-exchange-key": "demo.route",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///topology-demo.region-c",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "compete.source",
+        "src-uri": "amqp:///topology-demo.region-a"
+      },
+      "vhost": "topology-demo.region-c"
+    },
+    {
+      "component": "shovel",
+      "name": "complex.ba",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-exchange": "complex.work",
+        "dest-exchange-key": "demo.route",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///topology-demo.region-a",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "complex.return.q",
+        "src-uri": "amqp:///topology-demo.region-b"
+      },
+      "vhost": "topology-demo.control"
+    },
+    {
+      "component": "shovel",
+      "name": "shovel3.ca",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-exchange": "shovel3.in",
+        "dest-exchange-key": "demo.route",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///topology-demo.region-a",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "shovel3.q",
+        "src-uri": "amqp:///topology-demo.region-c"
+      },
+      "vhost": "topology-demo.control"
+    },
+    {
+      "component": "shovel",
+      "name": "shovel3.ab",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-exchange": "shovel3.in",
+        "dest-exchange-key": "demo.route",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///topology-demo.region-b",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "shovel3.q",
+        "src-uri": "amqp:///topology-demo.region-a"
+      },
+      "vhost": "topology-demo.control"
+    },
+    {
+      "component": "shovel",
+      "name": "pipeline.bc",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-exchange": "pipeline.in",
+        "dest-exchange-key": "demo.route",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///topology-demo.region-c",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "pipeline.q",
+        "src-uri": "amqp:///topology-demo.region-b"
+      },
+      "vhost": "topology-demo.control"
+    },
+    {
+      "component": "shovel",
+      "name": "compete.ab",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-exchange": "compete.out",
+        "dest-exchange-key": "demo.route",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///topology-demo.region-b",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "compete.source",
+        "src-uri": "amqp:///topology-demo.region-a"
+      },
+      "vhost": "topology-demo.control"
+    },
+    {
+      "component": "shovel",
+      "name": "uncertain.failover",
+      "value": {
+        "ack-mode": "on-confirm",
+        "dest-predeclared": true,
+        "dest-protocol": "amqp091",
+        "dest-queue": "uncertain.sink",
+        "dest-uri": "amqp:///topology-demo.diagnostics",
+        "reconnect-delay": 2,
+        "src-predeclared": true,
+        "src-prefetch-count": 10,
+        "src-protocol": "amqp091",
+        "src-queue": "uncertain.source",
+        "src-uri": [
+          "amqp:///topology-demo.region-a",
+          "amqp:///topology-demo.region-b"
+        ]
+      },
+      "vhost": "topology-demo.control"
+    }
+  ],
+  "policies": [
+    {
+      "apply-to": "queues",
+      "definition": {
+        "dead-letter-exchange": "policy.dlx",
+        "dead-letter-routing-key": "poison"
+      },
+      "name": "selected-dlx",
+      "pattern": "^policy\\.(work|override)$",
+      "priority": 10,
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "apply-to": "exchanges",
+      "definition": {
+        "alternate-exchange": "policy.fallback"
+      },
+      "name": "selected-alternate",
+      "pattern": "^policy\\.(primary|override\\.exchange)$",
+      "priority": 10,
+      "vhost": "topology-demo.policies"
+    }
+  ],
+  "topic_permissions": [],
+  "explanation": "Definitions of cluster 'rabbit@sdk-topology-demo-43'",
+  "rabbitmq_definition_format": "cluster",
+  "original_cluster_name": "rabbit@sdk-topology-demo-43",
+  "queues": [
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "alias.source",
+      "type": "classic",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "quorum"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "route.quorum",
+      "type": "quorum",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "stream"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "route.stream",
+      "type": "stream",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "headers.all",
+      "type": "classic",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "shovel3.q",
+      "type": "classic",
+      "vhost": "topology-demo.region-c"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "headers.any-with-x",
+      "type": "classic",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "argument.dlx",
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "policy.override",
+      "type": "classic",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "shovel3.q",
+      "type": "classic",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "policy.dlx.q",
+      "type": "classic",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "uncertain.source",
+      "type": "classic",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "compete.source",
+      "type": "classic",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "diag.orphan",
+      "type": "classic",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "dead.b",
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "dead.a.q",
+      "type": "classic",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "poison.plq",
+      "type": "classic",
+      "vhost": "topology-demo.deadletter"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "work.in",
+        "x-dead-letter-routing-key": "work",
+        "x-message-ttl": 250,
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "retry.wait",
+      "type": "classic",
+      "vhost": "topology-demo.deadletter"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "complex.return.q",
+      "type": "classic",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "fallback.plq",
+      "type": "classic",
+      "vhost": "topology-demo.fallback"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "compete.sink",
+      "type": "classic",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "route.classic",
+      "type": "classic",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "pipeline.q",
+      "type": "classic",
+      "vhost": "topology-demo.region-c"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "shovel2.q",
+      "type": "classic",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "alias.sink",
+      "type": "classic",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "dead-ae.entry",
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "dead-ae.q",
+      "type": "classic",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "policy.fallback.q",
+      "type": "classic",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "quorum"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "policy.default-type",
+      "type": "quorum",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "headers.all-with-x",
+      "type": "classic",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "pipeline.q",
+      "type": "classic",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "policy.work",
+      "type": "classic",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "fallback.accepted",
+      "type": "classic",
+      "vhost": "topology-demo.fallback"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "argument.dlx.q",
+      "type": "classic",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "poison.dlx",
+        "x-delivery-limit": 3,
+        "x-queue-type": "quorum"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "work.quorum",
+      "type": "quorum",
+      "vhost": "topology-demo.deadletter"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "complex.dlx",
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "complex.work.q",
+      "type": "classic",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "uncertain.source",
+      "type": "classic",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "compete.sink",
+      "type": "classic",
+      "vhost": "topology-demo.region-c"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "diag.sink",
+      "type": "classic",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "headers.any",
+      "type": "classic",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "pipeline.q",
+      "type": "classic",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "dead.a",
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "dead.b.q",
+      "type": "classic",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "complex.dlx",
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "complex.work.q",
+      "type": "classic",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "shovel3.q",
+      "type": "classic",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "shovel2.q",
+      "type": "classic",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "dead.self",
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "dead.self.q",
+      "type": "classic",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "argument.fallback.q",
+      "type": "classic",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {
+        "x-dead-letter-exchange": "missing.dlx",
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "diag.missing-dlx",
+      "type": "classic",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "uncertain.sink",
+      "type": "classic",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "name": "complex.forward.q",
+      "type": "classic",
+      "vhost": "topology-demo.region-a"
+    }
+  ],
+  "bindings": [
+    {
+      "arguments": {},
+      "destination": "diag.sink",
+      "destination_type": "queue",
+      "routing_key": "healthy",
+      "source": "diag.entry",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {},
+      "destination": "fallback.plq",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "fallback.parking",
+      "vhost": "topology-demo.fallback"
+    },
+    {
+      "arguments": {
+        "format": "json",
+        "x-demo": "yes",
+        "x-match": "any-with-x"
+      },
+      "destination": "headers.any-with-x",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "route.headers",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "destination": "binding.b",
+      "destination_type": "exchange",
+      "routing_key": "parallel",
+      "source": "binding.a",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {
+        "format": "json",
+        "x-demo": "yes",
+        "x-match": "all-with-x"
+      },
+      "destination": "headers.all-with-x",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "route.headers",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "destination": "policy.dlx.q",
+      "destination_type": "queue",
+      "routing_key": "poison",
+      "source": "policy.dlx",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {},
+      "destination": "shovel2.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "shovel2.in",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "destination": "uncertain.source",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "uncertain.in",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {},
+      "destination": "binding.a",
+      "destination_type": "exchange",
+      "routing_key": "",
+      "source": "binding.c",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "destination": "policy.fallback.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "policy.fallback",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {},
+      "destination": "route.headers",
+      "destination_type": "exchange",
+      "routing_key": "orders.#",
+      "source": "route.topic",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {
+        "format": "json",
+        "x-demo": "yes",
+        "x-match": "all"
+      },
+      "destination": "headers.all",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "route.headers",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "destination": "route.classic",
+      "destination_type": "queue",
+      "routing_key": "parallel",
+      "source": "route.fanout",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "destination": "argument.dlx.q",
+      "destination_type": "queue",
+      "routing_key": "poison",
+      "source": "argument.dlx",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {},
+      "destination": "compete.sink",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "compete.out",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "destination": "policy.default-type",
+      "destination_type": "queue",
+      "routing_key": "default",
+      "source": "policy.in",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {},
+      "destination": "binding.b",
+      "destination_type": "exchange",
+      "routing_key": "demo.route",
+      "source": "binding.a",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "destination": "shovel3.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "shovel3.in",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "destination": "dead.a.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "dead.a",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "destination": "alias.sink",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "alias.out",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "destination": "shovel3.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "shovel3.in",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {},
+      "destination": "binding.c",
+      "destination_type": "exchange",
+      "routing_key": "demo.#",
+      "source": "binding.b",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "destination": "alias.source",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "alias.in",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {},
+      "destination": "shovel3.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "shovel3.in",
+      "vhost": "topology-demo.region-c"
+    },
+    {
+      "arguments": {},
+      "destination": "uncertain.source",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "uncertain.in",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "destination": "route.headers",
+      "destination_type": "exchange",
+      "routing_key": "orders.*.created",
+      "source": "route.topic",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "destination": "compete.source",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "compete.in",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {},
+      "destination": "mixed.a",
+      "destination_type": "exchange",
+      "routing_key": "",
+      "source": "mixed.b",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {
+        "format": "json",
+        "x-match": "all"
+      },
+      "destination": "pipeline.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "pipeline.in",
+      "vhost": "topology-demo.region-c"
+    },
+    {
+      "arguments": {},
+      "destination": "dead.self.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "dead.self",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "destination": "retry.wait",
+      "destination_type": "queue",
+      "routing_key": "retry",
+      "source": "retry.in",
+      "vhost": "topology-demo.deadletter"
+    },
+    {
+      "arguments": {},
+      "destination": "binding.self",
+      "destination_type": "exchange",
+      "routing_key": "",
+      "source": "binding.self",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "destination": "pipeline.q",
+      "destination_type": "queue",
+      "routing_key": "demo.#",
+      "source": "pipeline.in",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {
+        "format": "json",
+        "x-demo": "yes",
+        "x-match": "any"
+      },
+      "destination": "headers.any",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "route.headers",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "destination": "complex.work.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "complex.work",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {},
+      "destination": "pipeline.q",
+      "destination_type": "queue",
+      "routing_key": "demo.#",
+      "source": "pipeline.in",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {},
+      "destination": "policy.override",
+      "destination_type": "queue",
+      "routing_key": "policy.override",
+      "source": "policy.in",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {},
+      "destination": "diag.missing-dlx",
+      "destination_type": "queue",
+      "routing_key": "missing",
+      "source": "diag.entry",
+      "vhost": "topology-demo.diagnostics"
+    },
+    {
+      "arguments": {},
+      "destination": "compete.sink",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "compete.out",
+      "vhost": "topology-demo.region-c"
+    },
+    {
+      "arguments": {},
+      "destination": "argument.fallback.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "argument.fallback",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {},
+      "destination": "poison.plq",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "poison.dlx",
+      "vhost": "topology-demo.deadletter"
+    },
+    {
+      "arguments": {},
+      "destination": "shovel2.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "shovel2.in",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {},
+      "destination": "policy.work",
+      "destination_type": "queue",
+      "routing_key": "policy.work",
+      "source": "policy.in",
+      "vhost": "topology-demo.policies"
+    },
+    {
+      "arguments": {
+        "format": "json",
+        "region": "eu",
+        "x-match": "all"
+      },
+      "destination": "route.fanout",
+      "destination_type": "exchange",
+      "routing_key": "",
+      "source": "route.headers",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "destination": "complex.return.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "complex.dlx",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "destination": "complex.work.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "complex.fallback",
+      "vhost": "topology-demo.region-b"
+    },
+    {
+      "arguments": {},
+      "destination": "work.quorum",
+      "destination_type": "queue",
+      "routing_key": "work",
+      "source": "work.in",
+      "vhost": "topology-demo.deadletter"
+    },
+    {
+      "arguments": {},
+      "destination": "dead.b.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "dead.b",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "destination": "route.classic",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "route.fanout",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "destination": "complex.forward.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "complex.dlx",
+      "vhost": "topology-demo.region-a"
+    },
+    {
+      "arguments": {},
+      "destination": "route.quorum",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "route.fanout",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "destination": "route.stream",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "route.fanout",
+      "vhost": "topology-demo.routing"
+    },
+    {
+      "arguments": {},
+      "destination": "fallback.accepted",
+      "destination_type": "queue",
+      "routing_key": "known",
+      "source": "fallback.primary",
+      "vhost": "topology-demo.fallback"
+    },
+    {
+      "arguments": {},
+      "destination": "dead-ae.q",
+      "destination_type": "queue",
+      "routing_key": "",
+      "source": "dead-ae.fallback",
+      "vhost": "topology-demo.loops"
+    },
+    {
+      "arguments": {},
+      "destination": "route.topic",
+      "destination_type": "exchange",
+      "routing_key": "orders.eu.created",
+      "source": "route.direct",
+      "vhost": "topology-demo.routing"
+    }
+  ]
+}

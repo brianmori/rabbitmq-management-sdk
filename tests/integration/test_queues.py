@@ -12,23 +12,6 @@ from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
 
 
 @pytest.mark.integration
-def test_create_queue_success() -> None:
-    # 1. Setup Mock Handler
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        return httpx2.Response(201, json={"status": "created"}, headers={"Content-Type": "application/json"})
-
-    # 2. Inject MockTransport into your Adapter
-    mock_transport = httpx2.MockTransport(handler)
-    adapter = Httpx2Adapter(host="localhost", port=15672, transport=mock_transport)
-
-    # 3. Test the high-level request
-    response = adapter.request("PUT", "/api/queues/%2f/my-queue", json={"durable": True})
-
-    assert response.status_code == 201
-    assert response.headers["Content-Type"] == "application/json"
-
-
-@pytest.mark.integration
 @pytest.mark.parametrize("strict", [False, True], ids=["compatibility", "strict"])
 @pytest.mark.parametrize(
     "arguments",
@@ -51,7 +34,7 @@ def test_queue_declaration_sends_explicit_type_in_arguments(
         manager.create("typed-queue", QueueRequest(arguments=arguments))
 
     assert len(sent) == 1
-    payload = sent[0]
+    (payload,) = sent
     assert "x-queue-type" not in payload
     assert payload["durable"] is True
     assert payload["auto_delete"] is False
@@ -90,7 +73,8 @@ def test_queue_declaration_preserves_nondefault_arguments(
     with Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         QueueManager(adapter, "%2F", strict).create("configured-queue", QueueRequest(arguments=arguments))
 
-    wire_arguments = sent[0]["arguments"]
+    (payload,) = sent
+    wire_arguments = payload["arguments"]
     assert isinstance(wire_arguments, dict)
     assert wire_arguments["x-queue-type"] == arguments.queue_type
     assert wire_arguments[wire_key] == wire_value
@@ -122,7 +106,8 @@ def test_queue_declaration_sends_type_specific_initial_replication_size(
     with Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         QueueManager(adapter, "%2F", strict).create("replicated-queue", QueueRequest(arguments=arguments))
 
-    wire_arguments = sent[0]["arguments"]
+    (payload,) = sent
+    wire_arguments = payload["arguments"]
     assert isinstance(wire_arguments, dict)
     assert wire_arguments["x-queue-type"] == arguments.queue_type
     assert wire_arguments[wire_key] == 5

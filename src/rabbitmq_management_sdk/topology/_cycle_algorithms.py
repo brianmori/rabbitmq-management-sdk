@@ -9,6 +9,7 @@ from rabbitmq_management_sdk.topology.ordering import NodeSortKey, node_sort_key
 
 Adjacency = dict[NodeId, tuple[NodeId, ...]]
 CyclePathFilter = Callable[[Sequence[NodeId]], bool]
+ComponentFilter = Callable[[frozenset[NodeId]], bool]
 
 
 def _component_sort_key(component: frozenset[NodeId]) -> tuple[NodeSortKey, ...]:
@@ -206,8 +207,13 @@ def _johnson(
     *,
     cycle_filter: CyclePathFilter | None,
     max_cycles: int | None,
+    component_filter: ComponentFilter | None = None,
 ) -> tuple[list[tuple[NodeId, ...]], bool]:
-    """Enumerate elementary cycles within one cyclic component."""
+    """Enumerate cycles, optionally pruning ineligible residual components.
+
+    The caller admits the initial cyclic component. After removing a node,
+    apply ``component_filter`` before scheduling each remaining cyclic SCC.
+    """
     worklist: list[tuple[frozenset[NodeId], Adjacency]] = [(component, _induced_adjacency(component, adjacency))]
     all_cycles: list[tuple[NodeId, ...]] = []
 
@@ -233,9 +239,14 @@ def _johnson(
             continue
 
         # Removing ``least`` can split the original SCC. Recompute SCCs and
-        # enqueue only pieces that still contain a cycle.
+        # enqueue only pieces that still contain a cycle and can satisfy the
+        # caller's component eligibility rule, when supplied.
         induced = _induced_adjacency(remaining_vertices, local_adjacency)
-        subcomponents = [scc for scc in _tarjan(remaining_vertices, induced) if _is_cyclic_component(scc, induced)]
+        subcomponents = [
+            scc
+            for scc in _tarjan(remaining_vertices, induced)
+            if _is_cyclic_component(scc, induced) and (component_filter is None or component_filter(scc))
+        ]
         for scc in sorted(subcomponents, key=_component_sort_key, reverse=True):
             worklist.append((scc, _induced_adjacency(scc, induced)))
 

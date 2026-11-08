@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import ConfigDict, Field, JsonValue, model_validator
+from pydantic import BeforeValidator, ConfigDict, Field, JsonValue, model_validator
 
+from rabbitmq_management_sdk.resources._arguments import _WireArguments
 from rabbitmq_management_sdk.resources.base import RabbitMQBase
 from rabbitmq_management_sdk.resources.v4.common import (
     DeadLetterStrategy,
@@ -91,10 +92,12 @@ class ClusterExportGlobalParameter(RabbitMQBase):
     `value` stays a generic union since its shape depends on `name` and
     covers several unrelated broker-defined parameters; use the typed
     accessor(s) below for the well-known ones this SDK models explicitly.
+    The field is required, but explicit JSON null is valid and is retained as
+    None. Typed accessors return None for null or incompatible values.
     """
 
     name: str
-    value: str | int | float | bool | dict[str, object] | list[object]
+    value: str | int | float | bool | dict[str, object] | list[object] | None
 
     def as_cluster_name(self) -> str | None:
         """Typed view of `value` when name == 'cluster_name'.
@@ -239,9 +242,7 @@ class ClusterExportParameter(RabbitMQBase):
         return OperatorPolicyParameterValue.model_validate(self.value)
 
 
-class ExportQueueArguments(RabbitMQBase):
-    model_config = RabbitMQBase.model_config | {"extra": "allow"}
-
+class ExportQueueArguments(_WireArguments):
     queue_type: QueueType | None = Field(None, alias="x-queue-type")
     dead_letter_exchange: str | None = Field(None, alias="x-dead-letter-exchange")
     dead_letter_routing_key: str | None = Field(None, alias="x-dead-letter-routing-key")
@@ -276,18 +277,18 @@ class ClusterExportQueue(RabbitMQBase):
     vhost: str
     durable: bool
     auto_delete: bool
-    arguments: ExportQueueArguments = Field(default_factory=ExportQueueArguments)
+    arguments: Annotated[ExportQueueArguments, BeforeValidator(ExportQueueArguments.from_wire)] = Field(
+        default_factory=ExportQueueArguments
+    )
 
 
-class ExportExchangeArguments(RabbitMQBase):
+class ExportExchangeArguments(_WireArguments):
     """Strongly typed arguments for exchanges.
 
     extra="allow" ensures that plugin arguments
     (e.g., `x-delayed-type` for the delayed message exchange plugin,
     or `hash-header` for consistent hashing) are preserved.
     """
-
-    model_config = RabbitMQBase.model_config | {"extra": "allow"}
 
     alternate_exchange: str | None = Field(None, alias="alternate-exchange")
 
@@ -303,12 +304,12 @@ class ClusterExportExchange(RabbitMQBase):
     durable: bool
     auto_delete: bool
     internal: bool = False
-    arguments: ExportExchangeArguments = Field(default_factory=ExportExchangeArguments)
+    arguments: Annotated[ExportExchangeArguments, BeforeValidator(ExportExchangeArguments.from_wire)] = Field(
+        default_factory=ExportExchangeArguments
+    )
 
 
-class ExportBindingArguments(RabbitMQBase):
-    model_config = RabbitMQBase.model_config | {"extra": "allow"}
-
+class ExportBindingArguments(_WireArguments):
     # Used in headers exchanges
     x_match: HeadersMatchMode | None = Field(None, alias="x-match")
 
@@ -319,7 +320,9 @@ class ClusterExportBinding(RabbitMQBase):
     destination: str
     destination_type: Literal["queue", "exchange"] = Field(alias="destination_type")
     routing_key: str
-    arguments: ExportBindingArguments = Field(default_factory=ExportBindingArguments)
+    arguments: Annotated[ExportBindingArguments, BeforeValidator(ExportBindingArguments.from_wire)] = Field(
+        default_factory=ExportBindingArguments
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -434,7 +437,9 @@ class VhostExportQueue(RabbitMQBase):
     name: str
     durable: bool
     auto_delete: bool
-    arguments: ExportQueueArguments = Field(default_factory=ExportQueueArguments)
+    arguments: Annotated[ExportQueueArguments, BeforeValidator(ExportQueueArguments.from_wire)] = Field(
+        default_factory=ExportQueueArguments
+    )
 
 
 class VhostExportExchange(RabbitMQBase):
@@ -443,7 +448,9 @@ class VhostExportExchange(RabbitMQBase):
     durable: bool
     auto_delete: bool
     internal: bool = False
-    arguments: ExportExchangeArguments = Field(default_factory=ExportExchangeArguments)
+    arguments: Annotated[ExportExchangeArguments, BeforeValidator(ExportExchangeArguments.from_wire)] = Field(
+        default_factory=ExportExchangeArguments
+    )
 
 
 class VhostExportBinding(RabbitMQBase):
@@ -451,7 +458,9 @@ class VhostExportBinding(RabbitMQBase):
     destination: str
     destination_type: str
     routing_key: str
-    arguments: ExportBindingArguments = Field(default_factory=ExportBindingArguments)
+    arguments: Annotated[ExportBindingArguments, BeforeValidator(ExportBindingArguments.from_wire)] = Field(
+        default_factory=ExportBindingArguments
+    )
 
 
 class VhostExportPolicy(RabbitMQBase):

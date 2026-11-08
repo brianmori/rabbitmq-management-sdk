@@ -53,6 +53,8 @@ _test-live-rabbitmq compose_file:
     # Recover from a previously interrupted run and ensure a fresh data volume.
     cleanup
     "${compose[@]}" up -d --wait --wait-timeout 120
+    # Native AMQP 1.0 test messages use the client's libraries in this broker.
+    export RABBIT_TEST_CONTAINER=$("${compose[@]}" ps -q)
     uv run pytest -m live
 
 # Mypy check

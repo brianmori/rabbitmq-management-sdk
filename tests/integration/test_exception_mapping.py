@@ -68,54 +68,26 @@ _STATUS_CASES: list[tuple[int, type[APIError]]] = [
 
 @pytest.mark.integration
 @pytest.mark.parametrize("status_code,expected_cls", _STATUS_CASES)
-def test_http_status_raises_correct_exception(status_code: int, expected_cls: type[APIError]) -> None:
-    body = _error_body("test_error", "test reason")
-
+@pytest.mark.parametrize(
+    "body", [_error_body("test_error", "test reason"), b"{}"], ids=["error-details", "empty-object"]
+)
+def test_http_status_raises_correct_sdk_exception(status_code: int, expected_cls: type[APIError], body: bytes) -> None:
     def handler(request: httpx2.Request) -> httpx2.Response:
         return httpx2.Response(status_code, content=body)
 
-    adapter = _adapter_for(httpx2.MockTransport(handler))
-
-    with pytest.raises(expected_cls) as exc_info:
+    with _adapter_for(httpx2.MockTransport(handler)) as adapter, pytest.raises(expected_cls) as exc_info:
         adapter.request(method="GET", path="/api/test")
 
     exc = exc_info.value
     assert exc.status_code == status_code
     assert exc.method == "GET"
     assert exc.path == "/api/test"
-    assert exc.error == "test_error"
-    assert exc.reason == "test reason"
+    payload = json.loads(body)
+    assert exc.error == payload.get("error")
+    assert exc.reason == payload.get("reason")
     assert isinstance(exc.__cause__, httpx2.HTTPStatusError)
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("status_code,expected_cls", _STATUS_CASES)
-def test_http_error_is_rabbitmq_error(status_code: int, expected_cls: type[APIError]) -> None:
-    """Every HTTP error must be catchable as RabbitMQError."""
-
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        return httpx2.Response(status_code, content=b"{}")
-
-    adapter = _adapter_for(httpx2.MockTransport(handler))
-
-    with pytest.raises(RabbitMQError):
-        adapter.request(method="GET", path="/api/test")
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("status_code,expected_cls", _STATUS_CASES)
-def test_no_httpx2_exception_leaks(status_code: int, expected_cls: type[APIError]) -> None:
-    """HTTPX2 exception types must never reach the caller."""
-
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        return httpx2.Response(status_code, content=b"{}")
-
-    adapter = _adapter_for(httpx2.MockTransport(handler))
-
-    with pytest.raises(RabbitMQError) as exc_info:
-        adapter.request(method="GET", path="/api/test")
-
-    assert not isinstance(exc_info.value, httpx2.HTTPError)
+    assert isinstance(exc, RabbitMQError)
+    assert not isinstance(exc, httpx2.HTTPError)
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +109,7 @@ def test_timeout_raises_sdk_timeout_error(error_type: type[httpx2.TimeoutExcepti
         adapter.request(method="GET", path="/api/test")
 
     assert isinstance(exc_info.value.__cause__, httpx2.TimeoutException)
+    assert isinstance(exc_info.value, RabbitMQError)
     assert not isinstance(exc_info.value, httpx2.HTTPError)
 
 
@@ -181,17 +154,6 @@ def test_redirect_limit_raises_sdk_transport_error() -> None:
         adapter.request(method="GET", path="/api/loop")
 
     assert isinstance(exc_info.value.__cause__, httpx2.TooManyRedirects)
-
-
-@pytest.mark.integration
-def test_timeout_is_rabbitmq_error() -> None:
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        raise httpx2.ConnectTimeout("timed out")
-
-    adapter = _adapter_for(httpx2.MockTransport(handler))
-
-    with pytest.raises(RabbitMQError):
-        adapter.request(method="GET", path="/api/test")
 
 
 # ---------------------------------------------------------------------------

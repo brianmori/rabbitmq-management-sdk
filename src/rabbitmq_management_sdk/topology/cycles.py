@@ -263,6 +263,11 @@ def _find_cycles(
     required_targets: dict[NodeId, set[NodeId]] = {}
     for source, target in required_edges or ():
         required_targets.setdefault(source, set()).add(target)
+
+    def has_required_edge(nodes: frozenset[NodeId]) -> bool:
+        return any(target in nodes for source in nodes for target in required_targets.get(source, ()))
+
+    component_filter = has_required_edge if required_edges is not None else None
     adjacency = _adjacency(topology)
     representative_edges = _representative_edges(topology, adjacency)
 
@@ -271,9 +276,7 @@ def _find_cycles(
     for component in _find_strongly_connected_components(topology, adjacency):
         if not component.is_cyclic:
             continue
-        if required_edges is not None and not any(
-            target in component.nodes for source in component.nodes for target in required_targets.get(source, ())
-        ):
+        if component_filter is not None and not component_filter(component.nodes):
             continue
         remaining = None if max_cycles == 0 else max_cycles - len(node_paths)
         paths, truncated = _johnson(
@@ -281,6 +284,7 @@ def _find_cycles(
             adjacency,
             cycle_filter=cycle_filter,
             max_cycles=remaining,
+            component_filter=component_filter,
         )
         node_paths.extend(paths)
         if truncated:

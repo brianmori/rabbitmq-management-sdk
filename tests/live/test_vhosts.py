@@ -1,68 +1,47 @@
+"""Vhost manager round trips without relying on other tests' resources."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 import pytest
 
-from rabbitmq_management_sdk.resources.v4.admin.schemas.vhost_request import (
-    VhostLimitName,
-    VhostLimitRequest,
-    VhostRequest,
-)
+from rabbitmq_management_sdk import NotFoundError, VhostLimitName, VhostLimitRequest, VhostRequest
 
 if TYPE_CHECKING:
-    from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
-    from rabbitmq_management_sdk.resources.v4.admin.schemas.vhost_response import VhostLimitResponse, VhostResponse
+    from collections.abc import Callable
+
+    from rabbitmq_management_sdk import RabbitMQClient
 
 
 @pytest.mark.live
-def test_create_delete_vhost(rabbitmq_client_compatibility: RabbitMQClient) -> None:
-    vhost_service = rabbitmq_client_compatibility.admin
-    vhost_name = "test-vhost"
-
-    # Create a new vhost
-    vhost_request = VhostRequest(description="Test Vhost", tags=["test"])
-    vhost_service.create_vhost(vhost_name, vhost_request)
-
-    # Verify the vhost was created
-    vhosts_created: list[VhostResponse] = vhost_service.get_all_vhosts()
-    assert any(v.name == vhost_name for v in vhosts_created)
-    assert len(vhosts_created) > 1
-    # Delete the vhost
-    vhost_service.delete_vhost(vhost_name)
-
-    # Verify the vhost was deleted
-    vhosts_del: list[VhostResponse] = vhost_service.get_all_vhosts()
-    assert not any(v.name == vhost_name for v in vhosts_del)
+def test_vhost_metadata_listing_and_delete(
+    rabbitmq_client_compatibility: RabbitMQClient,
+    vhost_factory: Callable[[VhostRequest | None], str],
+) -> None:
+    admin = rabbitmq_client_compatibility.admin
+    name = vhost_factory(VhostRequest(description="SDK test vhost", tags=["test"]))
+    observed = admin.get_vhost(name)
+    assert observed.name == name
+    assert observed.description == "SDK test vhost"
+    assert observed.tags == ["test"]
+    assert name in {vhost.name for vhost in admin.get_all_vhosts()}
+    admin.delete_vhost(name)
+    assert name not in {vhost.name for vhost in admin.get_all_vhosts()}
+    with pytest.raises(NotFoundError):
+        admin.get_vhost(name)
 
 
 @pytest.mark.live
-def test_vhost_desc_tag(rabbitmq_client_compatibility: RabbitMQClient) -> None:
-    vhost_service = rabbitmq_client_compatibility.admin
-    vhost_name = "test-vhost"
-    vhost_service.create_vhost(vhost_name, VhostRequest(description="Test Vhost", tags=["test"]))
-    vhost = vhost_service.get_vhost(vhost_name)
-    assert vhost.name == vhost_name
-    assert vhost.description == "Test Vhost"
-    assert vhost.tags == ["test"]
-
-
-@pytest.mark.live
-def test_apply_vhost_limit(rabbitmq_client_compatibility: RabbitMQClient) -> None:
-    vhost_service = rabbitmq_client_compatibility.admin
-    vhost_name = "test-vhost"
-    vhost_service.create_vhost(vhost_name, VhostRequest())
-
-    vlr = VhostLimitRequest(value=3)
-    vhost_service.apply_vhost_limit(vhost_name, VhostLimitName.MAX_CONNECTIONS, vlr)
-    vhost_service.apply_vhost_limit(vhost_name, VhostLimitName.MAX_QUEUES, vlr)
-
-    vhosts_lim_single = vhost_service.get_vhost_limits(vhost_name)
-
-    assert vhosts_lim_single is not None
-    assert vhosts_lim_single.value.max_connections == 3
-    assert vhosts_lim_single.value.max_queues == 3
-
-    vhosts_lim_all: list[VhostLimitResponse] = vhost_service.get_all_vhosts_limits()
-    assert len(vhosts_lim_all) == 1
-    vhost_service.delete_vhost(vhost_name)
+def test_vhost_limits_apply_list_and_clear(rabbitmq_client_compatibility: RabbitMQClient, live_vhost: str) -> None:
+    admin = rabbitmq_client_compatibility.admin
+    assert admin.get_vhost_limits(live_vhost) is None
+    for limit in (VhostLimitName.MAX_CONNECTIONS, VhostLimitName.MAX_QUEUES):
+        admin.apply_vhost_limit(live_vhost, limit, VhostLimitRequest(value=3))
+    observed = admin.get_vhost_limits(live_vhost)
+    assert observed is not None
+    assert observed.value.max_connections == observed.value.max_queues == 3
+    assert [item for item in admin.get_all_vhosts_limits() if item.vhost == live_vhost] == [observed]
+    for limit in (VhostLimitName.MAX_CONNECTIONS, VhostLimitName.MAX_QUEUES):
+        admin.delete_vhost_limit(live_vhost, limit)
+    assert admin.get_vhost_limits(live_vhost) is None

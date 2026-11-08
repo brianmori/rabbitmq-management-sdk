@@ -1,0 +1,1342 @@
+[
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.log",
+    "type": "topic",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "rmq-internal",
+    "vhost": "/"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.control"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.control"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.control"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.control"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.control"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.control"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.control"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "poison.dlx",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "retry.in",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "work.in",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "alias.in",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "diag.blackhole",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "diag.empty-fanout",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "diag.entry",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {
+      "alternate-exchange": "missing.alternate"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "diag.missing-ae",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.fallback"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.fallback"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.fallback"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.fallback"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.fallback"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.fallback"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.fallback"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "fallback.parking",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.fallback"
+  },
+  {
+    "arguments": {
+      "alternate-exchange": "fallback.topic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "fallback.primary",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.fallback"
+  },
+  {
+    "arguments": {
+      "alternate-exchange": "fallback.parking"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "fallback.topic",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.fallback"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {
+      "alternate-exchange": "alternate.b"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "alternate.a",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {
+      "alternate-exchange": "alternate.a"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "alternate.b",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "binding.a",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "binding.b",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "binding.c",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "binding.self",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {
+      "alternate-exchange": "dead-ae.fallback"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "dead-ae.entry",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "dead-ae.fallback",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "dead.a",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "dead.b",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "dead.self",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {
+      "alternate-exchange": "mixed.b"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "mixed.a",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "mixed.b",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "argument.dlx",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "argument.fallback",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "policy.dlx",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "policy.fallback",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "policy.in",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {
+      "alternate-exchange": "argument.fallback"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "policy.override.exchange",
+    "policy": "selected-alternate",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "policy.primary",
+    "policy": "selected-alternate",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "compete.in",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "complex.dlx",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "complex.work",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "pipeline.in",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "shovel2.in",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "shovel3.in",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "uncertain.in",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "alias.out",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "compete.out",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "complex.dlx",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {
+      "alternate-exchange": "complex.fallback"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "complex.entry",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "complex.fallback",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "pipeline.in",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "shovel2.in",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "shovel3.in",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "uncertain.in",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "compete.out",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "pipeline.in",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "shovel3.in",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.direct",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.headers",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.match",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": true,
+    "name": "amq.rabbitmq.trace",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "amq.topic",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "route.direct",
+    "type": "direct",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "route.fanout",
+    "type": "fanout",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "route.headers",
+    "type": "headers",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {},
+    "auto_delete": false,
+    "durable": true,
+    "internal": false,
+    "name": "route.topic",
+    "type": "topic",
+    "user_who_performed_action": "guest",
+    "vhost": "topology-demo.routing"
+  }
+]

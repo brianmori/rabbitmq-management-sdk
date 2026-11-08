@@ -1,0 +1,880 @@
+[
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "poison.plq",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "work.in",
+      "x-dead-letter-routing-key": "work",
+      "x-message-ttl": 250,
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "retry.wait",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "poison.dlx",
+      "x-delivery-limit": 3,
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "delivery_limit": 3,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@sdk-topology-demo-43",
+    "members": [
+      "rabbit@sdk-topology-demo-43"
+    ],
+    "name": "work.quorum",
+    "node": "rabbit@sdk-topology-demo-43",
+    "online": [
+      "rabbit@sdk-topology-demo-43"
+    ],
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "quorum",
+    "vhost": "topology-demo.deadletter"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "alias.source",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "missing.dlx",
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "diag.missing-dlx",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "diag.orphan",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "diag.sink",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "uncertain.sink",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.diagnostics"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "fallback.accepted",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.fallback"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "fallback.plq",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.fallback"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "dead-ae.entry",
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "dead-ae.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "dead.b",
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "dead.a.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "dead.a",
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "dead.b.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "dead.self",
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "dead.self.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.loops"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "argument.dlx.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "argument.fallback.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@sdk-topology-demo-43",
+    "members": [
+      "rabbit@sdk-topology-demo-43"
+    ],
+    "name": "policy.default-type",
+    "node": "rabbit@sdk-topology-demo-43",
+    "online": [
+      "rabbit@sdk-topology-demo-43"
+    ],
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "quorum",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "policy.dlx.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "policy.fallback.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "argument.dlx",
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {
+      "dead-letter-exchange": "policy.dlx",
+      "dead-letter-routing-key": "poison"
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "policy.override",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": "selected-dlx",
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {
+      "dead-letter-exchange": "policy.dlx",
+      "dead-letter-routing-key": "poison"
+    },
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "policy.work",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": "selected-dlx",
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.policies"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "compete.source",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "complex.forward.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "complex.dlx",
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "complex.work.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "pipeline.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "shovel2.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "shovel3.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "uncertain.source",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-a"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "alias.sink",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "compete.sink",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "complex.return.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "complex.dlx",
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "complex.work.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "pipeline.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "shovel2.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "shovel3.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "uncertain.source",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-b"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "compete.sink",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "pipeline.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "shovel3.q",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.region-c"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "headers.all",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "headers.all-with-x",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "headers.any",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "headers.any-with-x",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "name": "route.classic",
+    "node": "rabbit@sdk-topology-demo-43",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "classic",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "delivery_limit": 20,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@sdk-topology-demo-43",
+    "members": [
+      "rabbit@sdk-topology-demo-43"
+    ],
+    "name": "route.quorum",
+    "node": "rabbit@sdk-topology-demo-43",
+    "online": [
+      "rabbit@sdk-topology-demo-43"
+    ],
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "quorum",
+    "vhost": "topology-demo.routing"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "stream"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "internal": false,
+    "internal_owner": false,
+    "leader": "rabbit@sdk-topology-demo-43",
+    "members": [
+      "rabbit@sdk-topology-demo-43"
+    ],
+    "name": "route.stream",
+    "node": "rabbit@sdk-topology-demo-43",
+    "online": [
+      "rabbit@sdk-topology-demo-43"
+    ],
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "stream",
+    "vhost": "topology-demo.routing"
+  }
+]

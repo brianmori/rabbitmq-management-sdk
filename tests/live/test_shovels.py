@@ -1,124 +1,85 @@
+"""Shovel managers must configure a running worker and deliver a message."""
+
 from __future__ import annotations
 
-import contextlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from urllib.parse import quote
 
 import pytest
-from tests.shared.constants import VhostTest
+from tests.shared.live_broker import wait_for
 
-from rabbitmq_management_sdk.exceptions import RabbitMQError
-from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_request import QueueRequest, QuorumQueueRequest
-from rabbitmq_management_sdk.resources.v4.shovels.schemas.shovel_request import (
+from rabbitmq_management_sdk import (
     Amqp091ShovelDestination,
     Amqp091ShovelSource,
     Amqp10ShovelDestination,
     Amqp10ShovelSource,
+    NotFoundError,
+    QueueRequest,
+    QuorumQueueRequest,
+    RabbitMQClient,
     ShovelRequest,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from tests.conftest import RabbitSettings
+    from tests.shared.live_broker import ManagementAPI
 
-    from rabbitmq_management_sdk import RabbitMQClient
-
-
-@pytest.mark.live
-def test_create_destroy_shovel_amqp091(
-    rabbitmq_client_strict_vhost_src: RabbitMQClient, rabbitmq_client_strict_vhost_dest: RabbitMQClient
-) -> None:
-
-    shovel_name = "test.shovel.091"
-    vhost_src_name = VhostTest.SRC
-    vhost_dst_name = VhostTest.DST
-    queue_src_name = "src.queue.091"
-    queue_dst_name = "dst.queue.091"
-
-    try:
-        # Create queues in the source and destination vhosts
-        queue_req = QueueRequest(durable=True, auto_delete=False, arguments=QuorumQueueRequest())
-        rabbitmq_client_strict_vhost_src.queues.create(queue_src_name, queue_req)
-        rabbitmq_client_strict_vhost_dest.queues.create(queue_dst_name, queue_req)
-
-        queue = rabbitmq_client_strict_vhost_src.queues.get(queue_src_name)
-        assert queue.state == "running"
-
-        queue = rabbitmq_client_strict_vhost_dest.queues.get(queue_dst_name)
-        assert queue.state == "running"
-
-        shovel_src_uri = f"amqp:///{vhost_src_name}"
-        shovel_dst_uri = f"amqp:///{vhost_dst_name}"
-        rabbitmq_client_strict_vhost_src.shovels.create(
-            name=shovel_name,
-            request=ShovelRequest(
-                src_uri=shovel_src_uri,
-                dest_uri=shovel_dst_uri,
-                src_arguments=Amqp091ShovelSource(src_queue=queue_src_name),
-                dest_arguments=Amqp091ShovelDestination(dest_queue=queue_dst_name),
-            ),
-        )
-
-        shovel = rabbitmq_client_strict_vhost_src.shovels.get(shovel_name)
-        assert shovel is not None
-    finally:
-        # Best-effort teardown so a failed assertion does not leak the shovel,
-        # queues, or vhosts into subsequent test runs.
-        with contextlib.suppress(RabbitMQError):
-            rabbitmq_client_strict_vhost_src.shovels.delete(shovel_name)
-        with contextlib.suppress(RabbitMQError):
-            rabbitmq_client_strict_vhost_dest.queues.delete(queue_dst_name)
-        with contextlib.suppress(RabbitMQError):
-            rabbitmq_client_strict_vhost_src.queues.delete(queue_src_name)
+    from rabbitmq_management_sdk import VhostRequest
 
 
 @pytest.mark.live
-def test_create_destroy_shovel_amqp10(
-    rabbitmq_client_strict_vhost_src: RabbitMQClient,
-    rabbitmq_client_strict_vhost_dest: RabbitMQClient,
+@pytest.mark.parametrize("protocol", ["amqp091", "amqp10"])
+def test_shovel_manager_runs_delivers_and_deletes(
     rabbit_config: RabbitSettings,
+    vhost_factory: Callable[[VhostRequest | None], str],
+    management_api: ManagementAPI,
+    protocol: Literal["amqp091", "amqp10"],
 ) -> None:
-
-    shovel_name = "test.shovel.10"
-    vhost_src_name = VhostTest.SRC
-    vhost_dst_name = VhostTest.DST
-    queue_src_name = "src.queue.10"
-    queue_dst_name = "dst.queue.10"
-
-    try:
-        # Create queues in the source and destination vhosts
-        queue_req = QueueRequest(durable=True, auto_delete=False, arguments=QuorumQueueRequest())
-        rabbitmq_client_strict_vhost_src.queues.create(queue_src_name, queue_req)
-        rabbitmq_client_strict_vhost_dest.queues.create(queue_dst_name, queue_req)
-
-        queue = rabbitmq_client_strict_vhost_src.queues.get(queue_src_name)
-        assert queue.state == "running"
-
-        queue = rabbitmq_client_strict_vhost_dest.queues.get(queue_dst_name)
-        assert queue.state == "running"
-
-        username = quote(rabbit_config.username, safe="")
-        password = quote(rabbit_config.password, safe="")
-        shovel_src_uri = f"amqp://{username}:{password}@localhost:5672?hostname=vhost:{vhost_src_name}&sasl=plain"
-        shovel_dst_uri = f"amqp://{username}:{password}@localhost:5672?hostname=vhost:{vhost_dst_name}&sasl=plain"
-
-        rabbitmq_client_strict_vhost_src.shovels.create(
-            name=shovel_name,
-            request=ShovelRequest(
-                src_uri=shovel_src_uri,
-                dest_uri=shovel_dst_uri,
-                src_arguments=Amqp10ShovelSource(src_address=f"/queues/{queue_src_name}"),
-                dest_arguments=Amqp10ShovelDestination(dest_address=f"/queues/{queue_dst_name}"),
+    source_vhost, destination_vhost = vhost_factory(None), vhost_factory(None)
+    userinfo = f"{quote(rabbit_config.username, safe='')}:{quote(rabbit_config.password, safe='')}"
+    source: Amqp091ShovelSource | Amqp10ShovelSource
+    destination: Amqp091ShovelDestination | Amqp10ShovelDestination
+    if protocol == "amqp091":
+        source_uri = f"amqp://{userinfo}@/{source_vhost}"
+        destination_uri = f"amqp://{userinfo}@/{destination_vhost}"
+        source = Amqp091ShovelSource(src_queue="source", src_predeclared=True)
+        destination = Amqp091ShovelDestination(dest_queue="destination", dest_predeclared=True)
+    else:
+        source_uri = f"amqp://{userinfo}@localhost:5672?hostname=vhost:{source_vhost}&sasl=plain"
+        destination_uri = f"amqp://{userinfo}@localhost:5672?hostname=vhost:{destination_vhost}&sasl=plain"
+        source = Amqp10ShovelSource(src_address="/queues/source")
+        destination = Amqp10ShovelDestination(dest_address="/queues/destination")
+    with (
+        RabbitMQClient(rabbit_config.client_config(virtual_host=source_vhost, strict=True)) as producer,
+        RabbitMQClient(rabbit_config.client_config(virtual_host=destination_vhost, strict=True)) as consumer,
+    ):
+        producer.queues.create("source", QueueRequest(arguments=QuorumQueueRequest()))
+        consumer.queues.create("destination", QueueRequest(arguments=QuorumQueueRequest()))
+        producer.shovels.create(
+            "transfer",
+            ShovelRequest(
+                src_uri=source_uri,
+                dest_uri=destination_uri,
+                src_arguments=source,
+                dest_arguments=destination,
             ),
         )
-
-        shovel = rabbitmq_client_strict_vhost_src.shovels.get(shovel_name)
-        assert shovel is not None
-    finally:
-        # Best-effort teardown so a failed assertion does not leak the shovel,
-        # queues, or vhosts into subsequent test runs.
-        with contextlib.suppress(RabbitMQError):
-            rabbitmq_client_strict_vhost_src.shovels.delete(shovel_name)
-        with contextlib.suppress(RabbitMQError):
-            rabbitmq_client_strict_vhost_dest.queues.delete(queue_dst_name)
-        with contextlib.suppress(RabbitMQError):
-            rabbitmq_client_strict_vhost_src.queues.delete(queue_src_name)
+        observed = producer.shovels.get("transfer")
+        assert observed.name == "transfer"
+        assert observed.vhost == source_vhost
+        assert observed.value.src_arguments.src_protocol == protocol
+        assert observed.value.dest_arguments.dest_protocol == protocol
+        wait_for(
+            lambda: any(
+                status.name == "transfer" and status.state in ("running", "flow")
+                for status in producer.shovels.get_shovel_statuses_by_vhost()
+            ),
+            "SDK-created shovel to run",
+        )
+        assert management_api.publish(source_vhost, "amq.default", "source", "manager-delivery-proof")
+        management_api.delivered(destination_vhost, "destination", "manager-delivery-proof")
+        producer.shovels.delete("transfer")
+        with pytest.raises(NotFoundError):
+            producer.shovels.get("transfer")

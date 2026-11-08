@@ -1,33 +1,28 @@
+"""Exchange manager declarations and deletion on an isolated virtual host."""
+
 from __future__ import annotations
 
-# Queue creation and retrieval test
 from typing import TYPE_CHECKING
 
 import pytest
 
-from rabbitmq_management_sdk.resources.v4.exchanges.schemas.common import ExchangeType
-from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_request import ExchangeRequest
+from rabbitmq_management_sdk import ExchangeRequest, NotFoundError
 
 if TYPE_CHECKING:
-    from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
-    from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
+    from rabbitmq_management_sdk import RabbitMQClient
 
 
 @pytest.mark.live
 @pytest.mark.parametrize("auto_delete", [False, True])
-def test_create_destroy_direct_exchange(rabbitmq_client_compatibility: RabbitMQClient, auto_delete: bool) -> None:
-    exchange_name = "test_direct_exchange"
-
-    exchange_req = ExchangeRequest(type=ExchangeType.DIRECT, durable=True, auto_delete=auto_delete)
-    rabbitmq_client_compatibility.exchanges.create(exchange_name, exchange_req)
-
-    exc: ExchangeResponse = rabbitmq_client_compatibility.exchanges.get(exchange_name)
-    assert exc.durable
-    assert exc.auto_delete is auto_delete
-    rabbitmq_client_compatibility.exchanges.delete(exchange_name)
-
-
-@pytest.mark.live
-def test_get_all_exchanges(rabbitmq_client_compatibility: RabbitMQClient) -> None:
-
-    rabbitmq_client_compatibility.exchanges.list_all()
+def test_exchange_manager_round_trip_and_delete(live_client: RabbitMQClient, auto_delete: bool) -> None:
+    name = "direct-exchange"
+    live_client.exchanges.create(name, ExchangeRequest(type="direct", durable=True, auto_delete=auto_delete))
+    exchange = live_client.exchanges.get(name)
+    assert exchange.name == name
+    assert exchange.type == "direct"
+    assert exchange.durable is True
+    assert exchange.auto_delete is auto_delete
+    assert name in {item.name for item in live_client.exchanges.list_by_vhost()}
+    live_client.exchanges.delete(name)
+    with pytest.raises(NotFoundError):
+        live_client.exchanges.get(name)

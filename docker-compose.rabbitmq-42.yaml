@@ -15,6 +15,8 @@ services:
     configs:
       - source: rabbitmq-plugins
         target: /etc/rabbitmq/enabled_plugins
+      - source: rabbitmq-test-config
+        target: /etc/rabbitmq/conf.d/90-sdk-tests.conf
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 5s
@@ -25,3 +27,5 @@ services:
 configs:
   rabbitmq-plugins:
     file: ./rabbitmq-plugins
+  rabbitmq-test-config:
+    file: ./tests/live/rabbitmq.conf

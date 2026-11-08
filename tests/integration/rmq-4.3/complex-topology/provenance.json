@@ -1,0 +1,35 @@
+{
+  "captured_on": "2026-10-28",
+  "broker_version": "4.3.6",
+  "image": "rabbitmq:4.3-management",
+  "image_digest": "rabbitmq@sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd",
+  "demo_vhost_prefix": "topology-demo",
+  "sha256": {
+    "exchanges.json": "fc818bb9c7da3c946dbfc0e22898c27820c2fbb5a7c355c3caa845540f8c933f",
+    "full-export-definitions.json": "6fead65ce61af8f1731721e2143d808d5b5d29b0fbc4464435c15f520f085109",
+    "queues.json": "a0f764c2f3b8e980e5be6e4d3d0080b71e58b73afe7023cd06350812f6b5cc46"
+  },
+  "capture_endpoints": {
+    "full-export-definitions.json": "GET /api/definitions",
+    "queues.json": "GET /api/queues?disable_stats=true",
+    "exchanges.json": "GET /api/exchanges?disable_stats=true"
+  },
+  "in_cluster_amqp_hosts": [],
+  "expected_demo_resources": {
+    "vhosts": 10,
+    "exchanges": 54,
+    "queues": 46,
+    "shovels": 13,
+    "bindings": 55
+  },
+  "expected_findings": {
+    "structural_cycles": 10,
+    "message_loop_candidates": 6,
+    "largest_cycle_hops": 11,
+    "dangling_edges": 2,
+    "competing_shovel_groups": 1,
+    "cross_vhost_shovels": 12,
+    "shovels_with_unconfirmed_endpoints": 2,
+    "shovels_with_unresolved_vhost": 1
+  }
+}

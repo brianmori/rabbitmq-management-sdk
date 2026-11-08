@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import AliasChoices, ConfigDict, Field
+from pydantic import AliasChoices, BeforeValidator, Field
 
+from rabbitmq_management_sdk.resources._arguments import _WireArguments
 from rabbitmq_management_sdk.resources.base import RabbitMQBase
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.common import ExchangeType
 
 
-class ExchangeArgumentsResponse(RabbitMQBase):
+class ExchangeArgumentsResponse(_WireArguments):
     """Arguments echoed back by the server for an exchange.
 
     Attributes:
@@ -16,8 +17,6 @@ class ExchangeArgumentsResponse(RabbitMQBase):
     """
 
     alternate_exchange: str | None = Field(default=None, alias="alternate-exchange")
-
-    model_config = ConfigDict(extra="allow")  # Allow unknown plugin arguments
 
 
 class ExchangeResponse(RabbitMQBase):
@@ -42,6 +41,8 @@ class ExchangeResponse(RabbitMQBase):
     internal: bool
     policy: str | None = None
 
-    arguments: ExchangeArgumentsResponse = Field(default_factory=ExchangeArgumentsResponse)
+    arguments: Annotated[ExchangeArgumentsResponse, BeforeValidator(ExchangeArgumentsResponse.from_wire)] = Field(
+        default_factory=ExchangeArgumentsResponse
+    )
 
     message_stats: dict[str, Any] | None = None

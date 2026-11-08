@@ -1,0 +1,346 @@
+{
+  "broker_version": "4.2.9",
+  "cases": [
+    {
+      "name": "amqp091-destination-empty",
+      "observations": {
+        "delivered_key": "",
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-exchange": "output",
+        "dest-exchange-key": "",
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///captured",
+        "src-protocol": "amqp091",
+        "src-queue": "input",
+        "src-uri": "amqp:///captured"
+      }
+    },
+    {
+      "name": "amqp091-destination-nonempty",
+      "observations": {
+        "delivered_key": "fixed.key",
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-exchange": "output",
+        "dest-exchange-key": "fixed.key",
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///captured",
+        "src-protocol": "amqp091",
+        "src-queue": "input",
+        "src-uri": "amqp:///captured"
+      }
+    },
+    {
+      "name": "amqp091-destination-omitted",
+      "observations": {
+        "delivered_key": "input",
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-exchange": "output",
+        "dest-protocol": "amqp091",
+        "dest-uri": "amqp:///captured",
+        "src-protocol": "amqp091",
+        "src-queue": "input",
+        "src-uri": "amqp:///captured"
+      }
+    },
+    {
+      "name": "amqp091-source-empty",
+      "observations": {
+        "binding_key_is_empty": false,
+        "binding_key_is_generated_queue": true,
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-protocol": "amqp091",
+        "dest-queue": "sink",
+        "dest-uri": "amqp:///captured",
+        "src-exchange": "events",
+        "src-exchange-key": "",
+        "src-protocol": "amqp091",
+        "src-uri": "amqp:///captured"
+      }
+    },
+    {
+      "name": "amqp091-source-nonempty",
+      "observations": {
+        "binding_key_is_empty": false,
+        "binding_key_is_generated_queue": false,
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-protocol": "amqp091",
+        "dest-queue": "sink",
+        "dest-uri": "amqp:///captured",
+        "src-exchange": "events",
+        "src-exchange-key": "fixed.key",
+        "src-protocol": "amqp091",
+        "src-uri": "amqp:///captured"
+      }
+    },
+    {
+      "name": "amqp091-source-omitted",
+      "observations": {
+        "binding_key_is_empty": false,
+        "binding_key_is_generated_queue": true,
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-protocol": "amqp091",
+        "dest-queue": "sink",
+        "dest-uri": "amqp:///captured",
+        "src-exchange": "events",
+        "src-protocol": "amqp091",
+        "src-uri": "amqp:///captured"
+      }
+    },
+    {
+      "name": "amqp10-destination-legacy-empty",
+      "observations": {
+        "amqp_address_v1_permitted": true,
+        "delivered_key": "delivery.subject",
+        "message_subject": "delivery.subject",
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-address": "/exchange/output/",
+        "dest-protocol": "amqp10",
+        "dest-uri": "amqp://localhost?hostname=vhost:captured",
+        "src-address": "/queues/input",
+        "src-protocol": "amqp10",
+        "src-uri": "amqp://localhost?hostname=vhost:captured"
+      }
+    },
+    {
+      "name": "amqp10-destination-legacy-nonempty",
+      "observations": {
+        "amqp_address_v1_permitted": true,
+        "delivered_key": "fixed.key",
+        "message_subject": "delivery.subject",
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-address": "/exchange/output/fixed.key",
+        "dest-protocol": "amqp10",
+        "dest-uri": "amqp://localhost?hostname=vhost:captured",
+        "src-address": "/queues/input",
+        "src-protocol": "amqp10",
+        "src-uri": "amqp://localhost?hostname=vhost:captured"
+      }
+    },
+    {
+      "name": "amqp10-destination-legacy-omitted",
+      "observations": {
+        "amqp_address_v1_permitted": true,
+        "delivered_key": "delivery.subject",
+        "message_subject": "delivery.subject",
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-address": "/exchange/output",
+        "dest-protocol": "amqp10",
+        "dest-uri": "amqp://localhost?hostname=vhost:captured",
+        "src-address": "/queues/input",
+        "src-protocol": "amqp10",
+        "src-uri": "amqp://localhost?hostname=vhost:captured"
+      }
+    },
+    {
+      "name": "amqp10-destination-v2-empty",
+      "observations": {
+        "amqp_address_v1_permitted": true,
+        "delivered_key": "",
+        "message_subject": "delivery.subject",
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-address": "/exchanges/output/",
+        "dest-protocol": "amqp10",
+        "dest-uri": "amqp://localhost?hostname=vhost:captured",
+        "src-address": "/queues/input",
+        "src-protocol": "amqp10",
+        "src-uri": "amqp://localhost?hostname=vhost:captured"
+      }
+    },
+    {
+      "name": "amqp10-destination-v2-nonempty",
+      "observations": {
+        "amqp_address_v1_permitted": true,
+        "delivered_key": "fixed.key",
+        "message_subject": "delivery.subject",
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-address": "/exchanges/output/fixed.key",
+        "dest-protocol": "amqp10",
+        "dest-uri": "amqp://localhost?hostname=vhost:captured",
+        "src-address": "/queues/input",
+        "src-protocol": "amqp10",
+        "src-uri": "amqp://localhost?hostname=vhost:captured"
+      }
+    },
+    {
+      "name": "amqp10-destination-v2-omitted",
+      "observations": {
+        "amqp_address_v1_permitted": true,
+        "delivered_key": "",
+        "message_subject": "delivery.subject",
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-address": "/exchanges/output",
+        "dest-protocol": "amqp10",
+        "dest-uri": "amqp://localhost?hostname=vhost:captured",
+        "src-address": "/queues/input",
+        "src-protocol": "amqp10",
+        "src-uri": "amqp://localhost?hostname=vhost:captured"
+      }
+    },
+    {
+      "name": "amqp10-source-empty",
+      "observations": {
+        "source_address_rejected": true
+      },
+      "value": {
+        "dest-protocol": "amqp091",
+        "dest-queue": "sink",
+        "dest-uri": "amqp:///captured",
+        "src-address": "/exchanges/events/",
+        "src-protocol": "amqp10",
+        "src-uri": "amqp://localhost?hostname=vhost:captured"
+      }
+    },
+    {
+      "name": "amqp10-source-nonempty",
+      "observations": {
+        "source_address_rejected": true
+      },
+      "value": {
+        "dest-protocol": "amqp091",
+        "dest-queue": "sink",
+        "dest-uri": "amqp:///captured",
+        "src-address": "/exchanges/events/fixed",
+        "src-protocol": "amqp10",
+        "src-uri": "amqp://localhost?hostname=vhost:captured"
+      }
+    },
+    {
+      "name": "amqp10-source-omitted",
+      "observations": {
+        "source_address_rejected": true
+      },
+      "value": {
+        "dest-protocol": "amqp091",
+        "dest-queue": "sink",
+        "dest-uri": "amqp:///captured",
+        "src-address": "/exchanges/events",
+        "src-protocol": "amqp10",
+        "src-uri": "amqp://localhost?hostname=vhost:captured"
+      }
+    },
+    {
+      "name": "local-destination-empty",
+      "observations": {
+        "delivered_key": "",
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-exchange": "output",
+        "dest-exchange-key": "",
+        "dest-protocol": "local",
+        "dest-uri": "amqp:///captured",
+        "src-protocol": "amqp091",
+        "src-queue": "input",
+        "src-uri": "amqp:///captured"
+      }
+    },
+    {
+      "name": "local-destination-nonempty",
+      "observations": {
+        "delivered_key": "fixed.key",
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-exchange": "output",
+        "dest-exchange-key": "fixed.key",
+        "dest-protocol": "local",
+        "dest-uri": "amqp:///captured",
+        "src-protocol": "amqp091",
+        "src-queue": "input",
+        "src-uri": "amqp:///captured"
+      }
+    },
+    {
+      "name": "local-destination-omitted",
+      "observations": {
+        "delivered_key": "input",
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-exchange": "output",
+        "dest-protocol": "local",
+        "dest-uri": "amqp:///captured",
+        "src-protocol": "amqp091",
+        "src-queue": "input",
+        "src-uri": "amqp:///captured"
+      }
+    },
+    {
+      "name": "local-source-empty",
+      "observations": {
+        "binding_key_is_empty": false,
+        "binding_key_is_generated_queue": true,
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-protocol": "amqp091",
+        "dest-queue": "sink",
+        "dest-uri": "amqp:///captured",
+        "src-exchange": "events",
+        "src-exchange-key": "",
+        "src-protocol": "local",
+        "src-uri": "amqp:///captured"
+      }
+    },
+    {
+      "name": "local-source-nonempty",
+      "observations": {
+        "binding_key_is_empty": false,
+        "binding_key_is_generated_queue": false,
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-protocol": "amqp091",
+        "dest-queue": "sink",
+        "dest-uri": "amqp:///captured",
+        "src-exchange": "events",
+        "src-exchange-key": "fixed.key",
+        "src-protocol": "local",
+        "src-uri": "amqp:///captured"
+      }
+    },
+    {
+      "name": "local-source-omitted",
+      "observations": {
+        "binding_key_is_empty": false,
+        "binding_key_is_generated_queue": true,
+        "payload_delivered": "delivery-proof"
+      },
+      "value": {
+        "dest-protocol": "amqp091",
+        "dest-queue": "sink",
+        "dest-uri": "amqp:///captured",
+        "src-exchange": "events",
+        "src-protocol": "local",
+        "src-uri": "amqp:///captured"
+      }
+    }
+  ],
+  "legacy_address_v1_permitted": true,
+  "provenance": "tests/live/test_shovel_routing.py; disposable Compose broker; projected definitions and delivery observations",
+  "sanitization": "Vhost replaced with captured; URIs reconstructed without credentials; generated queue names and raw failure reasons omitted."
+}

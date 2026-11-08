@@ -217,6 +217,60 @@ class TestPolicySelectionEvidence:
 
 
 class TestDeadLetterEdges:
+    def test_python_spellings_do_not_configure_a_dead_letter_route(self) -> None:
+        response = _response(
+            vhosts=[_vhost("t")],
+            queues=[_queue("q", "t", dead_letter_exchange="ghost-dlx", dead_letter_routing_key="ghost-rk")],
+        )
+
+        assert parse_cluster_topology(response).edges == frozenset()
+
+    @pytest.mark.parametrize(
+        ("wire_arguments", "expected_dlx", "expected_routing_key"),
+        [
+            ({}, "policy-dlx", "policy-rk"),
+            ({"x-dead-letter-exchange": "direct-dlx"}, "direct-dlx", "policy-rk"),
+            ({"x-dead-letter-routing-key": ""}, "policy-dlx", ""),
+            (
+                {"x-dead-letter-exchange": "direct-dlx", "x-dead-letter-routing-key": ""},
+                "direct-dlx",
+                "",
+            ),
+        ],
+    )
+    def test_literal_python_keys_do_not_override_per_key_policy_resolution(
+        self, wire_arguments: dict[str, object], expected_dlx: str, expected_routing_key: str
+    ) -> None:
+        response = _response(
+            vhosts=[_vhost("t")],
+            queues=[
+                _queue(
+                    "q",
+                    "t",
+                    dead_letter_exchange="ghost-dlx",
+                    dead_letter_routing_key="ghost-rk",
+                    **wire_arguments,
+                )
+            ],
+            policies=[
+                _policy(
+                    "p",
+                    ".*",
+                    "queues",
+                    0,
+                    definition={"dead-letter-exchange": "policy-dlx", "dead-letter-routing-key": "policy-rk"},
+                )
+            ],
+        )
+
+        (edge,) = parse_cluster_topology(
+            response,
+            user_policy_selections=_policy_selections(vhost="t", name="q", kind=NodeKind.QUEUE, policy_name="p"),
+        ).edges
+
+        assert edge.target.name == expected_dlx
+        assert edge.routing_key == expected_routing_key
+
     def test_argument_only(self) -> None:
         response = _response(
             queues=[
@@ -360,6 +414,27 @@ class TestDeadLetterEdges:
 
 
 class TestAlternateExchangeEdges:
+    def test_python_spelling_does_not_configure_an_alternate_exchange(self) -> None:
+        response = _response(exchanges=[_exchange("events", "t", alternate_exchange="ghost-ae")])
+
+        assert parse_cluster_topology(response).edges == frozenset()
+
+    @pytest.mark.parametrize("wire_arguments", [{}, {"alternate-exchange": "direct-ae"}])
+    def test_literal_python_key_does_not_override_policy_resolution(self, wire_arguments: dict[str, object]) -> None:
+        response = _response(
+            exchanges=[_exchange("events", "t", type_="direct", alternate_exchange="ghost-ae", **wire_arguments)],
+            policies=[_policy("p", ".*", "exchanges", 0, definition={"alternate-exchange": "policy-ae"})],
+        )
+
+        (edge,) = parse_cluster_topology(
+            response,
+            user_policy_selections=_policy_selections(
+                vhost="t", name="events", kind=NodeKind.EXCHANGE, policy_name="p"
+            ),
+        ).edges
+
+        assert edge.target.name == wire_arguments.get("alternate-exchange", "policy-ae")
+
     def test_argument_only(self) -> None:
         response = _response(exchanges=[_exchange("ex1", "v", **{"alternate-exchange": "ae"})])
         (edge,) = parse_cluster_topology(response).edges

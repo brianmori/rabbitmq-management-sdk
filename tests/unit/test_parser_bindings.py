@@ -13,6 +13,48 @@ pytestmark = pytest.mark.unit
 
 
 class TestBindingEdges:
+    @pytest.mark.parametrize("literal_value", ["any", "custom-value"])
+    def test_python_spelling_does_not_collapse_a_distinct_header_binding(self, literal_value: str) -> None:
+        response = _response(
+            bindings=[
+                {
+                    "source": "headers",
+                    "vhost": "/",
+                    "destination": "q",
+                    "destination_type": "queue",
+                    "routing_key": "",
+                    "arguments": arguments,
+                }
+                for arguments in ({"x_match": literal_value}, {"x-match": "any"})
+            ]
+        )
+
+        topology = parse_cluster_topology(response)
+
+        assert {edge.arguments for edge in topology.edges} == {
+            json.dumps({"x_match": literal_value}),
+            '{"x-match": "any"}',
+        }
+
+    def test_coexisting_header_spellings_preserve_canonical_nested_arguments(self) -> None:
+        arguments = {"x_match": "custom-value", "nested": {"z": None, "a": [1, None]}, "x-match": None}
+        response = _response(
+            bindings=[
+                {
+                    "source": "headers",
+                    "vhost": "/",
+                    "destination": "q",
+                    "destination_type": "queue",
+                    "routing_key": "",
+                    "arguments": arguments,
+                }
+            ]
+        )
+
+        (edge,) = parse_cluster_topology(response).edges
+
+        assert edge.arguments == '{"nested": {"a": [1, null], "z": null}, "x-match": null, "x_match": "custom-value"}'
+
     def test_exchange_to_exchange(self) -> None:
         response = _response(
             bindings=[
