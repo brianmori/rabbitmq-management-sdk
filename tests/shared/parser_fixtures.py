@@ -92,6 +92,26 @@ def _policy(
     }
 
 
+def _binding(
+    source: str,
+    destination: str,
+    routing_key: str = "",
+    *,
+    vhost: str = "v",
+    destination_type: str = "queue",
+    arguments: dict[str, object] | None = None,
+) -> dict[str, object]:
+    """Build a binding definition with explicit wire keys."""
+    return {
+        "vhost": vhost,
+        "source": source,
+        "destination": destination,
+        "destination_type": destination_type,
+        "routing_key": routing_key,
+        "arguments": arguments or {},
+    }
+
+
 def _policy_selections(
     *,
     vhost: str,

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `ClusterAuditor.dead_letter_coverage()` reports effective DLX configuration
+  and routing evidence for every captured queue, also included in `audit()`.
+  Results distinguish absent settings, missing exchanges, no matching
+  destination, possible destinations, and undetermined routing with reasons.
+  Routing accounts for direct, topic, fanout, and decidable headers bindings,
+  conditional alternate exchanges, and default-exchange queue routes. Terminal
+  queues remain visible; streams are explicitly not applicable.
 - `ClusterAuditor.queue_type_inventory()` groups captured queues by type across
   the cluster and per virtual host, with derived counts and retained queue
   identities. The immutable inventory is also included in `audit()`. Captured

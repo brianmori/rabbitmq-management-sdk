@@ -17,6 +17,10 @@ from rabbitmq_management_sdk import RabbitMQError, TopologyValidationError
 from rabbitmq_management_sdk.topology import (
     ClusterTopology,
     CompetingShovelConsumers,
+    DeadLetterCoverage,
+    DeadLetterCoverageStatus,
+    DeadLetterRoutingIssue,
+    DeadLetterUncertainty,
     EdgeKind,
     EndpointAuthority,
     ExchangeNode,
@@ -76,6 +80,48 @@ def _endpoint(
         routing_key=None,
         is_confirmed_local=is_confirmed_local,
     )
+
+
+class TestDeadLetterCoverage:
+    def test_result_is_frozen_canonical_and_pickleable(self) -> None:
+        queue = _queue("v", "work")
+        exchange = NodeId(vhost="v", name="dlx", kind=NodeKind.EXCHANGE)
+        first, last = _queue("v", "a").id, _queue("v", "z").id
+        issue = DeadLetterRoutingIssue(exchange, DeadLetterUncertainty.MESSAGE_HEADERS_NOT_CAPTURED)
+        result = DeadLetterCoverage(
+            queue, DeadLetterCoverageStatus.DESTINATION_POSSIBLE, exchange, "", (last, first), (issue,)
+        )
+
+        assert result.destinations == (first, last)
+        assert result.routing_key == ""
+        assert pickle.loads(pickle.dumps(result)) == result
+        assert hash(result) == hash(pickle.loads(pickle.dumps(result)))
+        with pytest.raises(FrozenInstanceError):
+            result.routing_key = None  # type: ignore[misc]
+
+    def test_result_rejects_contradictory_status_and_destinations(self) -> None:
+        queue = _queue("v", "work")
+        exchange = NodeId(vhost="v", name="dlx", kind=NodeKind.EXCHANGE)
+        with pytest.raises(TopologyValidationError, match="destinations require"):
+            DeadLetterCoverage(queue, DeadLetterCoverageStatus.DESTINATION_POSSIBLE, exchange)
+        with pytest.raises(TopologyValidationError, match="destinations require"):
+            DeadLetterCoverage(queue, DeadLetterCoverageStatus.NO_DESTINATION, exchange, destinations=(queue.id,))
+        with pytest.raises(TopologyValidationError, match="undetermined requires"):
+            DeadLetterCoverage(queue, DeadLetterCoverageStatus.UNDETERMINED, exchange)
+        with pytest.raises(TopologyValidationError, match="configured exchange"):
+            DeadLetterCoverage(queue, DeadLetterCoverageStatus.MISSING_EXCHANGE)
+        with pytest.raises(TopologyValidationError, match="no_dlx cannot"):
+            DeadLetterCoverage(queue, DeadLetterCoverageStatus.NO_DLX, exchange)
+
+    def test_result_rejects_mixed_scope_and_mutable_collections(self) -> None:
+        queue = _queue("v", "work")
+        exchange = NodeId(vhost="v", name="dlx", kind=NodeKind.EXCHANGE)
+        with pytest.raises(TopologyValidationError, match="share the queue cluster and vhost"):
+            DeadLetterCoverage(queue, DeadLetterCoverageStatus.MISSING_EXCHANGE, replace(exchange, vhost="other"))
+        with pytest.raises(TopologyValidationError, match="tuple of queue NodeId"):
+            DeadLetterCoverage(queue, DeadLetterCoverageStatus.DESTINATION_POSSIBLE, exchange, destinations=[queue.id])  # type: ignore[arg-type]
+        with pytest.raises(TopologyValidationError, match="reserved for streams"):
+            DeadLetterCoverage(queue, DeadLetterCoverageStatus.NOT_APPLICABLE)
 
 
 class TestCompetingShovelConsumers:
