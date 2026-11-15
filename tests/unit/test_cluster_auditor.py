@@ -147,6 +147,15 @@ def test_audit_returns_all_findings_from_the_public_facade() -> None:
     assert report.fanout_exchange_bindings[0].queues == ()
     assert report.queue_type_inventory == auditor.queue_type_inventory()
     assert report.queue_type_inventory.queue_count == 2
+    assert report.dead_letter_coverage == auditor.dead_letter_coverage()
+
+
+def test_dead_letter_coverage_survives_graph_transfer_without_source_definitions() -> None:
+    source = ClusterAuditor(_definitions())
+    restored = ClusterAuditor.from_topology(pickle.loads(pickle.dumps(source.topology)))
+
+    assert restored.dead_letter_coverage() == source.dead_letter_coverage()
+    assert restored.audit().dead_letter_coverage == source.audit().dead_letter_coverage
 
 
 def test_queue_inventory_survives_graph_transfer_and_source_mutation() -> None:

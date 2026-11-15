@@ -34,6 +34,8 @@ test, and audit:
   unreachable internal exchanges, queues without captured ingress, cross-vhost
   shovels, and unresolved or unconfirmed shovel endpoints. Inventory queue types
   across the cluster and per vhost alongside each captured vhost default.
+  Inspect effective DLX configuration and routing compatibility, with explicit
+  uncertainty.
 - **Respect broker evidence** — direct arguments take precedence, while complete
   queue and exchange observations identify broker-selected policies without
   reimplementing RabbitMQ's policy matching rules in Python.
@@ -272,6 +274,7 @@ auditor = ClusterAuditor(
 
 report = auditor.audit(max_cycles=100)
 fanout_groups = auditor.fanout_exchange_bindings()
+dlx_coverage = auditor.dead_letter_coverage()
 inventory = auditor.queue_type_inventory()
 for group in inventory.queue_types:
     print(group.queue_type, group.queue_count)
@@ -296,6 +299,13 @@ policy for dead-letter and alternate-exchange routes. This avoids
 reinterpreting RabbitMQ policy regular expressions locally. The exchange
 observations also resolve referenced predeclared, system, and plugin exchanges
 that RabbitMQ omits from definitions exports.
+
+`report.dead_letter_coverage` contains the same per-queue DLX results. They
+distinguish absent configuration, missing exchanges, no matching destination,
+possible destinations, and undetermined routing. Terminal and discard queues
+remain visible for callers to classify. See the
+[DLX coverage guide](docs/dead-letter-coverage.md) for statuses, supported
+routing semantics, and a runnable example.
 
 `report.queue_type_inventory` contains the same inventory, including empty
 captured vhosts. Each entry in `inventory.vhosts` exposes `vhost`,

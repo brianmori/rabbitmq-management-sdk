@@ -24,6 +24,7 @@ from rabbitmq_management_sdk.topology.cycles import (
     find_structural_cycles,
     message_loop_candidates_from_complete_result,
 )
+from rabbitmq_management_sdk.topology.dead_letter import dead_letter_coverage
 from rabbitmq_management_sdk.topology.fanout import fanout_exchange_bindings
 from rabbitmq_management_sdk.topology.models import ClusterTopology
 from rabbitmq_management_sdk.topology.ordering import edge_sort_key
@@ -44,6 +45,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from rabbitmq_management_sdk.topology.cycles import StronglyConnectedComponent
+    from rabbitmq_management_sdk.topology.dead_letter import DeadLetterCoverage
     from rabbitmq_management_sdk.topology.fanout import FanoutExchangeBindings
     from rabbitmq_management_sdk.topology.models import (
         ExchangeNode,
@@ -77,6 +79,7 @@ class TopologyAuditReport:
     competing_shovel_consumers: tuple[CompetingShovelConsumers, ...] = ()
     fanout_exchange_bindings: tuple[FanoutExchangeBindings, ...] = ()
     queue_type_inventory: QueueTypeInventory = field(default_factory=QueueTypeInventory)
+    dead_letter_coverage: tuple[DeadLetterCoverage, ...] = ()
 
 
 class ClusterAuditor:
@@ -372,6 +375,16 @@ class ClusterAuditor:
         """
         return queue_type_inventory(self._topology)
 
+    def dead_letter_coverage(self) -> tuple[DeadLetterCoverage, ...]:
+        """Return effective DLX settings and routing evidence for every queue.
+
+        Results distinguish absent configuration, a missing exchange, no
+        matching destination, a possible destination, and undetermined routing.
+        Streams are explicitly not applicable. Terminal and discard queues
+        remain in the report for callers to classify.
+        """
+        return dead_letter_coverage(self._topology)
+
     def dangling_edges(self) -> tuple[TopologyEdge, ...]:
         """Return declared routes whose source or target is absent from the export.
 
@@ -405,4 +418,5 @@ class ClusterAuditor:
             competing_shovel_consumers=self.competing_shovel_consumers(),
             fanout_exchange_bindings=self.fanout_exchange_bindings(),
             queue_type_inventory=self.queue_type_inventory(),
+            dead_letter_coverage=self.dead_letter_coverage(),
         )

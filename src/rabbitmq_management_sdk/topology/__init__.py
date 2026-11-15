@@ -12,6 +12,12 @@ from rabbitmq_management_sdk.topology.cycles import (
     CycleSearchResult,
     StronglyConnectedComponent,
 )
+from rabbitmq_management_sdk.topology.dead_letter import (
+    DeadLetterCoverage,
+    DeadLetterCoverageStatus,
+    DeadLetterRoutingIssue,
+    DeadLetterUncertainty,
+)
 from rabbitmq_management_sdk.topology.fanout import FanoutExchangeBindings, FanoutQueue
 from rabbitmq_management_sdk.topology.models import (
     ClusterTopology,
@@ -41,6 +47,10 @@ __all__ = [
     "CompetingShovelConsumers",
     "Cycle",
     "CycleSearchResult",
+    "DeadLetterCoverage",
+    "DeadLetterCoverageStatus",
+    "DeadLetterRoutingIssue",
+    "DeadLetterUncertainty",
     "EdgeKind",
     "EdgeSortKey",
     "EndpointAuthority",

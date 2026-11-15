@@ -13,7 +13,7 @@ from itertools import pairwise
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rabbitmq_management_sdk.topology import EdgeKind, NodeKind, node_sort_key
+from rabbitmq_management_sdk.topology import DeadLetterCoverageStatus, EdgeKind, NodeKind, node_sort_key
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -373,6 +373,44 @@ def check_queue_inventory(auditor: ClusterAuditor, prefix: str) -> None:
     assert auditor.audit().queue_type_inventory == inventory
 
 
+def check_dead_letter_coverage(auditor: ClusterAuditor, prefix: str) -> None:
+    results = auditor.dead_letter_coverage()
+    assert len(results) == 46
+    assert Counter(result.status for result in results) == {
+        DeadLetterCoverageStatus.NO_DLX: 34,
+        DeadLetterCoverageStatus.DESTINATION_POSSIBLE: 10,
+        DeadLetterCoverageStatus.MISSING_EXCHANGE: 1,
+        DeadLetterCoverageStatus.NOT_APPLICABLE: 1,
+    }
+    expected = {
+        "deadletter/queue/retry.wait": ("work.in", "work.quorum"),
+        "deadletter/queue/work.quorum": ("poison.dlx", "poison.plq"),
+        "loops/queue/dead.a.q": ("dead.b", "dead.b.q"),
+        "loops/queue/dead.b.q": ("dead.a", "dead.a.q"),
+        "loops/queue/dead.self.q": ("dead.self", "dead.self.q"),
+        "loops/queue/dead-ae.q": ("dead-ae.entry", "dead-ae.q"),
+        "policies/queue/policy.work": ("policy.dlx", "policy.dlx.q"),
+        "policies/queue/policy.override": ("argument.dlx", "argument.dlx.q"),
+        "region-a/queue/complex.work.q": ("complex.dlx", "complex.forward.q"),
+        "region-b/queue/complex.work.q": ("complex.dlx", "complex.return.q"),
+    }
+    possible = {signature(result.queue.id, prefix): result for result in results if result.destinations}
+    assert set(possible) == set(expected)
+    for name, (exchange, destination) in expected.items():
+        result = possible[name]
+        assert result.dead_letter_exchange is not None
+        assert result.dead_letter_exchange.name == exchange
+        assert len(result.destinations) == 1
+        assert result.destinations[0].name == destination
+        assert result.destinations[0].vhost == result.queue.id.vhost
+        assert result.issues == ()
+    (missing,) = (result for result in results if result.status == DeadLetterCoverageStatus.MISSING_EXCHANGE)
+    assert signature(missing.queue.id, prefix) == "diagnostics/queue/diag.missing-dlx"
+    (parking,) = (result for result in results if result.queue.id.name == "poison.plq")
+    assert parking.status == DeadLetterCoverageStatus.NO_DLX
+    assert auditor.audit().dead_letter_coverage == results
+
+
 CHECKS: tuple[Callable[[ClusterAuditor, str], None], ...] = (
     check_cycles,
     check_resources_and_routes,
@@ -381,4 +419,5 @@ CHECKS: tuple[Callable[[ClusterAuditor, str], None], ...] = (
     check_shovels,
     check_fanout,
     check_queue_inventory,
+    check_dead_letter_coverage,
 )
