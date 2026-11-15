@@ -29,4 +29,10 @@ def test_fanout_queue_replication_survives_capture_loading(suffix: str) -> None:
     assert [(queue.id.vhost, queue.id.name, queue.queue_type, queue.replication_factor) for queue in source.queues] == [
         ("src", "fan.q", "quorum", 1),
     ]
+    assert source.queues[0].durable is True
+    assert (source.queue_count, source.durable_queue_count, source.quorum_queue_count) == (1, 1, 1)
+    assert source.known_quorum_member_count == source.quorum_member_count == 1
+    assert source.unknown_queue_type_count == source.unknown_durability_count == 0
+    assert source.quorum_queues_without_membership_count == 0
+    assert all(group.queue_count == group.quorum_member_count == 0 for group in groups if group is not source)
     assert auditor.audit(max_cycles=1).fanout_exchange_bindings == groups

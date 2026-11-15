@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Fanout results retain captured queue durability and expose derived direct
+  target counts, durability counts, and quorum-member totals through the
+  existing `fanout_exchange_bindings()` method and audit report. Partial
+  membership evidence remains available; complete totals are `None` when
+  target types or quorum memberships are unknown. Capacity thresholds remain
+  caller policy.
 - `ClusterAuditor.exchange_routing_coverage()` evaluates every contained
   exchange for an optional routing key, reporting possible destinations,
   no destination, or explicit uncertainty. The aggregate audit includes

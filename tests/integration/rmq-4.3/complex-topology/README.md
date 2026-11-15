@@ -117,6 +117,13 @@ are properties of the supplied evidence, not runtime health checks.
 The independent expected paths and feature assertions live in
 [tests/shared/complex_topology.py](../../../shared/complex_topology.py).
 
+Fanout capacity metrics retain the same direct targets: `route.fanout` has
+3 durable queues, including 1 quorum queue with 1 captured member. Parallel
+bindings contribute one queue target. Empty fanout groups report zero targets
+and zero quorum members; captured targets in this demo have known durability,
+types, and quorum membership. Focused tests cover incomplete evidence and
+non-durable queues without rewriting the demo capture.
+
 Effective DLX coverage reports 34 queues without a DLX, 10 with a possible
 queue destination, 1 missing DLX exchange (`diag.missing-dlx`), and 1 stream
 where dead-lettering is not applicable. The terminal `poison.plq` remains in

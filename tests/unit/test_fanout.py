@@ -8,6 +8,7 @@ from rabbitmq_management_sdk.topology import (
     ClusterTopology,
     EdgeKind,
     ExchangeNode,
+    FanoutExchangeBindings,
     FanoutQueue,
     NodeId,
     NodeKind,
@@ -68,10 +69,16 @@ def test_vhosts_distinct_queues_and_quorum_factors_are_preserved() -> None:
         ("z", "events"),
     ]
     assert groups[0].queues == ()
+    assert groups[0].queue_count == 0
+    assert groups[0].quorum_member_count == 0
     assert [queue.id.name for queue in groups[1].queues] == ["classic", "jobs", "plugin", "stream"]
     assert groups[1].queues[1].replication_factor == 3
     assert groups[2].queues[0].replication_factor == 5
     assert groups[1].queues[2].queue_type == "custom"
+    assert all(queue.durable is True for group in groups for queue in group.queues)
+    assert (groups[1].queue_count, groups[1].durable_queue_count, groups[1].quorum_queue_count) == (4, 4, 1)
+    assert groups[1].quorum_member_count == groups[1].known_quorum_member_count == 3
+    assert (groups[2].queue_count, groups[2].quorum_member_count) == (1, 5)
 
 
 def test_only_direct_queue_bindings_count_and_dangling_targets_remain_visible() -> None:
@@ -100,6 +107,10 @@ def test_only_direct_queue_bindings_count_and_dangling_targets_remain_visible() 
     (group,) = fanout_exchange_bindings(topology)
 
     assert group.queues == (FanoutQueue(id=dangling),)
+    assert group.queue_count == group.unknown_durability_count == group.unknown_queue_type_count == 1
+    assert group.durable_queue_count == group.non_durable_queue_count == group.quorum_queue_count == 0
+    assert group.known_quorum_member_count == 0
+    assert group.quorum_member_count is None
     assert dangling not in topology.nodes_by_id
     assert len(topology.dangling_edges()) == 2
 
@@ -113,3 +124,73 @@ def test_topology_without_fanout_exchanges_has_no_groups() -> None:
         cluster_id="captured",
     )
     assert fanout_exchange_bindings(topology) == ()
+
+
+@pytest.mark.parametrize("uncertainty", [None, "membership", "queue-type"])
+def test_capacity_totals_keep_partial_membership_and_unknown_types_explicit(uncertainty: str | None) -> None:
+    exchange = _exchange("v", "events")
+    queues = {
+        QueueNode(replace(exchange.id, name="quorum", kind=NodeKind.QUEUE), "quorum", True, 3),
+        QueueNode(replace(exchange.id, name="classic", kind=NodeKind.QUEUE), "classic", False),
+        QueueNode(replace(exchange.id, name="stream", kind=NodeKind.QUEUE), "stream", True),
+    }
+    if uncertainty == "membership":
+        queues.add(QueueNode(replace(exchange.id, name="unobserved", kind=NodeKind.QUEUE), "quorum", True))
+    targets = {queue.id for queue in queues}
+    if uncertainty == "queue-type":
+        targets.add(replace(exchange.id, name="missing", kind=NodeKind.QUEUE))
+    topology = ClusterTopology(
+        exchanges=frozenset({exchange}),
+        queues=frozenset(queues),
+        shovels=frozenset(),
+        cluster_id="captured",
+        edges=frozenset(
+            TopologyEdge(exchange.id, target, EdgeKind.BINDING, key)
+            for target in targets
+            for key in ("first", "parallel")
+        ),
+    )
+
+    (group,) = fanout_exchange_bindings(topology)
+
+    assert group.queue_count == (3 if uncertainty is None else 4)
+    assert group.durable_queue_count == (3 if uncertainty == "membership" else 2)
+    assert group.non_durable_queue_count == 1
+    assert group.unknown_durability_count == (1 if uncertainty == "queue-type" else 0)
+    assert group.quorum_queue_count == (2 if uncertainty == "membership" else 1)
+    assert group.unknown_queue_type_count == (1 if uncertainty == "queue-type" else 0)
+    assert group.quorum_queues_without_membership_count == (1 if uncertainty == "membership" else 0)
+    assert group.known_quorum_member_count == 3
+    assert group.quorum_member_count == (3 if uncertainty is None else None)
+    assert {queue.id.name: queue.durable for queue in group.queues}["classic"] is False
+
+
+def test_known_non_quorum_types_have_zero_quorum_members() -> None:
+    exchange = _exchange("v", "events")
+    queues = frozenset(
+        QueueNode(replace(exchange.id, name=kind, kind=NodeKind.QUEUE), kind, True)
+        for kind in ("classic", "stream", "plugin-type")
+    )
+    topology = ClusterTopology(
+        exchanges=frozenset({exchange}),
+        queues=queues,
+        shovels=frozenset(),
+        cluster_id="captured",
+        edges=frozenset(TopologyEdge(exchange.id, queue.id, EdgeKind.BINDING) for queue in queues),
+    )
+
+    (group,) = fanout_exchange_bindings(topology)
+
+    assert group.queue_count == group.durable_queue_count == 3
+    assert group.quorum_queue_count == group.quorum_queues_without_membership_count == 0
+    assert group.known_quorum_member_count == group.quorum_member_count == 0
+    assert group.unknown_queue_type_count == group.unknown_durability_count == 0
+
+
+def test_omitted_durability_does_not_hide_known_quorum_members() -> None:
+    exchange = _exchange("v", "events")
+    queue = FanoutQueue(replace(exchange.id, name="q", kind=NodeKind.QUEUE), "quorum", 3)
+    group = FanoutExchangeBindings(exchange, (queue,))
+    assert queue.durable is None
+    assert group.unknown_durability_count == 1
+    assert group.known_quorum_member_count == group.quorum_member_count == 3

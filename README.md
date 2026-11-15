@@ -301,6 +301,14 @@ reinterpreting RabbitMQ policy regular expressions locally. The exchange
 observations also resolve referenced predeclared, system, and plugin exchanges
 that RabbitMQ omits from definitions exports.
 
+Fanout groups expose `queue_count`, `durable_queue_count`,
+`quorum_queue_count`, and other derived capacity metrics. Each target retains
+its captured durability. `quorum_member_count` is a complete quorum-member
+sum or `None` when evidence is incomplete; `known_quorum_member_count` retains
+the available partial sum. These are configuration facts for caller-defined
+review thresholds. See the
+[fanout capacity guide](docs/topology-auditing.md#fanout-exchanges-and-quorum-replication).
+
 `report.dead_letter_coverage` contains the same per-queue DLX results. They
 distinguish absent configuration, missing exchanges, no matching destination,
 possible destinations, and undetermined routing. Terminal and discard queues

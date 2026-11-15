@@ -347,9 +347,14 @@ class TestQueueNode:
 class TestFanoutValues:
     def test_results_are_canonical_immutable_and_pickleable(self) -> None:
         exchange = _exchange("v", "events", "fanout")
-        queues = tuple(FanoutQueue(id=_queue("v", name).id) for name in ("z", "a"))
+        queues = tuple(
+            FanoutQueue(id=_queue("v", name).id, queue_type="quorum", replication_factor=3, durable=True)
+            for name in ("z", "a")
+        )
         result = FanoutExchangeBindings(exchange=exchange, queues=queues)
         assert result.queues == queues[::-1]
+        assert result.queue_count == result.durable_queue_count == result.quorum_queue_count == 2
+        assert result.known_quorum_member_count == result.quorum_member_count == 6
         assert pickle.loads(pickle.dumps(result)) == result
         assert hash(result) == hash(FanoutExchangeBindings(exchange=exchange, queues=queues[::-1]))
         with pytest.raises(FrozenInstanceError):
@@ -382,6 +387,11 @@ class TestFanoutValues:
     def test_invalid_target_replication_is_rejected(self, factor: object) -> None:
         with pytest.raises(TopologyValidationError, match="replication_factor"):
             FanoutQueue(id=_queue("v", "q").id, queue_type="quorum", replication_factor=factor)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("durable", [0, 1, "true"])
+    def test_durability_requires_a_boolean_or_unknown(self, durable: object) -> None:
+        with pytest.raises(TopologyValidationError, match="durable must be bool or None"):
+            FanoutQueue(id=_queue("v", "q").id, durable=durable)  # type: ignore[arg-type]
 
     def test_target_identity_type_and_replication_must_be_consistent(self) -> None:
         with pytest.raises(TopologyValidationError, match="queue NodeId"):
