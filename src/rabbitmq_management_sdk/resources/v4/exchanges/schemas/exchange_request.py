@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from pydantic import AliasChoices, ConfigDict, Field
 
-from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQRequest
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.common import ExchangeType
 
 
-class ExchangeArguments(RabbitMQBase):
+class ExchangeArguments(RabbitMQRequest):
     """Optional arguments for exchange declaration.
 
     Attributes:
@@ -21,7 +21,7 @@ class ExchangeArguments(RabbitMQBase):
     )
 
 
-class ExchangeRequest(RabbitMQBase):
+class ExchangeRequest(RabbitMQRequest):
     """Payload for creating or updating a RabbitMQ exchange.
 
     This model represents the body for 'PUT /api/exchanges/{vhost}/{name}'.

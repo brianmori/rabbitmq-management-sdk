@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from rabbitmq_management_sdk import NotFoundError
 from rabbitmq_management_sdk.resources.v4.policies.schemas import (
     OperatorPolicyApplyTo,
     OperatorPolicyRequest,
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.live
-def test_create_get_delete_regular_policy(rabbitmq_client_compatibility: RabbitMQClient) -> None:
+def test_create_get_delete_regular_policy(live_client: RabbitMQClient) -> None:
     name = "sdk-live-regular-policy"
     request = PolicyRequest(
         pattern="^sdk-live-regular-",
@@ -26,16 +27,22 @@ def test_create_get_delete_regular_policy(rabbitmq_client_compatibility: RabbitM
         apply_to=PolicyApplyTo.QUEUES,
     )
 
-    rabbitmq_client_compatibility.policies.create(name, request)
+    live_client.policies.create(name, request)
     try:
-        response = rabbitmq_client_compatibility.policies.get(name)
+        response = live_client.policies.get(name)
+        assert response.name == name
+        assert response.pattern == request.pattern
+        assert response.priority == request.priority
+        assert response.apply_to == request.apply_to
         assert response.definition.max_length == 1000
     finally:
-        rabbitmq_client_compatibility.policies.delete(name)
+        live_client.policies.delete(name)
+    with pytest.raises(NotFoundError):
+        live_client.policies.get(name)
 
 
 @pytest.mark.live
-def test_create_get_delete_operator_policy(rabbitmq_client_compatibility: RabbitMQClient) -> None:
+def test_create_get_delete_operator_policy(live_client: RabbitMQClient) -> None:
     name = "sdk-live-operator-policy"
     request = OperatorPolicyRequest(
         pattern="^sdk-live-operator-",
@@ -44,9 +51,15 @@ def test_create_get_delete_operator_policy(rabbitmq_client_compatibility: Rabbit
         apply_to=OperatorPolicyApplyTo.QUEUES,
     )
 
-    rabbitmq_client_compatibility.operator_policies.create(name, request)
+    live_client.operator_policies.create(name, request)
     try:
-        response = rabbitmq_client_compatibility.operator_policies.get(name)
+        response = live_client.operator_policies.get(name)
+        assert response.name == name
+        assert response.pattern == request.pattern
+        assert response.priority == request.priority
+        assert response.apply_to == request.apply_to
         assert response.definition.max_length == 1000
     finally:
-        rabbitmq_client_compatibility.operator_policies.delete(name)
+        live_client.operator_policies.delete(name)
+    with pytest.raises(NotFoundError):
+        live_client.operator_policies.get(name)

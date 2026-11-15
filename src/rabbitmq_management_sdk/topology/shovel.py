@@ -266,15 +266,15 @@ def _protocol_uri_evidence(uri: object, protocol: str | None) -> _UriEvidence:
     return _UriEvidence(vhost=vhost, authorities=authorities)
 
 
-def parse_amqp10_address(address: object) -> tuple[str, NodeKind, str | None] | None:
+def parse_amqp10_address(address: object, *, side: Literal["src", "dest"]) -> tuple[str, NodeKind, str | None] | None:
     """Parse a RabbitMQ AMQP 1.0 shovel address into a fixed resource.
 
     The parser accepts these current address-v2 and deprecated address-v1
     forms::
 
-        /queues/:queue              v2 fixed queue
-        /exchanges/:exchange/:key   v2 fixed exchange and routing key
-        /exchanges/:exchange        v2 fixed exchange and empty routing key
+        /queues/:queue              v2 source or target queue
+        /exchanges/:exchange/:key   v2 target exchange and routing key
+        /exchanges/:exchange        v2 target exchange and empty routing key
         /amq/queue/:queue           v1 existing queue
         /queue/:queue or :queue     v1 queue
         /exchange/:exchange/:key    v1 fixed exchange and routing/binding key
@@ -282,8 +282,10 @@ def parse_amqp10_address(address: object) -> tuple[str, NodeKind, str | None] | 
         /topic/:routing-key         v1 amq.topic exchange
 
     The plural v2 exchange form uses ``""`` when its routing-key segment is
-    omitted. Only the singular v1 form can mean that message metadata supplies
-    the routing key.
+    omitted. A v2 exchange source is unsupported and remains unresolved. On a
+    singular v1 target, both an omitted key and an empty trailing segment mean
+    that message metadata supplies the routing key. Deprecated v1 addresses
+    require the broker to permit the ``amqp_address_v1`` feature.
 
     Returns:
         The resource name, kind, and optional routing key, or ``None`` when
@@ -300,26 +302,29 @@ def parse_amqp10_address(address: object) -> tuple[str, NodeKind, str | None] | 
                     parsed = (unquote(name), NodeKind.QUEUE, None)
                 case ["amq", "queue", name] if name:
                     parsed = (unquote(name), NodeKind.QUEUE, None)
-                case ["exchanges", exchange] if exchange:
+                case ["exchanges", exchange] if exchange and side == "dest":
                     parsed = (unquote(exchange), NodeKind.EXCHANGE, "")
-                case ["exchanges", exchange, routing_key] if exchange:
+                case ["exchanges", exchange, routing_key] if exchange and side == "dest":
                     parsed = (unquote(exchange), NodeKind.EXCHANGE, unquote(routing_key))
                 case ["exchange", exchange] if exchange:
                     parsed = (unquote(exchange), NodeKind.EXCHANGE, None)
                 case ["exchange", exchange, routing_key] if exchange:
-                    parsed = (unquote(exchange), NodeKind.EXCHANGE, unquote(routing_key))
+                    key = unquote(routing_key)
+                    parsed = (unquote(exchange), NodeKind.EXCHANGE, None if side == "dest" and key == "" else key)
                 case ["topic", routing_key]:
                     parsed = ("amq.topic", NodeKind.EXCHANGE, unquote(routing_key))
     return parsed
 
 
 def shovel_side_resource(
-    value: Mapping[str, object], side: str, protocol: str | None
+    value: Mapping[str, object], side: Literal["src", "dest"], protocol: str | None
 ) -> tuple[str, NodeKind, str | None] | None:
     """Resolve one shovel side to a fixed queue or exchange.
 
     The ``local`` and ``amqp091`` protocols use the same ``-queue``,
-    ``-exchange``, and ``-exchange-key`` fields for resource identity.
+    ``-exchange``, and ``-exchange-key`` fields for resource identity. An empty
+    source exchange key selects a generated queue's binding key, which cannot
+    be resolved from the parameter; an empty destination key stays literal.
 
     Returns:
         The resource name, kind, and optional routing key, or ``None`` when
@@ -332,10 +337,11 @@ def shovel_side_resource(
         exchange = value.get(f"{side}-exchange")
         if isinstance(exchange, str):
             key = value.get(f"{side}-exchange-key")
-            return exchange, NodeKind.EXCHANGE, key if isinstance(key, str) else None
+            fixed_key = key if isinstance(key, str) and not (side == "src" and key == "") else None
+            return exchange, NodeKind.EXCHANGE, fixed_key
         return None
     if protocol == "amqp10":
-        return parse_amqp10_address(value.get(f"{side}-address"))
+        return parse_amqp10_address(value.get(f"{side}-address"), side=side)
     return None
 
 

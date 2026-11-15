@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQRequest
 from rabbitmq_management_sdk.resources.v4.common import DeadLetterStrategy, OverflowBehaviour
 
 # ---------------------------------------------------------------------------
@@ -21,7 +21,7 @@ class QuorumQueueOverflow(StrEnum):
     REJECT_PUBLISH = "reject-publish"
 
 
-class ClassicQueueRequest(RabbitMQBase):
+class ClassicQueueRequest(RabbitMQRequest):
     """Arguments for declaring a classic queue.
 
     Attributes:
@@ -47,7 +47,7 @@ class ClassicQueueRequest(RabbitMQBase):
     expires: int | None = Field(None, alias="x-expires")
 
 
-class QuorumQueueRequest(RabbitMQBase):
+class QuorumQueueRequest(RabbitMQRequest):
     """Arguments for declaring a high-availability quorum queue.
 
     Attributes:
@@ -97,7 +97,7 @@ class QuorumQueueRequest(RabbitMQBase):
         return self
 
 
-class StreamQueueRequest(RabbitMQBase):
+class StreamQueueRequest(RabbitMQRequest):
     """Arguments for declaring a high-throughput Stream queue.
 
     Attributes:
@@ -136,7 +136,7 @@ type QueueRequestArguments = Annotated[
 ]
 
 
-class QueueDeleteOptions(RabbitMQBase):
+class QueueDeleteOptions(RabbitMQRequest):
     if_empty: bool = Field(False, alias="if-empty")
     if_unused: bool = Field(False, alias="if-unused")
 
@@ -154,7 +154,7 @@ class QueueDeleteOptions(RabbitMQBase):
 # ---------------------------------------------------------------------------
 
 
-class QueueRequest(RabbitMQBase):
+class QueueRequest(RabbitMQRequest):
     """Full payload for ``HTTP_METHOD /api/queues/{vhost}/{name}``.
 
     Example — classic queue with TTL::

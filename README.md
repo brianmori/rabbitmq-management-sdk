@@ -349,6 +349,14 @@ SDK TLS configuration continues to build an explicit `ssl.SSLContext` for CA
 verification and client certificates. HTTPX2's system trust store default applies
 when using its own `verify=True` behavior, rather than an explicit context.
 
+## Request and response models
+
+Requests accept Python field names and serialize with RabbitMQ wire aliases.
+Responses parse exact wire names. Extensible definition arguments and policy
+maps preserve their JSON keys while exposing validated typed attributes.
+See [request and response models](docs/resource-models.md) for examples and
+the explicit `by_name=True` opt-in when reloading Python-name response dumps.
+
 ## Error handling
 
 Use `RabbitMQError` to catch HTTP request, transport, response-parsing,

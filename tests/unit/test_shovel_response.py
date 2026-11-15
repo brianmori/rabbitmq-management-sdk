@@ -54,8 +54,13 @@ def test_shovel_response_round_trip_preserves_both_endpoints(
 
     assert response.value.src_arguments.src_protocol == src_protocol
     assert response.value.dest_arguments.dest_protocol == dest_protocol
-    assert ShovelParameterResponse.model_validate_json(response.model_dump_json(by_alias=by_alias)) == response
-    assert ShovelParameterResponse.model_validate(response.model_dump(by_alias=by_alias)) == response
+    assert (
+        ShovelParameterResponse.model_validate_json(response.model_dump_json(by_alias=by_alias), by_name=not by_alias)
+        == response
+    )
+    assert (
+        ShovelParameterResponse.model_validate(response.model_dump(by_alias=by_alias), by_name=not by_alias) == response
+    )
 
 
 @pytest.mark.parametrize("side", ["src", "dest"])
@@ -73,7 +78,7 @@ def test_shovel_response_preserves_one_nested_endpoint_alongside_a_flat_endpoint
 
 def test_shovel_response_accepts_endpoint_model_instances() -> None:
     response = _response(_flat_value("local", "amqp10"))
-    data = response.model_dump()
+    data = response.model_dump(by_alias=True)
     data["value"]["src_arguments"] = response.value.src_arguments
     data["value"]["dest_arguments"] = response.value.dest_arguments
 

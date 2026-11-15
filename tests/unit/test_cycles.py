@@ -6,7 +6,7 @@ import pytest
 
 from rabbitmq_management_sdk import ClusterAuditor, RabbitMQError, TopologyAnalysisError, TopologyValidationError
 from rabbitmq_management_sdk.topology import Cycle, CycleSearchResult, StronglyConnectedComponent
-from rabbitmq_management_sdk.topology._cycle_algorithms import _johnson
+from rabbitmq_management_sdk.topology._cycle_algorithms import _circuit, _johnson
 from rabbitmq_management_sdk.topology.cycles import (
     find_cyclic_components,
     find_message_loop_candidates,
@@ -385,9 +385,9 @@ def test_long_single_cycle_is_fast() -> None:
     edges = [_edge(nodes[index], nodes[(index + 1) % node_count]) for index in range(node_count)]
     topo = _topology(edges)
 
-    start = time.time()
+    start = time.perf_counter()
     cycles = find_structural_cycles(topo).cycles
-    elapsed = time.time() - start
+    elapsed = time.perf_counter() - start
 
     assert len(cycles) == 1
     assert len(cycles[0]) == node_count
@@ -424,6 +424,137 @@ def test_candidate_search_skips_scc_with_only_outgoing_republishing_edge() -> No
     assert len(result.cycles) == 1
     assert set(result.cycles[0].nodes) == {queue, dlx}
     assert result.truncated is False
+
+
+@pytest.mark.parametrize("max_cycles", [0, 1])
+def test_candidate_search_skips_dense_exchange_residual_component(max_cycles: int) -> None:
+    queue = _queue("0-q")
+    exchanges = [_exchange(f"x{index:02d}") for index in range(10)]
+    topology = _topology(
+        [_edge(source, target) for source in exchanges for target in exchanges if source != target]
+        + [TopologyEdge(source=queue, target=exchanges[0], kind=EdgeKind.DEAD_LETTER), _edge(exchanges[0], queue)]
+    )
+
+    with patch("rabbitmq_management_sdk.topology._cycle_algorithms._circuit", wraps=_circuit) as circuit:
+        result = ClusterAuditor.from_topology(topology).message_loop_candidates(max_cycles=max_cycles)
+
+    assert [cycle.nodes for cycle in result.cycles] == [(queue, exchanges[0])]
+    assert result.truncated is False
+    # Only the queue-rooted search is eligible. No exchange-only residual SCC
+    # should enter the circuit traversal, even to prove an exact cap complete.
+    assert [call.args[0] for call in circuit.call_args_list] == [queue]
+
+
+def _topology_with_multiple_residual_components() -> ClusterTopology:
+    root, a, b, z1, z2 = (_exchange(name) for name in ("0-root", "a-ex", "b-ex", "z1", "z2"))
+    qa, qb = _queue("a-q"), _queue("b-q")
+    return _topology(
+        [_edge(root, node) for node in (a, b, z1)]
+        + [_edge(node, root) for node in (a, b, z1)]
+        + [
+            _edge(a, qa),
+            TopologyEdge(source=qa, target=a, kind=EdgeKind.DEAD_LETTER),
+            _edge(b, qb),
+            TopologyEdge(source=qb, target=b, kind=EdgeKind.DEAD_LETTER),
+            _edge(z1, z2),
+            _edge(z2, z1),
+        ]
+    )
+
+
+@pytest.mark.parametrize("max_cycles", [0, 1, 2, 3])
+def test_candidate_search_keeps_eligible_residual_components_and_exact_truncation(max_cycles: int) -> None:
+    auditor = ClusterAuditor.from_topology(_topology_with_multiple_residual_components())
+
+    with patch("rabbitmq_management_sdk.topology._cycle_algorithms._circuit", wraps=_circuit) as circuit:
+        result = auditor.message_loop_candidates(max_cycles=max_cycles)
+
+    expected = [("a-ex", "a-q"), ("b-ex", "b-q")]
+    assert [tuple(node.name for node in cycle.nodes) for cycle in result.cycles] == expected[: max_cycles or None]
+    assert result.truncated is (max_cycles == 1)
+    assert [call.args[0].name for call in circuit.call_args_list] == ["0-root", "a-ex", "b-ex"]
+
+
+def test_structural_search_still_enumerates_exchange_only_residual_components() -> None:
+    auditor = ClusterAuditor.from_topology(_topology_with_multiple_residual_components())
+
+    with patch("rabbitmq_management_sdk.topology._cycle_algorithms._circuit", wraps=_circuit) as circuit:
+        result = auditor.structural_cycles()
+
+    assert [tuple(node.name for node in cycle.nodes) for cycle in result.cycles] == [
+        ("0-root", "a-ex"),
+        ("0-root", "b-ex"),
+        ("0-root", "z1"),
+        ("a-ex", "a-q"),
+        ("b-ex", "b-q"),
+        ("z1", "z2"),
+    ]
+    assert result.truncated is False
+    assert [call.args[0].name for call in circuit.call_args_list] == ["0-root", "a-ex", "b-ex", "z1"]
+
+
+def test_residual_component_with_only_an_outgoing_republishing_edge_is_skipped() -> None:
+    root, a, b = (_exchange(name) for name in ("0-root", "a", "b"))
+    shovel = _shovel("shovel")
+    topology = _topology(
+        [
+            _edge(root, a),
+            _edge(a, b),
+            _edge(b, a),
+            TopologyEdge(source=a, target=shovel, kind=EdgeKind.SHOVEL),
+            TopologyEdge(source=shovel, target=root, kind=EdgeKind.SHOVEL),
+        ]
+    )
+
+    with patch("rabbitmq_management_sdk.topology._cycle_algorithms._circuit", wraps=_circuit) as circuit:
+        result = ClusterAuditor.from_topology(topology).message_loop_candidates(max_cycles=1)
+
+    assert [cycle.nodes for cycle in result.cycles] == [(root, a, shovel)]
+    assert result.truncated is False
+    assert [call.args[0] for call in circuit.call_args_list] == [root]
+
+
+def test_randomized_candidate_searches_match_independent_brute_force() -> None:
+    vertices = [_exchange("a"), _queue("b"), _exchange("c"), _shovel("d"), _exchange("e")]
+    possible_edges = []
+    for source in vertices:
+        for target in vertices:
+            if source == target:
+                continue
+            if (source.kind == NodeKind.SHOVEL) != (target.kind == NodeKind.SHOVEL):
+                kind = EdgeKind.SHOVEL
+            elif source.kind == NodeKind.EXCHANGE:
+                kind = EdgeKind.BINDING
+            elif source.kind == NodeKind.QUEUE and target.kind == NodeKind.EXCHANGE:
+                kind = EdgeKind.DEAD_LETTER
+            else:
+                continue
+            possible_edges.append(TopologyEdge(source=source, target=target, kind=kind))
+    rng = random.Random(87)
+
+    for _ in range(40):
+        edges = rng.sample(possible_edges, k=rng.randint(0, len(possible_edges)))
+        topology = _topology(edges, extra_nodes=tuple(vertices))
+        structural = _brute_force_cycles(vertices, [(edge.source, edge.target) for edge in edges])
+        republishing = {
+            (edge.source, edge.target) for edge in edges if edge.kind in (EdgeKind.DEAD_LETTER, EdgeKind.SHOVEL)
+        }
+        expected = {
+            path
+            for path in structural
+            if any((node, path[(index + 1) % len(path)]) in republishing for index, node in enumerate(path))
+        }
+
+        unlimited = find_message_loop_candidates(topology)
+
+        assert {cycle.nodes for cycle in unlimited.cycles} == expected
+        assert unlimited.truncated is False
+        assert unlimited == find_message_loop_candidates(_topology(list(reversed(edges)), extra_nodes=tuple(vertices)))
+        for limit in {1, max(1, len(expected)), len(expected) + 1}:
+            limited = find_message_loop_candidates(topology, max_cycles=limit)
+            assert len(limited.cycles) == min(limit, len(expected))
+            assert {cycle.nodes for cycle in limited.cycles} <= expected
+            assert limited.truncated is (len(expected) > limit)
 
 
 @pytest.mark.parametrize("max_cycles", [-1, True, 1.5, "1"])

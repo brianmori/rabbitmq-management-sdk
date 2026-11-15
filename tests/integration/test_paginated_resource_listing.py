@@ -26,7 +26,7 @@ _FIXTURE_DIRECTORY = Path(__file__).parent / "rmq-4.2"
 def _assert_captured_full_export_audit(auditor: ClusterAuditor) -> None:
     """Assert the stable topology facts captured from the RabbitMQ 4.2 lab."""
     report = auditor.audit()
-    topology = auditor._topology
+    topology = auditor.topology
 
     assert auditor.cluster_id == "rabbitmq-cluster-id-8ybq49F1lPFVBGa2QKGeCQ"
     assert auditor.cluster_name == "my-lab-rabbit"

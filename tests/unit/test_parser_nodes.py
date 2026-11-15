@@ -28,6 +28,19 @@ class TestParseExchange:
 
 
 class TestParseQueue:
+    def test_python_spelling_does_not_override_the_vhost_queue_type(self) -> None:
+        response = _response(vhosts=[_vhost("v", "quorum")], queues=[_queue("q", "v", queue_type="classic")])
+
+        (node,) = parse_cluster_topology(response).queues
+
+        assert node.queue_type == "quorum"
+
+    def test_python_spelling_does_not_supply_a_missing_queue_type(self) -> None:
+        response = _response(queues=[_queue("q", "v", queue_type="classic")])
+
+        with pytest.raises(TopologyParseError, match="no x-queue-type"):
+            parse_cluster_topology(response)
+
     @pytest.mark.parametrize("members, expected", [(None, None), ([], None), (["rabbit@a"], 1), (["a", "b", "c"], 3)])
     def test_replication_factor_uses_captured_membership(self, members: list[str] | None, expected: int | None) -> None:
         response = _response(

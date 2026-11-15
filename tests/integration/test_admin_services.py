@@ -53,6 +53,7 @@ def test_get_vhost_limits_returns_single_entry() -> None:
         pytest.param(b'{"rabbitmq_definition_format": "single_virtual_host", "queues": []}', id="single-vhost"),
         pytest.param(b'{"original_vhost_name": "/", "queues": []}', id="single-vhost-without-format"),
         pytest.param(b'{"rabbitmq_definition_format": "unknown", "queues": []}', id="incompatible-format"),
+        pytest.param(b'{"global_parameters": [{"name": "review-marker"}]}', id="missing-global-parameter-value"),
     ],
 )
 def test_export_definitions_wraps_invalid_envelopes(body: bytes) -> None:
@@ -73,3 +74,15 @@ def test_export_definitions_accepts_an_empty_legacy_cluster() -> None:
     assert definitions.rabbitmq_definition_format is None
     assert definitions.vhosts == []
     assert definitions.queues == []
+
+
+@pytest.mark.integration
+def test_export_definitions_preserves_null_global_parameter_value() -> None:
+    body = b'{"vhosts": [], "global_parameters": [{"name": "review-marker", "value": null}]}'
+    with _adapter_returning(body) as adapter:
+        definitions = AdminManager(http_client=adapter, strict=False).export_definitions()
+
+    (parameter,) = definitions.global_parameters
+    assert parameter.name == "review-marker"
+    assert parameter.value is None
+    assert definitions.model_dump(exclude_unset=True)["global_parameters"] == [{"name": "review-marker", "value": None}]

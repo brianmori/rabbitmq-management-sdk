@@ -27,4 +27,7 @@ def test_captured_shovel_response_round_trip(capture: str, by_alias: bool) -> No
     with Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
         response = ShovelManager(adapter, "src", False).get("captured-shovel")
 
-    assert ShovelParameterResponse.model_validate_json(response.model_dump_json(by_alias=by_alias)) == response
+    assert (
+        ShovelParameterResponse.model_validate_json(response.model_dump_json(by_alias=by_alias), by_name=not by_alias)
+        == response
+    )

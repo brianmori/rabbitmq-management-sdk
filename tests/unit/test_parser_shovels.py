@@ -1,9 +1,13 @@
 """Tests for shovel topology parsing."""
 
+from typing import Literal
+
 import pytest
 from tests.shared.parser_fixtures import _queue, _response, _shovel_param, _vhost
 
+from rabbitmq_management_sdk import ClusterAuditor
 from rabbitmq_management_sdk.exceptions import TopologyParseError
+from rabbitmq_management_sdk.topology import EdgeKind, EndpointAuthority
 from rabbitmq_management_sdk.topology.models import NodeKind
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 from rabbitmq_management_sdk.topology.reachability import shovels_with_unconfirmed_endpoints
@@ -12,6 +16,77 @@ pytestmark = pytest.mark.unit
 
 
 class TestShovels:
+    @pytest.mark.parametrize("protocol", ["amqp091", "local"])
+    @pytest.mark.parametrize("side", ["src", "dest"])
+    @pytest.mark.parametrize("key", [None, "", "fixed.key"])
+    def test_directional_exchange_keys_reach_endpoint_metadata_and_edges(
+        self, protocol: str, side: Literal["src", "dest"], key: str | None
+    ) -> None:
+        value = {f"{side}-protocol": protocol, f"{side}-uri": "amqp://broker/v", f"{side}-exchange": "events"}
+        if key is not None:
+            value[f"{side}-exchange-key"] = key
+        auditor = ClusterAuditor(
+            _response(parameters=[_shovel_param("s", "v", **value)]), in_cluster_amqp_hosts={"broker"}
+        )
+
+        (shovel,) = auditor.topology.shovels
+        endpoint = shovel.source if side == "src" else shovel.destination
+        expected_key = None if side == "src" and key == "" else key
+        assert endpoint.resource_name == "events"
+        assert endpoint.resource_kind == NodeKind.EXCHANGE
+        assert endpoint.routing_key == expected_key
+        assert endpoint.vhost == "v"
+        assert endpoint.is_confirmed_local is True
+        assert endpoint.authorities == (() if protocol == "local" else (EndpointAuthority("amqp", "broker", 5672),))
+        (edge,) = auditor.topology.edges
+        assert edge.kind == EdgeKind.SHOVEL
+        assert edge.routing_key == expected_key
+        assert (edge.source.name, edge.target.name) == (("events", "s") if side == "src" else ("s", "events"))
+        assert auditor.topology.queues == frozenset()
+
+    @pytest.mark.parametrize(
+        ("side", "address", "name", "kind", "key"),
+        [
+            ("src", "/exchanges/events", None, None, None),
+            ("src", "/exchanges/events/", None, None, None),
+            ("src", "/exchanges/events/fixed", None, None, None),
+            ("src", "/queues/q", "q", NodeKind.QUEUE, None),
+            ("dest", "/queues/q", "q", NodeKind.QUEUE, None),
+            ("dest", "/exchange/events", "events", NodeKind.EXCHANGE, None),
+            ("dest", "/exchange/events/", "events", NodeKind.EXCHANGE, None),
+            ("dest", "/exchange/events/fixed", "events", NodeKind.EXCHANGE, "fixed"),
+            ("dest", "/exchanges/events", "events", NodeKind.EXCHANGE, ""),
+            ("dest", "/exchanges/events/", "events", NodeKind.EXCHANGE, ""),
+            ("dest", "/exchanges/events/fixed", "events", NodeKind.EXCHANGE, "fixed"),
+        ],
+    )
+    def test_amqp10_direction_controls_resource_edges(
+        self, side: Literal["src", "dest"], address: str, name: str | None, kind: NodeKind | None, key: str | None
+    ) -> None:
+        value = {
+            f"{side}-protocol": "amqp10",
+            f"{side}-uri": "amqp://broker?hostname=vhost:v",
+            f"{side}-address": address,
+        }
+        auditor = ClusterAuditor(
+            _response(parameters=[_shovel_param("s", "v", **value)]), in_cluster_amqp_hosts={"broker"}
+        )
+
+        (shovel,) = auditor.topology.shovels
+        endpoint = shovel.source if side == "src" else shovel.destination
+        assert endpoint.resource_name == name
+        assert endpoint.resource_kind == kind
+        assert endpoint.routing_key == key
+        assert endpoint.vhost == "v"
+        assert endpoint.authorities == (EndpointAuthority("amqp", "broker", 5672),)
+        assert endpoint.is_confirmed_local is True
+        if name is None:
+            assert auditor.topology.edges == frozenset()
+        else:
+            (edge,) = auditor.topology.edges
+            assert edge.routing_key == key
+            assert (edge.source.name, edge.target.name) == ((name, "s") if side == "src" else ("s", name))
+
     @pytest.mark.parametrize("value", [[], None, "invalid", 42])
     def test_non_object_shovel_value_raises_contextual_sdk_error(self, value: object) -> None:
         response = _response(parameters=[{"component": "shovel", "vhost": "v", "name": "bad", "value": value}])

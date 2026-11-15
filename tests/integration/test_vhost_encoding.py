@@ -1,106 +1,45 @@
-"""Integration tests verifying that vhost strings are correctly URL-encoded in API paths.
-
-The encoding boundary is Config.virtual_host_safe: it encodes once with
-quote(vhost, safe="") and passes the result to managers. Managers inject it
-directly into path strings without re-encoding.
-"""
+"""Configured raw vhost names are encoded once at the manager boundary."""
 
 from __future__ import annotations
-
-from urllib.parse import quote
 
 import httpx2
 import pytest
 
+from rabbitmq_management_sdk import Config
 from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
 from rabbitmq_management_sdk.resources.v4.bindings.services import BindingManager
 from rabbitmq_management_sdk.resources.v4.exchanges.services import ExchangeManager
 from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
 
+pytestmark = pytest.mark.integration
 
-def _adapter_with_path_capture(seen_urls: list[str], *, response_body: bytes = b"{}") -> Httpx2Adapter:
+
+@pytest.mark.parametrize(
+    ("raw", "encoded"),
+    [
+        ("/", "%2F"),
+        ("my-vhost", "my-vhost"),
+        ("a/b", "a%2Fb"),
+        ("vhost with spaces", "vhost%20with%20spaces"),
+        ("%2F", "%252F"),
+    ],
+)
+@pytest.mark.parametrize("resource", ["queues", "exchanges", "bindings"])
+def test_configured_vhost_is_encoded_once_in_manager_path(raw: str, encoded: str, resource: str) -> None:
+    config = Config(host="localhost", username="fixture", password="fixture", virtual_host=raw)
+    assert config.virtual_host_safe == encoded
+    seen: list[tuple[str, bytes]] = []
+
     def handler(request: httpx2.Request) -> httpx2.Response:
-        # str(request.url) preserves percent-encoding (e.g. %2F stays %2F).
-        # request.url.path decodes it back to the original character — avoid that.
-        seen_urls.append(str(request.url))
-        return httpx2.Response(200, content=response_body)
+        seen.append((request.method, request.url.raw_path))
+        return httpx2.Response(200, json=[])
 
-    return Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler))
-
-
-_VHOST_CASES = [
-    ("/", "%2F"),
-    ("my-vhost", "my-vhost"),
-    ("a/b", "a%2Fb"),
-    ("vhost with spaces", "vhost%20with%20spaces"),
-]
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("raw,encoded", _VHOST_CASES)
-def test_queue_path_contains_encoded_vhost(raw: str, encoded: str) -> None:
-    seen: list[str] = []
-    # Use DELETE (returns None, no response parsing) so the mock body doesn't matter
-    adapter = _adapter_with_path_capture(seen)
-    manager = QueueManager(http_client=adapter, vhost=quote(raw, safe=""), strict=False)
-
-    manager.delete("test-queue")
-
-    assert len(seen) == 1
-    assert f"/{encoded}/test-queue" in seen[0]
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("raw,encoded", _VHOST_CASES)
-def test_exchange_path_contains_encoded_vhost(raw: str, encoded: str) -> None:
-    seen: list[str] = []
-    adapter = _adapter_with_path_capture(seen)
-    manager = ExchangeManager(http_client=adapter, vhost=quote(raw, safe=""), strict=False)
-
-    manager.delete("amq.direct")
-
-    assert len(seen) == 1
-    assert f"/{encoded}/amq.direct" in seen[0]
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("raw,encoded", _VHOST_CASES)
-def test_binding_list_path_contains_encoded_vhost(raw: str, encoded: str) -> None:
-    seen: list[str] = []
-    # list_by_vhost parses a list — return "[]" so validation succeeds
-    adapter = _adapter_with_path_capture(seen, response_body=b"[]")
-    manager = BindingManager(http_client=adapter, vhost=quote(raw, safe=""), strict=False)
-
-    manager.list_by_vhost()
-
-    assert len(seen) == 1
-    assert f"/bindings/{encoded}" in seen[0]
-
-
-@pytest.mark.integration
-def test_default_vhost_slash_encodes_to_percent_2f() -> None:
-    """Regression: the default '/' vhost must become '%2F', not empty or literal '/'."""
-    seen: list[str] = []
-    adapter = _adapter_with_path_capture(seen)
-    vhost_safe = quote("/", safe="")
-    manager = QueueManager(http_client=adapter, vhost=vhost_safe, strict=False)
-
-    manager.delete("any-queue")
-
-    assert "%2F" in seen[0]
-    assert seen[0].count("/api/queues/%2F/any-queue") == 1
-
-
-@pytest.mark.integration
-def test_no_double_encoding() -> None:
-    """Encoding '%2F' again must NOT produce '%252F'."""
-    raw = "/"
-    once = quote(raw, safe="")  # "%2F"
-
-    seen: list[str] = []
-    adapter = _adapter_with_path_capture(seen)
-    manager = QueueManager(http_client=adapter, vhost=once, strict=False)
-    manager.delete("q")
-
-    assert "%252F" not in seen[0], "Double-encoding detected — vhost was encoded twice"
-    assert "%2F" in seen[0]
+    with Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
+        if resource == "bindings":
+            assert BindingManager(adapter, config.virtual_host_safe, False).list_by_vhost() == []
+        elif resource == "queues":
+            QueueManager(adapter, config.virtual_host_safe, False).delete("fixture")
+        else:
+            ExchangeManager(adapter, config.virtual_host_safe, False).delete("fixture")
+    method, suffix = ("GET", "") if resource == "bindings" else ("DELETE", "/fixture")
+    assert seen == [(method, f"/api/{resource}/{encoded}{suffix}".encode())]

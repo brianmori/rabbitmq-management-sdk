@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQRequest
 from rabbitmq_management_sdk.resources.v4.common import (
     DeadLetterStrategy,
     OverflowBehaviour,
@@ -14,14 +14,14 @@ from rabbitmq_management_sdk.resources.v4.policies.schemas.common import (
 )
 
 
-class PolicyDefinition(RabbitMQBase):
+class PolicyDefinition(RabbitMQRequest):
     """Definition values for regular and operator policies.
 
     RabbitMQ plugins can contribute definition keys, so unknown fields are
     retained and serialized alongside the typed core fields.
     """
 
-    model_config = RabbitMQBase.model_config | {"extra": "allow"}
+    model_config = RabbitMQRequest.model_config | {"extra": "allow"}
 
     max_length: int | None = Field(None, alias="max-length")
     max_length_bytes: int | None = Field(None, alias="max-length-bytes")
@@ -52,7 +52,7 @@ class PolicyDefinition(RabbitMQBase):
         return self.dead_letter_strategy
 
 
-class PolicyRequest(RabbitMQBase):
+class PolicyRequest(RabbitMQRequest):
     """Payload for declaring or updating a regular policy.
 
     All four fields are required by RabbitMQ's HTTP API.
@@ -64,7 +64,7 @@ class PolicyRequest(RabbitMQBase):
     apply_to: PolicyApplyTo = Field(alias="apply-to")
 
 
-class OperatorPolicyRequest(RabbitMQBase):
+class OperatorPolicyRequest(RabbitMQRequest):
     """Payload for declaring or updating an operator policy.
 
     Operator policies are restricted to queue and stream scopes.

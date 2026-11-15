@@ -5,10 +5,10 @@ from typing import Literal
 
 from pydantic import Field
 
-from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQResponse
 
 
-class VhostResponse(RabbitMQBase):
+class VhostResponse(RabbitMQResponse):
     name: str
     description: str | None = None
     tags: list[str] = Field(default_factory=list)
@@ -17,12 +17,12 @@ class VhostResponse(RabbitMQBase):
     cluster_state: dict[str, str] | None = None
 
 
-class VhostLimitValues(RabbitMQBase):
+class VhostLimitValues(RabbitMQResponse):
     max_connections: int | None = Field(alias="max-connections", default=None)
     max_queues: int | None = Field(alias="max-queues", default=None)
 
 
-class VhostLimitResponse(RabbitMQBase):
+class VhostLimitResponse(RabbitMQResponse):
     """A single vhost limit as returned by the Management API.
 
     Returned by both `GET /api/vhost-limits/{vhost}` and `GET /api/vhost-limits`.

@@ -1,26 +1,40 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
-from pydantic import AliasChoices, ConfigDict, Field
+from pydantic import AliasChoices, Field
+from typing_extensions import TypedDict
 
-from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources._argument_map import JsonArgumentEntries, ResponseArgumentMap
+from rabbitmq_management_sdk.resources.base import RabbitMQResponse
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.common import ExchangeType
 
-
-class ExchangeArgumentsResponse(RabbitMQBase):
-    """Arguments echoed back by the server for an exchange.
-
-    Attributes:
-        alternate_exchange: The name of the configured alternate exchange.
-    """
-
-    alternate_exchange: str | None = Field(default=None, alias="alternate-exchange")
-
-    model_config = ConfigDict(extra="allow")  # Allow unknown plugin arguments
+_ExchangeArgumentFields = TypedDict(
+    "_ExchangeArgumentFields",
+    {
+        "alternate-exchange": str | None,
+    },
+    total=False,
+)
 
 
-class ExchangeResponse(RabbitMQBase):
+class _ExchangeArgumentValues(_ExchangeArgumentFields, JsonArgumentEntries):
+    """Known wire keys plus additional JSON entries."""
+
+
+class ExchangeArgumentsResponse(ResponseArgumentMap[_ExchangeArgumentValues]):
+    """Captured arguments with exact wire keys and typed accessors."""
+
+    _field_aliases: ClassVar[dict[str, str]] = {
+        "alternate_exchange": "alternate-exchange",
+    }
+
+    @property
+    def alternate_exchange(self) -> str | None:
+        return self.root.get("alternate-exchange")
+
+
+class ExchangeResponse(RabbitMQResponse):
     """Represents an exchange as returned by the RabbitMQ Management API.
 
     Attributes:

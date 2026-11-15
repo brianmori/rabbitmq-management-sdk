@@ -1,5 +1,7 @@
 """Test pure shovel parsing against RabbitMQ's URI and addressing specifications."""
 
+from typing import Literal
+
 import pytest
 
 from rabbitmq_management_sdk.topology import EndpointAuthority, NodeKind, ResourceEndpoint
@@ -206,18 +208,6 @@ class TestParseShovelEndpoint:
             "amqp:/orders",
             "amqp:orders",
             "mqtt://rabbit/orders",
-        ],
-    )
-    def test_requires_supported_hierarchical_amqp_scheme(self, uri: str) -> None:
-        endpoint = _parse_endpoint(uri)
-
-        assert endpoint.authorities is None
-        assert endpoint.vhost is None
-        assert endpoint.is_confirmed_local is False
-
-    @pytest.mark.parametrize(
-        "uri",
-        [
             "amqp://rabbit/%ZZ",
             "amqp://rabbit/%FF",
             "amqp://[broken/orders",
@@ -364,39 +354,47 @@ class TestParseAmqp10Address:
     """RabbitMQ 4.2 AMQP 1.0 address v2 and deprecated v1 formats."""
 
     def test_real_shovel_address(self) -> None:
-        assert parse_amqp10_address("/queues/src.queue.10") == ("src.queue.10", NodeKind.QUEUE, None)
+        assert parse_amqp10_address("/queues/src.queue.10", side="dest") == ("src.queue.10", NodeKind.QUEUE, None)
+
+    @pytest.mark.parametrize("address", ["/exchanges/events", "/exchanges/events/", "/exchanges/events/key"])
+    def test_v2_exchange_sources_are_unresolved(self, address: str) -> None:
+        assert parse_amqp10_address(address, side="src") is None
+
+    @pytest.mark.parametrize("side", ["src", "dest"])
+    def test_v2_queue_is_supported_in_both_directions(self, side: Literal["src", "dest"]) -> None:
+        assert parse_amqp10_address("/queues/my%2Fqueue", side=side) == ("my/queue", NodeKind.QUEUE, None)
 
     def test_exchange_with_routing_key(self) -> None:
-        assert parse_amqp10_address("/exchanges/out.ex/some.key") == (
+        assert parse_amqp10_address("/exchanges/out.ex/some.key", side="dest") == (
             "out.ex",
             NodeKind.EXCHANGE,
             "some.key",
         )
 
     def test_v2_exchange_without_routing_key_uses_fixed_empty_key(self) -> None:
-        assert parse_amqp10_address("/exchanges/out.ex") == ("out.ex", NodeKind.EXCHANGE, "")
+        assert parse_amqp10_address("/exchanges/out.ex", side="dest") == ("out.ex", NodeKind.EXCHANGE, "")
 
     def test_v1_exchange_without_routing_key_has_no_fixed_key(self) -> None:
-        assert parse_amqp10_address("/exchange/out.ex") == ("out.ex", NodeKind.EXCHANGE, None)
+        assert parse_amqp10_address("/exchange/out.ex", side="dest") == ("out.ex", NodeKind.EXCHANGE, None)
 
-    def test_v1_exchange_with_explicit_empty_routing_key_preserves_it(self) -> None:
-        assert parse_amqp10_address("/exchange/out.ex/") == ("out.ex", NodeKind.EXCHANGE, "")
+    def test_v1_target_with_empty_trailing_segment_has_no_fixed_key(self) -> None:
+        assert parse_amqp10_address("/exchange/out.ex/", side="dest") == ("out.ex", NodeKind.EXCHANGE, None)
 
     def test_topic_address_resolves_to_amq_topic(self) -> None:
-        assert parse_amqp10_address("/topic/routing.key.here") == (
+        assert parse_amqp10_address("/topic/routing.key.here", side="dest") == (
             "amq.topic",
             NodeKind.EXCHANGE,
             "routing.key.here",
         )
 
     def test_bare_address_is_deprecated_v1_queue_shorthand(self) -> None:
-        assert parse_amqp10_address("bare.queue.name") == ("bare.queue.name", NodeKind.QUEUE, None)
+        assert parse_amqp10_address("bare.queue.name", side="dest") == ("bare.queue.name", NodeKind.QUEUE, None)
 
     def test_v1_existing_queue_address(self) -> None:
-        assert parse_amqp10_address("/amq/queue/existing.q") == ("existing.q", NodeKind.QUEUE, None)
+        assert parse_amqp10_address("/amq/queue/existing.q", side="dest") == ("existing.q", NodeKind.QUEUE, None)
 
     def test_percent_encoded_segments_are_decoded(self) -> None:
-        assert parse_amqp10_address("/queues/my%2Bqueue") == ("my+queue", NodeKind.QUEUE, None)
+        assert parse_amqp10_address("/queues/my%2Bqueue", side="dest") == ("my+queue", NodeKind.QUEUE, None)
 
     @pytest.mark.parametrize(
         "address",
@@ -410,24 +408,31 @@ class TestParseAmqp10Address:
         ],
     )
     def test_unresolvable_returns_none(self, address: object) -> None:
-        assert parse_amqp10_address(address) is None
+        assert parse_amqp10_address(address, side="dest") is None
 
 
 class TestShovelSideResource:
-    def test_amqp091_queue(self) -> None:
+    @pytest.mark.parametrize("protocol", ["amqp091", "local"])
+    @pytest.mark.parametrize("side", ["src", "dest"])
+    @pytest.mark.parametrize("key", [None, "", "fixed.key"])
+    def test_exchange_key_semantics_depend_on_direction(
+        self, protocol: str, side: Literal["src", "dest"], key: str | None
+    ) -> None:
+        value = {f"{side}-exchange": "events"}
+        if key is not None:
+            value[f"{side}-exchange-key"] = key
+
+        expected_key = None if side == "src" and key == "" else key
+        assert shovel_side_resource(value, side, protocol) == ("events", NodeKind.EXCHANGE, expected_key)
+
+    @pytest.mark.parametrize("protocol", ["amqp091", "local"])
+    def test_queue(self, protocol: str) -> None:
         value = {"src-queue": "orders"}
-        assert shovel_side_resource(value, "src", "amqp091") == ("orders", NodeKind.QUEUE, None)
+        assert shovel_side_resource(value, "src", protocol) == ("orders", NodeKind.QUEUE, None)
 
-    def test_amqp091_exchange_with_key(self) -> None:
-        value = {"src-exchange": "events.ex", "src-exchange-key": "order.#"}
-        assert shovel_side_resource(value, "src", "amqp091") == (
-            "events.ex",
-            NodeKind.EXCHANGE,
-            "order.#",
-        )
-
-    def test_amqp091_neither_queue_nor_exchange_returns_none(self) -> None:
-        assert shovel_side_resource({}, "dest", "amqp091") is None
+    @pytest.mark.parametrize("protocol", ["amqp091", "local"])
+    def test_neither_queue_nor_exchange_returns_none(self, protocol: str) -> None:
+        assert shovel_side_resource({}, "dest", protocol) is None
 
     def test_amqp10_delegates_to_address_parsing(self) -> None:
         value = {"dest-address": "/queues/dst.queue.10"}
@@ -435,22 +440,3 @@ class TestShovelSideResource:
 
     def test_unrecognized_protocol_returns_none(self) -> None:
         assert shovel_side_resource({"src-queue": "x"}, "src", "mqtt") is None
-
-
-class TestShovelSideResourceLocal:
-    def test_local_protocol_queue(self) -> None:
-        """Real shape: test-shovel-local's src-queue/dest-queue fields,
-        identical to amqp091's."""
-        value = {"src-queue": "src.q"}
-        assert shovel_side_resource(value, "src", "local") == ("src.q", NodeKind.QUEUE, None)
-
-    def test_local_protocol_exchange_with_key(self) -> None:
-        value = {"src-exchange": "events.ex", "src-exchange-key": "order.#"}
-        assert shovel_side_resource(value, "src", "local") == (
-            "events.ex",
-            NodeKind.EXCHANGE,
-            "order.#",
-        )
-
-    def test_local_protocol_neither_queue_nor_exchange_returns_none(self) -> None:
-        assert shovel_side_resource({}, "dest", "local") is None
