@@ -32,7 +32,8 @@ test, and audit:
   boundary, with bounded searches and explicit truncation reporting.
 - **Audit more than cycles** — report dangling routes, black-hole exchanges,
   unreachable internal exchanges, queues without captured ingress, cross-vhost
-  shovels, and unresolved or unconfirmed shovel endpoints.
+  shovels, and unresolved or unconfirmed shovel endpoints. Inventory queue types
+  across the cluster and per vhost alongside each captured vhost default.
 - **Respect broker evidence** — direct arguments take precedence, while complete
   queue and exchange observations identify broker-selected policies without
   reimplementing RabbitMQ's policy matching rules in Python.
@@ -271,6 +272,9 @@ auditor = ClusterAuditor(
 
 report = auditor.audit(max_cycles=100)
 fanout_groups = auditor.fanout_exchange_bindings()
+inventory = auditor.queue_type_inventory()
+for group in inventory.queue_types:
+    print(group.queue_type, group.queue_count)
 for cycle in report.message_loop_candidates.cycles:
     print("Possible message loop:", cycle)
 
@@ -292,6 +296,14 @@ policy for dead-letter and alternate-exchange routes. This avoids
 reinterpreting RabbitMQ policy regular expressions locally. The exchange
 observations also resolve referenced predeclared, system, and plugin exchanges
 that RabbitMQ omits from definitions exports.
+
+`report.queue_type_inventory` contains the same inventory, including empty
+captured vhosts. Each entry in `inventory.vhosts` exposes `vhost`,
+`default_queue_type`, `queue_count`, and `queue_types`; each type group retains
+the complete `QueueNode` values in `queues`. A missing default stays `None`.
+Existing queue types can differ from their vhost's default. See the
+[queue inventory guide](docs/topology-auditing.md#queue-types-and-vhost-defaults)
+for a runnable offline example.
 
 #### Topology serialization
 

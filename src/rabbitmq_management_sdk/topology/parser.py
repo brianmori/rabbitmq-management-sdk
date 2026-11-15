@@ -36,6 +36,7 @@ from rabbitmq_management_sdk.topology.models import (
     ResourceEndpoint,
     ShovelNode,
     TopologyEdge,
+    VirtualHostMetadata,
 )
 from rabbitmq_management_sdk.topology.policy_routes import (
     UserPolicySelections,
@@ -128,6 +129,13 @@ class _TopologyBuilder:
             cluster_id=self.cluster_id,
             cluster_name=cluster_name,
             cluster_label=self.cluster_label if self.cluster_label is not None else cluster_name,
+            vhosts=frozenset(
+                VirtualHostMetadata(
+                    name=vhost.name,
+                    default_queue_type=vhost.metadata.default_queue_type if vhost.metadata else None,
+                )
+                for vhost in self.response.vhosts
+            ),
         )
 
     def _node_id(self, *, vhost: str, name: str, kind: NodeKind) -> NodeId:

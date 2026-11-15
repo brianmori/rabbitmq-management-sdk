@@ -25,10 +25,14 @@ from rabbitmq_management_sdk.topology import (
     NodeId,
     NodeKind,
     QueueNode,
+    QueueTypeGroup,
+    QueueTypeInventory,
     ResourceEndpoint,
     ShovelNode,
     TopologyEdge,
     TopologyNode,
+    VhostQueueInventory,
+    VirtualHostMetadata,
 )
 
 pytestmark = pytest.mark.unit
@@ -673,6 +677,58 @@ class TestTopologyEdge:
 # ---------------------------------------------------------------------------
 
 
+class TestQueueInventoryValues:
+    def test_values_are_frozen_canonical_and_pickleable(self) -> None:
+        first, last = _queue("a", "a"), _queue("a", "z")
+        group = QueueTypeGroup("classic", (last, first))
+        populated = VhostQueueInventory("a", "quorum", (QueueTypeGroup("stream", ()), group))
+        empty = VhostQueueInventory("z", None, ())
+        inventory = QueueTypeInventory((empty, populated))
+
+        assert group.queues == (first, last)
+        assert populated.queue_types == (group, QueueTypeGroup("stream", ()))
+        assert inventory.vhosts == (populated, empty)
+        assert inventory.queue_count == 2
+        assert pickle.loads(pickle.dumps(inventory)) == inventory
+        assert hash(pickle.loads(pickle.dumps(inventory))) == hash(inventory)
+        with pytest.raises(FrozenInstanceError):
+            inventory.vhosts = ()  # type: ignore[misc]
+        metadata = VirtualHostMetadata("a", "quorum")
+        with pytest.raises(FrozenInstanceError):
+            metadata.default_queue_type = "classic"  # type: ignore[misc]
+
+    @pytest.mark.parametrize("queue_type", ["classic", "plugin-type"])
+    def test_type_group_rejects_mismatched_types_and_duplicate_identities(self, queue_type: str) -> None:
+        queue = _queue("v", "q", queue_type=queue_type)
+        with pytest.raises(TopologyValidationError, match="match the group queue type"):
+            QueueTypeGroup("quorum", (queue,))
+        with pytest.raises(TopologyValidationError, match="distinct identities"):
+            QueueTypeGroup(queue_type, (queue, queue))
+
+    def test_vhost_inventory_rejects_conflicting_queue_identities(self) -> None:
+        classic = _queue("v", "q")
+        quorum = replace(classic, queue_type="quorum")
+        with pytest.raises(TopologyValidationError, match="distinct identities"):
+            VhostQueueInventory("v", None, (QueueTypeGroup("classic", (classic,)), QueueTypeGroup("quorum", (quorum,))))
+
+    def test_vhost_inventory_rejects_duplicate_types_and_wrong_vhost(self) -> None:
+        group = QueueTypeGroup("classic", (_queue("v", "q"),))
+        with pytest.raises(TopologyValidationError, match="queue types must be distinct"):
+            VhostQueueInventory("v", None, (group, group))
+        with pytest.raises(TopologyValidationError, match="belong to its vhost"):
+            VhostQueueInventory("other", None, (group,))
+
+    def test_inventory_rejects_duplicate_vhosts_and_mixed_clusters(self) -> None:
+        queue = _queue("v", "q")
+        first = VhostQueueInventory("v", None, (QueueTypeGroup("classic", (queue,)),))
+        with pytest.raises(TopologyValidationError, match="distinct names"):
+            QueueTypeInventory((first, first))
+        other_cluster = replace(queue, id=replace(queue.id, cluster_id="other", vhost="other"))
+        second = VhostQueueInventory("other", None, (QueueTypeGroup("classic", (other_cluster,)),))
+        with pytest.raises(TopologyValidationError, match="one cluster"):
+            QueueTypeInventory((first, second))
+
+
 class TestClusterTopology:
     def test_pickle_round_trip_rebuilds_derived_caches(self) -> None:
         cluster_id = "cluster-id"
@@ -706,6 +762,7 @@ class TestClusterTopology:
             cluster_id=cluster_id,
             cluster_name="rabbit@cluster",
             cluster_label="production",
+            vhosts=frozenset({VirtualHostMetadata("v", "classic"), VirtualHostMetadata("empty")}),
         )
 
         restored = pickle.loads(pickle.dumps(topology, protocol=pickle.HIGHEST_PROTOCOL))
@@ -713,6 +770,7 @@ class TestClusterTopology:
         assert isinstance(restored, ClusterTopology)
         assert restored == topology
         assert restored.cluster_label == topology.cluster_label
+        assert restored.vhosts == topology.vhosts
         assert restored.nodes == topology.nodes
         assert restored.all_node_ids == topology.all_node_ids
         assert restored.nodes_by_id == topology.nodes_by_id
@@ -734,6 +792,29 @@ class TestClusterTopology:
         assert relabeled == topology
         assert hash(relabeled) == hash(topology)
         assert replace(topology, cluster_name="renamed-broker") != topology
+
+    def test_vhost_metadata_affects_topology_equality_without_adding_nodes(self) -> None:
+        topology = ClusterTopology(frozenset(), frozenset(), frozenset(), frozenset())
+        captured = replace(topology, vhosts=frozenset({VirtualHostMetadata("v", "quorum")}))
+
+        assert captured != topology
+        assert captured.nodes == topology.nodes
+        assert captured.all_node_ids == topology.all_node_ids
+        assert captured.edges == topology.edges
+
+    def test_rejects_conflicting_vhost_metadata(self) -> None:
+        with pytest.raises(TopologyValidationError, match="conflicting virtual host metadata"):
+            ClusterTopology(
+                frozenset(),
+                frozenset(),
+                frozenset(),
+                frozenset(),
+                vhosts=frozenset({VirtualHostMetadata("v", "classic"), VirtualHostMetadata("v", "quorum")}),
+            )
+
+    def test_rejects_mutable_vhost_metadata_collection(self) -> None:
+        with pytest.raises(TopologyValidationError, match=r"ClusterTopology\.vhosts must be a frozenset"):
+            ClusterTopology(frozenset(), frozenset(), frozenset(), frozenset(), vhosts=[])  # type: ignore[arg-type]
 
     def test_rejects_non_string_cluster_name_evidence(self) -> None:
         with pytest.raises(TopologyValidationError, match=r"ClusterTopology\.cluster_name"):

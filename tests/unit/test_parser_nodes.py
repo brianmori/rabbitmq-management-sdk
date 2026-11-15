@@ -3,11 +3,34 @@
 import pytest
 from tests.shared.parser_fixtures import _exchange, _observed_queue, _queue, _response, _vhost
 
-from rabbitmq_management_sdk import TopologyParseError
-from rabbitmq_management_sdk.topology.models import NodeKind
+from rabbitmq_management_sdk import TopologyParseError, TopologyValidationError
+from rabbitmq_management_sdk.topology.models import NodeKind, VirtualHostMetadata
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 
 pytestmark = pytest.mark.unit
+
+
+class TestParseVhostMetadata:
+    def test_retains_empty_vhosts_and_unknown_defaults_without_routing_nodes(self) -> None:
+        response = _response(vhosts=[_vhost("empty", "quorum"), {"name": "unknown"}, _vhost("plugin", "plugin-type")])
+
+        topology = parse_cluster_topology(response)
+
+        assert topology.vhosts == frozenset(
+            {
+                VirtualHostMetadata("empty", "quorum"),
+                VirtualHostMetadata("unknown"),
+                VirtualHostMetadata("plugin", "plugin-type"),
+            }
+        )
+        assert topology.nodes == frozenset()
+        assert topology.edges == frozenset()
+
+    def test_rejects_conflicting_defaults_instead_of_selecting_one(self) -> None:
+        response = _response(vhosts=[_vhost("v", "classic"), _vhost("v", "quorum")])
+
+        with pytest.raises(TopologyValidationError, match="conflicting virtual host metadata"):
+            parse_cluster_topology(response)
 
 
 class TestParseExchange:

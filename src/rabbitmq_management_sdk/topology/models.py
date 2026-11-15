@@ -401,6 +401,24 @@ class TopologyEdge:
 
 
 @dataclass(frozen=True, slots=True)
+class VirtualHostMetadata:
+    """Captured metadata for a virtual host within one topology.
+
+    This is not a routing node. ``default_queue_type`` describes the captured
+    vhost default, independently of the types of its existing queues. ``None``
+    means the default was not supplied; it does not imply ``classic``.
+    """
+
+    name: str
+    default_queue_type: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate retained vhost metadata without restricting type names."""
+        _require_instance(self.name, str, "VirtualHostMetadata.name")
+        _require_optional_instance(self.default_queue_type, str, "VirtualHostMetadata.default_queue_type")
+
+
+@dataclass(frozen=True, slots=True)
 class ClusterTopology:
     """An immutable normalized graph for one captured cluster configuration.
 
@@ -418,6 +436,10 @@ class ClusterTopology:
     offline multi-cluster composition. ``cluster_label`` is presentation
     metadata and never participates in equality or hashing.
 
+    ``vhosts`` retains declared virtual hosts, including those without queues,
+    without adding routing nodes. Omitted metadata remains unknown even when
+    resource identities contain a vhost name.
+
     The typed node collections retain resource attributes. ``nodes``,
     ``all_node_ids``, and ``nodes_by_id`` provide cached unified graph views.
     """
@@ -429,6 +451,7 @@ class ClusterTopology:
     cluster_id: str | None = None
     cluster_name: str | None = None
     cluster_label: str | None = field(default=None, compare=False, hash=False)
+    vhosts: frozenset[VirtualHostMetadata] = frozenset()
     _nodes: frozenset[TopologyNode] = field(init=False, repr=False, compare=False, hash=False)
     _all_node_ids: frozenset[NodeId] = field(init=False, repr=False, compare=False, hash=False)
     _nodes_by_id: Mapping[NodeId, TopologyNode] = field(init=False, repr=False, compare=False, hash=False)
@@ -443,12 +466,16 @@ class ClusterTopology:
             ("ClusterTopology.queues", self.queues, QueueNode),
             ("ClusterTopology.shovels", self.shovels, ShovelNode),
             ("ClusterTopology.edges", self.edges, TopologyEdge),
+            ("ClusterTopology.vhosts", self.vhosts, VirtualHostMetadata),
         )
         for field_name, values, value_type in collections:
             if not isinstance(values, frozenset):
                 raise TopologyValidationError(f"{field_name} must be a frozenset, got {values!r}")
             for value in values:
                 _require_instance(value, value_type, field_name)
+
+        if len({vhost.name for vhost in self.vhosts}) != len(self.vhosts):
+            raise TopologyValidationError("conflicting virtual host metadata for the same name")
 
         seen: dict[NodeId, ExchangeNode | QueueNode | ShovelNode] = {}
         all_nodes: tuple[TopologyNode, ...] = (*self.exchanges, *self.queues, *self.shovels)
@@ -486,6 +513,7 @@ class ClusterTopology:
             str | None,
             str | None,
             str | None,
+            frozenset[VirtualHostMetadata],
         ],
     ]:
         """Serialize canonical graph data and rebuild derived caches on load."""
@@ -499,6 +527,7 @@ class ClusterTopology:
                 self.cluster_id,
                 self.cluster_name,
                 self.cluster_label,
+                self.vhosts,
             ),
         )
 

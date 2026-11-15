@@ -145,6 +145,26 @@ def test_audit_returns_all_findings_from_the_public_facade() -> None:
     assert report.fanout_exchange_bindings == auditor.fanout_exchange_bindings()
     assert report.fanout_exchange_bindings[0].exchange.id.name == "discard"
     assert report.fanout_exchange_bindings[0].queues == ()
+    assert report.queue_type_inventory == auditor.queue_type_inventory()
+    assert report.queue_type_inventory.queue_count == 2
+
+
+def test_queue_inventory_survives_graph_transfer_and_source_mutation() -> None:
+    definitions = _response(vhosts=[_vhost("empty", "stream"), _vhost("v", "quorum")], queues=[_queue("q", "v")])
+    auditor = ClusterAuditor(definitions)
+    expected = auditor.queue_type_inventory()
+
+    restored = ClusterAuditor.from_topology(pickle.loads(pickle.dumps(auditor.topology)))
+    definitions.vhosts.clear()
+    definitions.queues.clear()
+
+    assert [(vhost.vhost, vhost.default_queue_type) for vhost in expected.vhosts] == [
+        ("empty", "stream"),
+        ("v", "quorum"),
+    ]
+    assert restored.queue_type_inventory() == expected
+    assert restored.audit().queue_type_inventory == expected
+    assert auditor.queue_type_inventory() == expected
 
 
 def test_fanout_replication_is_included_in_public_audit_and_graph_transfer() -> None:
