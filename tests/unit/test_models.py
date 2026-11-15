@@ -24,6 +24,7 @@ from rabbitmq_management_sdk.topology import (
     EdgeKind,
     EndpointAuthority,
     ExchangeNode,
+    ExchangeRoutingCoverage,
     FanoutExchangeBindings,
     FanoutQueue,
     NodeId,
@@ -32,6 +33,9 @@ from rabbitmq_management_sdk.topology import (
     QueueTypeGroup,
     QueueTypeInventory,
     ResourceEndpoint,
+    RoutingIssue,
+    RoutingStatus,
+    RoutingUncertainty,
     ShovelNode,
     TopologyEdge,
     TopologyNode,
@@ -80,6 +84,42 @@ def _endpoint(
         routing_key=None,
         is_confirmed_local=is_confirmed_local,
     )
+
+
+class TestExchangeRoutingCoverage:
+    def test_result_is_frozen_canonical_and_pickleable(self) -> None:
+        exchange = _exchange("v", "entry")
+        first, last = _queue("v", "a").id, _queue("v", "z").id
+        issue = RoutingIssue(exchange.id, RoutingUncertainty.MESSAGE_HEADERS_NOT_CAPTURED)
+        result = ExchangeRoutingCoverage(exchange, RoutingStatus.DESTINATION_POSSIBLE, "", (last, first), (issue,))
+        assert result.destinations == (first, last)
+        assert result.routing_key == ""
+        assert pickle.loads(pickle.dumps(result)) == result
+        assert hash(pickle.loads(pickle.dumps(result))) == hash(result)
+        with pytest.raises(FrozenInstanceError):
+            result.routing_key = None  # type: ignore[misc]
+
+    def test_result_rejects_contradictory_evidence(self) -> None:
+        exchange = _exchange("v", "entry")
+        queue = _queue("v", "q")
+        with pytest.raises(TopologyValidationError, match="destinations require"):
+            ExchangeRoutingCoverage(exchange, RoutingStatus.DESTINATION_POSSIBLE)
+        with pytest.raises(TopologyValidationError, match="destinations require"):
+            ExchangeRoutingCoverage(exchange, RoutingStatus.NO_DESTINATION, destinations=(queue.id,))
+        with pytest.raises(TopologyValidationError, match="undetermined requires"):
+            ExchangeRoutingCoverage(exchange, RoutingStatus.UNDETERMINED)
+
+    def test_result_rejects_mutable_or_mixed_scope_data(self) -> None:
+        exchange = _exchange("v", "entry")
+        queue = _queue("other", "q")
+        with pytest.raises(TopologyValidationError, match="share the exchange cluster and vhost"):
+            ExchangeRoutingCoverage(exchange, RoutingStatus.DESTINATION_POSSIBLE, destinations=(queue.id,))
+        with pytest.raises(TopologyValidationError, match="tuple of queue NodeId"):
+            ExchangeRoutingCoverage(exchange, RoutingStatus.DESTINATION_POSSIBLE, destinations=[])  # type: ignore[arg-type]
+        with pytest.raises(TopologyValidationError, match=r"RoutingIssue\.resource"):
+            RoutingIssue("v", RoutingUncertainty.MISSING_RESOURCE)  # type: ignore[arg-type]
+        with pytest.raises(TopologyValidationError, match=r"RoutingIssue\.reason"):
+            RoutingIssue(exchange.id, "missing_resource")  # type: ignore[arg-type]
 
 
 class TestDeadLetterCoverage:

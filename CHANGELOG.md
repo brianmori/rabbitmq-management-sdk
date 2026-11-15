@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `ClusterAuditor.exchange_routing_coverage()` evaluates every contained
+  exchange for an optional routing key, reporting possible destinations,
+  no destination, or explicit uncertainty. The aggregate audit includes
+  coverage with an unknown key. Results account for exchange chains and
+  conditional alternate routes while preserving the existing degree-based
+  `black_hole_exchanges()` contract. Nonempty header predicates remain
+  undetermined.
 - `ClusterAuditor.dead_letter_coverage()` reports effective DLX configuration
   and routing evidence for every captured queue, also included in `audit()`.
   Results distinguish absent settings, missing exchanges, no matching

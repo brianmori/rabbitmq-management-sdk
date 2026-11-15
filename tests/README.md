@@ -83,6 +83,13 @@ during cleanup; other cleanup failures should remain visible.
 
 ## Complex topology captures
 
+Exchange routing coverage is tested in `unit/test_exchange_routing.py`,
+`integration/test_exchange_routing_captures.py`, and
+`live/test_exchange_routing_coverage.py`. The existing DLX selector tests cover
+the shared traversal, while the new tests focus on publication contexts,
+degree-only compatibility, exchange-chain dead ends, and conditional alternates.
+The process-transfer test carries both exchange and DLX results.
+
 Effective DLX coverage has focused tests in `unit/test_dead_letter.py`,
 `integration/test_dead_letter_captures.py`, and
 `live/test_dead_letter_coverage.py`. Live cases compare key and header findings
@@ -98,7 +105,7 @@ are needed for broker-selected policies and captured quorum membership.
 The offline capture tests and live import tests share the expectations in
 `shared/complex_topology.py`. They assert directed paths with multiplicity,
 SCC membership, healthy routes, policy precedence, degree findings, shovel
-advisories, effective DLX routing, the complete fanout exchange-to-queue map,
+advisories, effective DLX routing, contextual exchange coverage, the complete fanout exchange-to-queue map,
 and queue type counts
 with per-vhost defaults. Cycle caps cover
 unlimited, partial, exact, and larger-than-result bounds. Reordered capture

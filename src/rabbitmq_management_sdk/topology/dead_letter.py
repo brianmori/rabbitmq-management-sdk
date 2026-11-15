@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import json
-from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from rabbitmq_management_sdk.exceptions import TopologyValidationError
 from rabbitmq_management_sdk.topology.models import EdgeKind, NodeId, NodeKind, QueueNode
-from rabbitmq_management_sdk.topology.ordering import edge_sort_key, node_sort_key
+from rabbitmq_management_sdk.topology.ordering import node_sort_key
+from rabbitmq_management_sdk.topology.routing import _ExchangeRouter
 
 if TYPE_CHECKING:
     from rabbitmq_management_sdk.topology.models import ClusterTopology, TopologyEdge
@@ -128,39 +127,15 @@ class DeadLetterCoverage:
             raise TopologyValidationError("DeadLetterCoverage not_applicable is reserved for streams")
 
 
-@dataclass(slots=True)
-class _DeliveryEvidence:
-    destinations: set[NodeId] = field(default_factory=set)
-    conditional_destinations: set[NodeId] = field(default_factory=set)
-    issues: set[DeadLetterRoutingIssue] = field(default_factory=set)
-    open_branch: bool = False
-
-    @property
-    def status(self) -> DeadLetterCoverageStatus:
-        if self.destinations:
-            return DeadLetterCoverageStatus.DESTINATION_POSSIBLE
-        if self.conditional_destinations or self.open_branch:
-            return DeadLetterCoverageStatus.UNDETERMINED
-        return DeadLetterCoverageStatus.NO_DESTINATION
-
-
 class _DeadLetterRouter:
-    """Index one immutable graph and evaluate individual DLX publications."""
+    """Resolve queue-specific settings and delegate exchange traversal."""
 
     def __init__(self, topology: ClusterTopology) -> None:
-        self.topology = topology
-        self.bindings: dict[NodeId, list[TopologyEdge]] = {}
-        self.alternates: dict[NodeId, list[TopologyEdge]] = {}
+        self.router = _ExchangeRouter(topology)
         self.dead_letters: dict[NodeId, list[TopologyEdge]] = {}
-        for edge in sorted(topology.edges, key=edge_sort_key):
-            if edge.kind == EdgeKind.BINDING:
-                self.bindings.setdefault(edge.source, []).append(edge)
-            elif edge.kind in {EdgeKind.ALTERNATE_EXCHANGE, EdgeKind.DEAD_LETTER}:
-                routes = self.alternates if edge.kind == EdgeKind.ALTERNATE_EXCHANGE else self.dead_letters
-                routes.setdefault(edge.source, []).append(edge)
-        self.exchanges = {exchange.id: exchange for exchange in topology.exchanges}
-        self.queues = {queue.id: queue for queue in topology.queues}
-        self._evidence_cache: dict[tuple[NodeId, str | None], _DeliveryEvidence] = {}
+        for edge in topology.edges:
+            if edge.kind == EdgeKind.DEAD_LETTER:
+                self.dead_letters.setdefault(edge.source, []).append(edge)
 
     def coverage(self, queue: QueueNode) -> DeadLetterCoverage:
         edges = self.dead_letters.get(queue.id, ())
@@ -185,131 +160,21 @@ class _DeadLetterRouter:
             )
         if exchange is None:
             return DeadLetterCoverage(queue, DeadLetterCoverageStatus.NO_DLX)
-        if exchange not in self.exchanges:
+        if exchange not in self.router.exchanges:
             return DeadLetterCoverage(queue, DeadLetterCoverageStatus.MISSING_EXCHANGE, exchange, routing_key)
-        cache_key = (exchange, routing_key)
-        if cache_key not in self._evidence_cache:
-            self._evidence_cache[cache_key] = self._trace(exchange, routing_key)
-        evidence = self._evidence_cache[cache_key]
-        return DeadLetterCoverage(
-            queue, evidence.status, exchange, routing_key, tuple(evidence.destinations), tuple(evidence.issues)
+        evidence = self.router.trace(exchange, routing_key)
+        issues = tuple(
+            DeadLetterRoutingIssue(issue.resource, DeadLetterUncertainty(issue.reason.value))
+            for issue in evidence.issues
         )
-
-    def _trace(self, origin: NodeId, routing_key: str | None) -> _DeliveryEvidence:
-        evidence = _DeliveryEvidence()
-        pending = deque([(origin, True)])
-        visited: set[tuple[NodeId, bool]] = set()
-        while pending:
-            node, established = pending.popleft()
-            if (node, established) in visited:
-                continue
-            visited.add((node, established))
-            if node not in self.topology.all_node_ids:
-                evidence.issues.add(DeadLetterRoutingIssue(node, DeadLetterUncertainty.MISSING_RESOURCE))
-                evidence.open_branch = True
-            elif node.kind == NodeKind.QUEUE:
-                targets = evidence.destinations if established else evidence.conditional_destinations
-                targets.add(node)
-            elif node.name == "":
-                self._default_destinations(node, origin, routing_key, established, evidence)
-            else:
-                pending.extend(self._exchange_routes(node, routing_key, established, evidence))
-        return evidence
-
-    def _default_destinations(
-        self, node: NodeId, origin: NodeId, routing_key: str | None, established: bool, evidence: _DeliveryEvidence
-    ) -> None:
-        if node != origin:
-            evidence.issues.add(DeadLetterRoutingIssue(node, DeadLetterUncertainty.UNSUPPORTED_ROUTING_SEMANTICS))
-            evidence.open_branch = True
-            return
-        queues = {queue for queue in self.queues if queue.vhost == node.vhost}
-        if routing_key is None:
-            if queues:
-                evidence.issues.add(DeadLetterRoutingIssue(node, DeadLetterUncertainty.ROUTING_KEY_NOT_CAPTURED))
-                evidence.conditional_destinations.update(queues)
-        else:
-            evidence.destinations.update(queue for queue in queues if queue.name == routing_key and established)
-
-    def _exchange_routes(
-        self, node: NodeId, routing_key: str | None, established: bool, evidence: _DeliveryEvidence
-    ) -> list[tuple[NodeId, bool]]:
-        exchange_type = self.exchanges[node].exchange_type
-        if exchange_type not in {"direct", "topic", "fanout", "headers"}:
-            evidence.issues.add(DeadLetterRoutingIssue(node, DeadLetterUncertainty.UNSUPPORTED_ROUTING_SEMANTICS))
-            evidence.open_branch = True
-            return [(alternate.target, False) for alternate in self.alternates.get(node, ())]
-        matches = [(edge, *_binding_matches(exchange_type, edge, routing_key)) for edge in self.bindings.get(node, ())]
-        routes = []
-        for edge, matches_binding, reason in matches:
-            if reason is not None:
-                evidence.issues.add(DeadLetterRoutingIssue(node, reason))
-            if matches_binding is not False:
-                routes.append((edge.target, established and matches_binding is True))
-        alternates = self.alternates.get(node, ())
-        if alternates and not any(match is True for _, match, _ in matches):
-            if len(alternates) > 1:
-                evidence.issues.add(DeadLetterRoutingIssue(node, DeadLetterUncertainty.CONFLICTING_ROUTES))
-                evidence.open_branch = True
-            definite = established and len(alternates) == 1 and all(match is False for _, match, _ in matches)
-            routes.extend((alternate.target, definite) for alternate in alternates)
-        return routes
-
-
-def _binding_matches(
-    exchange_type: str, edge: TopologyEdge, routing_key: str | None
-) -> tuple[bool | None, DeadLetterUncertainty | None]:
-    if exchange_type == "fanout":
-        return True, None
-    if exchange_type == "headers":
-        return _headers_match(edge.arguments)
-    if edge.routing_key is None:
-        return None, DeadLetterUncertainty.INCOMPLETE_BINDING
-    if routing_key is None:
-        universal = exchange_type == "topic" and edge.routing_key and set(edge.routing_key.split(".")) == {"#"}
-        return (True, None) if universal else (None, DeadLetterUncertainty.ROUTING_KEY_NOT_CAPTURED)
-    if exchange_type == "direct":
-        return routing_key == edge.routing_key, None
-    return _topic_matches(edge.routing_key, routing_key), None
-
-
-def _headers_match(arguments: str | None) -> tuple[bool | None, DeadLetterUncertainty | None]:
-    try:
-        values = json.loads(arguments) if arguments is not None else {}
-    except (ValueError, RecursionError):
-        return None, DeadLetterUncertainty.INCOMPLETE_BINDING
-    if not isinstance(values, dict):
-        return None, DeadLetterUncertainty.INCOMPLETE_BINDING
-    mode = values.get("x-match", "all")
-    if mode not in ("all", "any", "all-with-x", "any-with-x"):
-        return None, DeadLetterUncertainty.INCOMPLETE_BINDING
-    keys = [key for key in values if key != "x-match" and (mode.endswith("with-x") or not key.startswith("x-"))]
-    if not keys:
-        return mode in ("all", "all-with-x"), None
-    return None, DeadLetterUncertainty.MESSAGE_HEADERS_NOT_CAPTURED
-
-
-def _topic_matches(pattern: str, routing_key: str) -> bool:
-    """Match RabbitMQ topic words iteratively, with no regex approximation."""
-    words = routing_key.split(".") if routing_key else []
-    tokens = pattern.split(".") if pattern else []
-    pending = [(0, 0)]
-    seen = set()
-    while pending:
-        token, word = pending.pop()
-        if (token, word) in seen:
-            continue
-        seen.add((token, word))
-        if token == len(tokens):
-            if word == len(words):
-                return True
-        elif tokens[token] == "#":
-            pending.append((token + 1, word))
-            if word < len(words):
-                pending.append((token, word + 1))
-        elif word < len(words) and tokens[token] in ("*", words[word]):
-            pending.append((token + 1, word + 1))
-    return False
+        return DeadLetterCoverage(
+            queue,
+            DeadLetterCoverageStatus(evidence.status.value),
+            exchange,
+            routing_key,
+            tuple(evidence.destinations),
+            issues,
+        )
 
 
 def dead_letter_coverage(topology: ClusterTopology) -> tuple[DeadLetterCoverage, ...]:

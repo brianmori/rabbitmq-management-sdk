@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from rabbitmq_management_sdk.topology import (
         CycleSearchResult,
         DeadLetterCoverage,
+        ExchangeRoutingCoverage,
         QueueTypeInventory,
         StronglyConnectedComponent,
     )
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
         CycleSearchResult,
         QueueTypeInventory,
         tuple[DeadLetterCoverage, ...],
+        tuple[ExchangeRoutingCoverage, ...],
     ]
 
 pytestmark = pytest.mark.integration
@@ -40,6 +42,7 @@ result = (
     auditor.structural_cycles(),
     auditor.queue_type_inventory(),
     auditor.dead_letter_coverage(),
+    auditor.exchange_routing_coverage(),
 )
 sys.stdout.buffer.write(pickle.dumps(result, protocol=pickle.HIGHEST_PROTOCOL))
 """
@@ -68,6 +71,7 @@ def test_spawned_process_preserves_topology_analysis_results() -> None:
         source_auditor.structural_cycles(),
         source_auditor.queue_type_inventory(),
         source_auditor.dead_letter_coverage(),
+        source_auditor.exchange_routing_coverage(),
     )
 
     completed = subprocess.run(

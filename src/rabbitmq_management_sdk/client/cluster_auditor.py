@@ -25,6 +25,7 @@ from rabbitmq_management_sdk.topology.cycles import (
     message_loop_candidates_from_complete_result,
 )
 from rabbitmq_management_sdk.topology.dead_letter import dead_letter_coverage
+from rabbitmq_management_sdk.topology.exchange_routing import exchange_routing_coverage
 from rabbitmq_management_sdk.topology.fanout import fanout_exchange_bindings
 from rabbitmq_management_sdk.topology.models import ClusterTopology
 from rabbitmq_management_sdk.topology.ordering import edge_sort_key
@@ -46,6 +47,7 @@ if TYPE_CHECKING:
 
     from rabbitmq_management_sdk.topology.cycles import StronglyConnectedComponent
     from rabbitmq_management_sdk.topology.dead_letter import DeadLetterCoverage
+    from rabbitmq_management_sdk.topology.exchange_routing import ExchangeRoutingCoverage
     from rabbitmq_management_sdk.topology.fanout import FanoutExchangeBindings
     from rabbitmq_management_sdk.topology.models import (
         ExchangeNode,
@@ -80,6 +82,7 @@ class TopologyAuditReport:
     fanout_exchange_bindings: tuple[FanoutExchangeBindings, ...] = ()
     queue_type_inventory: QueueTypeInventory = field(default_factory=QueueTypeInventory)
     dead_letter_coverage: tuple[DeadLetterCoverage, ...] = ()
+    exchange_routing_coverage: tuple[ExchangeRoutingCoverage, ...] = ()
 
 
 class ClusterAuditor:
@@ -321,8 +324,23 @@ class ClusterAuditor:
         return find_message_loop_candidates(self._topology, max_cycles=max_cycles)
 
     def black_hole_exchanges(self) -> tuple[ExchangeNode, ...]:
-        """Return non-default exchanges with no captured outgoing route."""
+        """Return non-default exchanges with no captured outgoing route.
+
+        This is a degree finding. Use ``exchange_routing_coverage`` to evaluate
+        binding-key compatibility, exchange chains, and alternate exchanges.
+        """
         return black_hole_exchanges(self._topology)
+
+    def exchange_routing_coverage(self, *, routing_key: str | None = None) -> tuple[ExchangeRoutingCoverage, ...]:
+        """Return per-exchange routing evidence for an optional routing key.
+
+        ``None`` leaves key-dependent decisions undetermined; an empty string
+        is a concrete key. Results include contained default and internal
+        exchanges, preserve uncertainties, and leave discard intent to callers.
+        A contextual absence of destinations does not imply an exchange cannot
+        route other publications. Message headers are not supplied.
+        """
+        return exchange_routing_coverage(self._topology, routing_key=routing_key)
 
     def unreachable_internal_exchanges(self) -> tuple[ExchangeNode, ...]:
         """Return internal exchanges with no captured incoming route."""
@@ -419,4 +437,5 @@ class ClusterAuditor:
             fanout_exchange_bindings=self.fanout_exchange_bindings(),
             queue_type_inventory=self.queue_type_inventory(),
             dead_letter_coverage=self.dead_letter_coverage(),
+            exchange_routing_coverage=self.exchange_routing_coverage(),
         )

@@ -13,7 +13,7 @@ from itertools import pairwise
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rabbitmq_management_sdk.topology import DeadLetterCoverageStatus, EdgeKind, NodeKind, node_sort_key
+from rabbitmq_management_sdk.topology import DeadLetterCoverageStatus, EdgeKind, NodeKind, RoutingStatus, node_sort_key
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -411,6 +411,46 @@ def check_dead_letter_coverage(auditor: ClusterAuditor, prefix: str) -> None:
     assert auditor.audit().dead_letter_coverage == results
 
 
+def check_exchange_routing_coverage(auditor: ClusterAuditor, prefix: str) -> None:
+    results = auditor.exchange_routing_coverage()
+    assert tuple(result.exchange.id for result in results) == tuple(
+        sorted((exchange.id for exchange in auditor.topology.exchanges), key=node_sort_key)
+    )
+    groups = {signature(result.exchange.id, prefix): result for result in results}
+    for name in (
+        "diagnostics/exchange/diag.blackhole",
+        "diagnostics/exchange/diag.empty-fanout",
+        "loops/exchange/binding.self",
+        "loops/exchange/binding.a",
+        "loops/exchange/binding.b",
+        "loops/exchange/binding.c",
+        "loops/exchange/alternate.a",
+        "loops/exchange/alternate.b",
+        "loops/exchange/mixed.a",
+        "loops/exchange/mixed.b",
+    ):
+        assert groups[name].status == RoutingStatus.NO_DESTINATION
+    assert groups["routing/exchange/route.headers"].status == RoutingStatus.UNDETERMINED
+    assert groups["diagnostics/exchange/diag.missing-ae"].status == RoutingStatus.UNDETERMINED
+    fanout = groups["routing/exchange/route.fanout"]
+    assert fanout.status == RoutingStatus.DESTINATION_POSSIBLE
+    assert [node.name for node in fanout.destinations] == ["route.classic", "route.quorum", "route.stream"]
+    for name, destination in (
+        ("policy.primary", "policy.fallback.q"),
+        ("policy.override.exchange", "argument.fallback.q"),
+    ):
+        assert groups[f"policies/exchange/{name}"].status == RoutingStatus.DESTINATION_POSSIBLE
+        assert [node.name for node in groups[f"policies/exchange/{name}"].destinations] == [destination]
+    keyed = {
+        signature(result.exchange.id, prefix): result
+        for result in auditor.exchange_routing_coverage(routing_key="work")
+    }
+    assert keyed["deadletter/exchange/work.in"].status == RoutingStatus.DESTINATION_POSSIBLE
+    assert [node.name for node in keyed["deadletter/exchange/work.in"].destinations] == ["work.quorum"]
+    assert keyed["deadletter/exchange/retry.in"].status == RoutingStatus.NO_DESTINATION
+    assert auditor.audit().exchange_routing_coverage == results
+
+
 CHECKS: tuple[Callable[[ClusterAuditor, str], None], ...] = (
     check_cycles,
     check_resources_and_routes,
@@ -420,4 +460,5 @@ CHECKS: tuple[Callable[[ClusterAuditor, str], None], ...] = (
     check_fanout,
     check_queue_inventory,
     check_dead_letter_coverage,
+    check_exchange_routing_coverage,
 )
