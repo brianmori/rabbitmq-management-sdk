@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, overload
 
 from pydantic import ValidationError
@@ -28,6 +28,7 @@ from rabbitmq_management_sdk.topology.fanout import fanout_exchange_bindings
 from rabbitmq_management_sdk.topology.models import ClusterTopology
 from rabbitmq_management_sdk.topology.ordering import edge_sort_key
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
+from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeInventory, queue_type_inventory
 from rabbitmq_management_sdk.topology.reachability import (
     black_hole_exchanges,
     cross_vhost_shovels,
@@ -75,6 +76,7 @@ class TopologyAuditReport:
     dangling_edges: tuple[TopologyEdge, ...]
     competing_shovel_consumers: tuple[CompetingShovelConsumers, ...] = ()
     fanout_exchange_bindings: tuple[FanoutExchangeBindings, ...] = ()
+    queue_type_inventory: QueueTypeInventory = field(default_factory=QueueTypeInventory)
 
 
 class ClusterAuditor:
@@ -361,6 +363,15 @@ class ClusterAuditor:
         """
         return fanout_exchange_bindings(self._topology)
 
+    def queue_type_inventory(self) -> QueueTypeInventory:
+        """Return queues grouped by type, with per-vhost captured defaults.
+
+        Includes empty declared vhosts and vhosts represented by resource
+        nodes. Missing defaults remain ``None``. Only contained queue nodes
+        contribute to counts; dangling routes do not invent queue entries.
+        """
+        return queue_type_inventory(self._topology)
+
     def dangling_edges(self) -> tuple[TopologyEdge, ...]:
         """Return declared routes whose source or target is absent from the export.
 
@@ -393,4 +404,5 @@ class ClusterAuditor:
             dangling_edges=self.dangling_edges(),
             competing_shovel_consumers=self.competing_shovel_consumers(),
             fanout_exchange_bindings=self.fanout_exchange_bindings(),
+            queue_type_inventory=self.queue_type_inventory(),
         )

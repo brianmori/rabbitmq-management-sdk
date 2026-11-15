@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `ClusterAuditor.queue_type_inventory()` groups captured queues by type across
+  the cluster and per virtual host, with derived counts and retained queue
+  identities. The immutable inventory is also included in `audit()`. Captured
+  vhost defaults and empty vhosts survive graph serialization; missing defaults
+  remain unknown and do not override existing queue types.
 - A [RabbitMQ 4.3 complex-topology demo](tests/integration/rmq-4.3/complex-topology/README.md)
   with a full definitions export, queue/exchange runtime snapshots, and expected
   topology audit findings.

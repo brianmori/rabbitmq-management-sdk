@@ -25,6 +25,7 @@ from rabbitmq_management_sdk.topology.models import (
     ShovelNode,
     TopologyEdge,
     TopologyNode,
+    VirtualHostMetadata,
 )
 from rabbitmq_management_sdk.topology.ordering import (
     EdgeSortKey,
@@ -32,6 +33,7 @@ from rabbitmq_management_sdk.topology.ordering import (
     edge_sort_key,
     node_sort_key,
 )
+from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeGroup, QueueTypeInventory, VhostQueueInventory
 from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers
 
 __all__ = [
@@ -49,11 +51,15 @@ __all__ = [
     "NodeKind",
     "NodeSortKey",
     "QueueNode",
+    "QueueTypeGroup",
+    "QueueTypeInventory",
     "ResourceEndpoint",
     "ShovelNode",
     "StronglyConnectedComponent",
     "TopologyEdge",
     "TopologyNode",
+    "VhostQueueInventory",
+    "VirtualHostMetadata",
     "edge_sort_key",
     "node_sort_key",
 ]

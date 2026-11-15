@@ -11,7 +11,7 @@ from tests.shared.parser_fixtures import _exchange, _queue, _response, _vhost
 from rabbitmq_management_sdk import ClusterAuditor
 
 if TYPE_CHECKING:
-    from rabbitmq_management_sdk.topology import CycleSearchResult, StronglyConnectedComponent
+    from rabbitmq_management_sdk.topology import CycleSearchResult, QueueTypeInventory, StronglyConnectedComponent
 
 pytestmark = pytest.mark.integration
 
@@ -23,15 +23,15 @@ from rabbitmq_management_sdk import ClusterAuditor
 
 topology = pickle.loads(sys.stdin.buffer.read())
 auditor = ClusterAuditor.from_topology(topology)
-result = auditor.strongly_connected_components(), auditor.structural_cycles()
+result = auditor.strongly_connected_components(), auditor.structural_cycles(), auditor.queue_type_inventory()
 sys.stdout.buffer.write(pickle.dumps(result, protocol=pickle.HIGHEST_PROTOCOL))
 """
 
 
 def test_spawned_process_preserves_topology_analysis_results() -> None:
-    """Canonical topology transfer must preserve SCCs and cycles."""
+    """Canonical topology transfer must preserve analysis and vhost metadata."""
     definitions = _response(
-        vhosts=[_vhost("audit")],
+        vhosts=[_vhost("audit"), _vhost("empty", "quorum")],
         queues=[_queue("cycle-queue", "audit", **{"x-dead-letter-exchange": "cycle-exchange"})],
         exchanges=[_exchange("cycle-exchange", "audit")],
         bindings=[
@@ -46,7 +46,11 @@ def test_spawned_process_preserves_topology_analysis_results() -> None:
         ],
     )
     source_auditor = ClusterAuditor(definitions)
-    expected = source_auditor.strongly_connected_components(), source_auditor.structural_cycles()
+    expected = (
+        source_auditor.strongly_connected_components(),
+        source_auditor.structural_cycles(),
+        source_auditor.queue_type_inventory(),
+    )
 
     completed = subprocess.run(
         [sys.executable, "-c", _WORKER_SCRIPT],
@@ -58,7 +62,7 @@ def test_spawned_process_preserves_topology_analysis_results() -> None:
 
     assert completed.returncode == 0, completed.stderr.decode("utf-8", errors="replace")
     actual = cast(
-        "tuple[tuple[StronglyConnectedComponent, ...], CycleSearchResult]",
+        "tuple[tuple[StronglyConnectedComponent, ...], CycleSearchResult, QueueTypeInventory]",
         pickle.loads(completed.stdout),
     )
 

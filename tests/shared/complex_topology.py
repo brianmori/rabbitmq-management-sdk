@@ -338,6 +338,41 @@ def check_fanout(auditor: ClusterAuditor, prefix: str) -> None:
     assert auditor.audit().fanout_exchange_bindings == results
 
 
+def check_queue_inventory(auditor: ClusterAuditor, prefix: str) -> None:
+    inventory = auditor.queue_type_inventory()
+    assert inventory.queue_count == 46
+    assert [(group.queue_type, group.queue_count) for group in inventory.queue_types] == [
+        ("classic", 42),
+        ("quorum", 3),
+        ("stream", 1),
+    ]
+    demo = {
+        vhost.vhost.removeprefix(prefix + "."): vhost
+        for vhost in inventory.vhosts
+        if vhost.vhost.startswith(prefix + ".")
+    }
+    assert set(demo) == set(ROLES)
+    assert {
+        role: {group.queue_type: group.queue_count for group in vhost.queue_types} for role, vhost in demo.items()
+    } == {
+        "control": {},
+        "deadletter": {"classic": 2, "quorum": 1},
+        "diagnostics": {"classic": 5},
+        "fallback": {"classic": 2},
+        "loops": {"classic": 4},
+        "policies": {"classic": 6, "quorum": 1},
+        "region-a": {"classic": 7},
+        "region-b": {"classic": 8},
+        "region-c": {"classic": 3},
+        "routing": {"classic": 5, "quorum": 1, "stream": 1},
+    }
+    assert {role: vhost.default_queue_type for role, vhost in demo.items()} == {
+        role: "quorum" if role == "policies" else "classic" for role in ROLES
+    }
+    assert {queue for group in inventory.queue_types for queue in group.queues} == auditor.topology.queues
+    assert auditor.audit().queue_type_inventory == inventory
+
+
 CHECKS: tuple[Callable[[ClusterAuditor, str], None], ...] = (
     check_cycles,
     check_resources_and_routes,
@@ -345,4 +380,5 @@ CHECKS: tuple[Callable[[ClusterAuditor, str], None], ...] = (
     check_degree_findings,
     check_shovels,
     check_fanout,
+    check_queue_inventory,
 )
