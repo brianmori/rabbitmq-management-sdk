@@ -23,17 +23,23 @@ class FanoutQueue:
         replication_factor: Observed quorum membership count including the
             leader, or ``None`` when unknown or for other queue types. Initial
             group sizes and online-member counts are not replication factors.
+        durable: Captured queue durability, or ``None`` for a dangling target
+            or a manually constructed value without durability evidence. This
+            is a queue declaration property, not message persistence evidence.
     """
 
     id: NodeId
     queue_type: str | None = None
     replication_factor: int | None = None
+    durable: bool | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.id, NodeId) or self.id.kind != NodeKind.QUEUE:
             raise TopologyValidationError("FanoutQueue.id must be a queue NodeId")
         if self.queue_type is not None and not isinstance(self.queue_type, str):
             raise TopologyValidationError("FanoutQueue.queue_type must be str or None")
+        if self.durable is not None and not isinstance(self.durable, bool):
+            raise TopologyValidationError("FanoutQueue.durable must be bool or None")
         if self.replication_factor is not None:
             if type(self.replication_factor) is not int or self.replication_factor < 1:
                 raise TopologyValidationError("FanoutQueue.replication_factor must be a positive int or None")
@@ -49,6 +55,9 @@ class FanoutExchangeBindings:
     complete identity. This describes captured configuration, not a measured
     bottleneck, a disk-write estimate, or the complete set of destinations
     reachable through other exchanges, alternate exchanges, or shovels.
+    Capacity metrics are derived from ``queues``. Unknown attributes remain
+    explicit; a partial quorum-member sum is never presented as a complete
+    total. Callers choose their own review thresholds.
     """
 
     exchange: ExchangeNode
@@ -65,6 +74,67 @@ class FanoutExchangeBindings:
         if len({queue.id for queue in self.queues}) != len(self.queues):
             raise TopologyValidationError("FanoutExchangeBindings queues must have distinct identities")
         object.__setattr__(self, "queues", tuple(sorted(self.queues, key=lambda queue: node_sort_key(queue.id))))
+
+    @property
+    def queue_count(self) -> int:
+        """Return the distinct direct queue target count, including dangling targets."""
+        return len(self.queues)
+
+    @property
+    def durable_queue_count(self) -> int:
+        """Return the number of targets with captured durable declarations."""
+        return sum(queue.durable is True for queue in self.queues)
+
+    @property
+    def non_durable_queue_count(self) -> int:
+        """Return the number of targets with captured non-durable declarations."""
+        return sum(queue.durable is False for queue in self.queues)
+
+    @property
+    def unknown_durability_count(self) -> int:
+        """Return the number of targets without captured durability evidence."""
+        return sum(queue.durable is None for queue in self.queues)
+
+    @property
+    def quorum_queue_count(self) -> int:
+        """Return the number of targets known to be quorum queues."""
+        return sum(queue.queue_type == "quorum" for queue in self.queues)
+
+    @property
+    def unknown_queue_type_count(self) -> int:
+        """Return the number of targets whose queue type is unknown."""
+        return sum(queue.queue_type is None for queue in self.queues)
+
+    @property
+    def quorum_queues_without_membership_count(self) -> int:
+        """Return the number of known quorum targets without captured membership."""
+        return sum(queue.queue_type == "quorum" and queue.replication_factor is None for queue in self.queues)
+
+    @property
+    def known_quorum_member_count(self) -> int:
+        """Sum captured quorum members, including leaders, where membership is known.
+
+        This partial evidence remains useful when other targets are unresolved.
+        It describes queue members, not disk writes or all queue replicas.
+        """
+        return sum(
+            queue.replication_factor
+            for queue in self.queues
+            if queue.queue_type == "quorum" and queue.replication_factor is not None
+        )
+
+    @property
+    def quorum_member_count(self) -> int | None:
+        """Return the complete direct-target quorum-member sum, or ``None``.
+
+        Completeness requires every target's type and every quorum target's
+        membership to be known. An empty group or known non-quorum targets
+        contribute zero. Streams and plugin types do not contribute to this
+        quorum-only metric, independently of their replication behavior.
+        """
+        if self.unknown_queue_type_count or self.quorum_queues_without_membership_count:
+            return None
+        return self.known_quorum_member_count
 
 
 def fanout_exchange_bindings(topology: ClusterTopology) -> tuple[FanoutExchangeBindings, ...]:
@@ -91,6 +161,7 @@ def fanout_exchange_bindings(topology: ClusterTopology) -> tuple[FanoutExchangeB
                     id=queue_id,
                     queue_type=node.queue_type if node is not None else None,
                     replication_factor=node.replication_factor if node is not None else None,
+                    durable=node.durable if node is not None else None,
                 )
             )
         results.append(FanoutExchangeBindings(exchange=exchanges[exchange_id], queues=tuple(queues)))

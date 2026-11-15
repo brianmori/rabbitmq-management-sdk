@@ -317,8 +317,19 @@ def check_fanout(auditor: ClusterAuditor, prefix: str) -> None:
             assert (queue.id.cluster_id, queue.id.vhost) == (group.exchange.id.cluster_id, group.exchange.id.vhost)
             expected_type = {"route.quorum": "quorum", "route.stream": "stream"}.get(queue.id.name, "classic")
             assert queue.queue_type == expected_type
+            assert queue.durable is True
             assert queue.replication_factor == (1 if expected_type == "quorum" else None)
+        assert group.queue_count == group.durable_queue_count == len(group.queues)
+        assert group.non_durable_queue_count == group.unknown_durability_count == group.unknown_queue_type_count == 0
+        assert group.quorum_queues_without_membership_count == 0
+        assert group.quorum_member_count == group.known_quorum_member_count == group.quorum_queue_count
     route = groups["routing/exchange/route.fanout"]
+    assert (route.queue_count, route.durable_queue_count, route.quorum_queue_count, route.quorum_member_count) == (
+        3,
+        3,
+        1,
+        1,
+    )
     assert [(queue.id.name, queue.queue_type, queue.replication_factor) for queue in route.queues] == [
         ("route.classic", "classic", None),
         ("route.quorum", "quorum", 1),

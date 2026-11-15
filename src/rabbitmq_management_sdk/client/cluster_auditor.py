@@ -376,9 +376,10 @@ class ClusterAuditor:
         """Return fanout exchanges and their distinct, directly bound queues.
 
         Results include exchanges without direct queue targets and preserve
-        dangling queue identities. Each target carries its queue type and,
-        when captured, its quorum membership count including the leader.
-        Unknown replication factors are ``None``. This is configuration
+        dangling queue identities. Each target carries its queue type,
+        durability, and captured quorum membership count including the leader.
+        Groups expose derived counts and complete or partial quorum-member
+        totals. Unknown evidence remains explicit. This is configuration
         evidence for capacity review, not proof of a performance bottleneck
         or an estimate of physical disk writes.
         """

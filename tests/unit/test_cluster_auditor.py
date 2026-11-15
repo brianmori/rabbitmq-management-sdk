@@ -212,6 +212,13 @@ def test_fanout_replication_is_included_in_public_audit_and_graph_transfer() -> 
 
     assert group.queues[0].replication_factor == 3
     assert group.queues[0].id.vhost == "v"
+    assert group.queues[0].durable is True
+    assert (group.queue_count, group.durable_queue_count, group.quorum_queue_count, group.quorum_member_count) == (
+        1,
+        1,
+        1,
+        3,
+    )
     assert auditor.audit().fanout_exchange_bindings == (group,)
     topology = pickle.loads(pickle.dumps(auditor.topology))
     assert ClusterAuditor.from_topology(topology).fanout_exchange_bindings() == (group,)
@@ -219,6 +226,10 @@ def test_fanout_replication_is_included_in_public_audit_and_graph_transfer() -> 
     observation.members.clear()
     assert auditor.fanout_exchange_bindings() == (group,)
     assert ClusterAuditor(definitions).fanout_exchange_bindings()[0].queues[0].replication_factor is None
+    definitions_only = ClusterAuditor(definitions).fanout_exchange_bindings()[0]
+    assert definitions_only.known_quorum_member_count == 0
+    assert definitions_only.quorum_queues_without_membership_count == 1
+    assert definitions_only.quorum_member_count is None
 
 
 @pytest.mark.parametrize(

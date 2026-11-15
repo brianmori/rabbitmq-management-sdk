@@ -102,12 +102,20 @@ contains a one-time full definitions export and complete queue/exchange API
 observations. Ordinary tests never regenerate these files. The observations
 are needed for broker-selected policies and captured quorum membership.
 
+Fanout capacity coverage lives in `unit/test_fanout.py`, the result-model and
+facade tests, and `integration/test_fanout_captures.py`. It distinguishes
+durable, non-durable, and unknown targets; partial membership; dangling queue
+types; and complete zero-member sums for known non-quorum targets. The shared
+live demo checks durability and capacity metrics from real exports and queue
+membership observations. Counts deduplicate parallel bindings and include
+only direct queue targets.
+
 The offline capture tests and live import tests share the expectations in
 `shared/complex_topology.py`. They assert directed paths with multiplicity,
 SCC membership, healthy routes, policy precedence, degree findings, shovel
-advisories, effective DLX routing, contextual exchange coverage, the complete fanout exchange-to-queue map,
-and queue type counts
-with per-vhost defaults. Cycle caps cover
+advisories, effective DLX routing, contextual exchange coverage, the complete
+fanout exchange-to-queue map and capacity counts, and queue type counts with
+per-vhost defaults. Cycle caps cover
 unlimited, partial, exact, and larger-than-result bounds. Reordered capture
 copies in pytest's temporary directory verify deterministic graphs and reports.
 
