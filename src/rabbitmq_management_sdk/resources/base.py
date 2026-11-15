@@ -12,7 +12,21 @@ if TYPE_CHECKING:
 
 
 class RabbitMQBase(BaseModel):
-    model_config = ConfigDict(extra="ignore", frozen=True, populate_by_name=True, use_enum_values=True)
+    """Settings shared by SDK resource values."""
+
+    model_config = ConfigDict(frozen=True, use_enum_values=True)
+
+
+class RabbitMQRequest(RabbitMQBase):
+    """Accept Python field names and wire aliases when building requests."""
+
+    model_config = ConfigDict(extra="ignore", validate_by_alias=True, validate_by_name=True)
+
+
+class RabbitMQResponse(RabbitMQBase):
+    """Read exact wire names while tolerating new response metadata."""
+
+    model_config = ConfigDict(extra="ignore", validate_by_alias=True, validate_by_name=False)
 
 
 @dataclass(frozen=True)
@@ -38,7 +52,7 @@ class Page[T]:
     item_count: int
 
 
-class _PageEnvelope(RabbitMQBase):
+class _PageEnvelope(RabbitMQResponse):
     """The common wire representation used by RabbitMQ paginated endpoints."""
 
     items: list[dict[str, object]]

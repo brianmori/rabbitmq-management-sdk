@@ -4,14 +4,14 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQResponse
 
 # ---------------------------------------------------------------------------
 # Arguments — per queue type (response side)
 # ---------------------------------------------------------------------------
 
 
-class ClassicQueueResponse(RabbitMQBase):
+class ClassicQueueResponse(RabbitMQResponse):
     """Arguments echoed back by the server for a classic queue."""
 
     queue_type: Literal["classic"] = Field(alias="x-queue-type")
@@ -25,7 +25,7 @@ class ClassicQueueResponse(RabbitMQBase):
     expires: int | None = Field(None, alias="x-expires")
 
 
-class QuorumQueueResponse(RabbitMQBase):
+class QuorumQueueResponse(RabbitMQResponse):
     """Arguments echoed back by the server for a quorum queue."""
 
     queue_type: Literal["quorum"] = Field(alias="x-queue-type")
@@ -38,7 +38,7 @@ class QuorumQueueResponse(RabbitMQBase):
     initial_cluster_size: int | None = Field(None, alias="x-quorum-initial-group-size")
 
 
-class StreamQueueResponse(RabbitMQBase):
+class StreamQueueResponse(RabbitMQResponse):
     """Arguments echoed back by the server for a stream queue."""
 
     queue_type: Literal["stream"] = Field(alias="x-queue-type")
@@ -59,13 +59,13 @@ type QueueResponseArguments = Annotated[
 # ---------------------------------------------------------------------------
 
 
-class MessageRate(RabbitMQBase):
+class MessageRate(RabbitMQResponse):
     """Rate detail attached to a message stats counter."""
 
     rate: float
 
 
-class MessageStats(RabbitMQBase):
+class MessageStats(RabbitMQResponse):
     """Live message throughput counters.
 
     Present only when stats are not stripped from the response. Individual
@@ -93,7 +93,7 @@ class MessageStats(RabbitMQBase):
 # ---------------------------------------------------------------------------
 
 
-class QueueResponse(RabbitMQBase):
+class QueueResponse(RabbitMQResponse):
     """Represents a queue as returned by the RabbitMQ Management API (v4+).
 
     Fields are required when the v4 API guarantees their presence. Stats

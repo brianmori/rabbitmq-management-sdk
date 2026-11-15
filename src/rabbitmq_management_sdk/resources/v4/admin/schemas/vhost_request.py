@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQRequest
 
 
 class VhostLimitName(StrEnum):
@@ -16,14 +16,14 @@ class VhostLimitName(StrEnum):
     MAX_QUEUES = "max-queues"
 
 
-class VhostRequest(RabbitMQBase):
+class VhostRequest(RabbitMQRequest):
     description: str | None = None
     tags: list[str] = Field(default_factory=list)
     tracing: bool = False
     default_queue_type: Literal["classic", "quorum", "stream"] = "classic"
 
 
-class VhostLimitRequest(RabbitMQBase):
+class VhostLimitRequest(RabbitMQRequest):
     """Payload for ``PUT /api/vhost-limits/{vhost}/{limit}``.
 
     The vhost and limit name are part of the URL — only the value is sent

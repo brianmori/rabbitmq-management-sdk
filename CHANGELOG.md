@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A [RabbitMQ 4.3 complex-topology demo](tests/integration/rmq-4.3/complex-topology/README.md)
+  with a full definitions export, queue/exchange runtime snapshots, and expected
+  topology audit findings.
+
+### Changed
+
+- Response models parse wire field names. Reload response dumps using Python
+  field names with `by_name=True`.
+- Response argument maps, policy definitions, and exported vhost limits expose
+  their validated dictionaries through `.root`, retaining typed attributes.
+  For Python-name construction, replace calls such as
+  `ExportQueueArguments(dead_letter_exchange="dlx")` with
+  `ExportQueueArguments.from_fields(dead_letter_exchange="dlx")`. Ordinary
+  constructors and validation methods interpret literal wire keys.
+- Message-loop candidate searches skip residual cyclic components that no
+  longer contain a republishing hop, avoiding unnecessary enumeration without
+  changing findings or cycle limits.
+
+### Fixed
+
+- Captured argument, policy, and vhost-limit maps preserve custom keys that
+  resemble Python attribute names. Keys such as `dead_letter_exchange`,
+  `alternate_exchange`, and `x_match` no longer create routing settings or
+  rename headers; absent wire aliases are not invented during serialization.
+- Shovel topology treats AMQP 1.0 v2 exchange addresses as destinations only.
+  Empty AMQP 0-9-1/local source keys and legacy AMQP 1.0 destination keys are no
+  longer reported as fixed empty routing keys.
+- Cluster definitions accept explicit null global-parameter values while
+  continuing to reject missing values.
+
 ## [0.4.0] - 2026-10-17
 
 ### Added

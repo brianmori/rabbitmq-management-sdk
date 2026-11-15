@@ -30,6 +30,19 @@ pytestmark = pytest.mark.integration
 def definitions_payload() -> dict[str, Any]:
     """A synthetic capture with both reserved and ordinary argument keys."""
     return {
+        "policies": [
+            {
+                "vhost": "/",
+                "name": "custom-keys",
+                "pattern": ".*",
+                "priority": 0,
+                "apply-to": "all",
+                "definition": {
+                    "dead_letter_exchange": {"ordinary": [None]},
+                    "alternate_exchange": "ghost-policy-ae",
+                },
+            }
+        ],
         "queues": [
             _queue("q", "/", **{"x-queue-type": "classic", "dead_letter_exchange": "ghost-dlx"}),
             _queue(

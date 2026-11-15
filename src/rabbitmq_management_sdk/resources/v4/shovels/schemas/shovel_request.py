@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQRequest
 from rabbitmq_management_sdk.resources.v4.shovels.schemas.common import AckMode, DeleteAfter
 
 # ---------------------------------------------------------------------------
@@ -12,7 +12,7 @@ from rabbitmq_management_sdk.resources.v4.shovels.schemas.common import AckMode,
 # ---------------------------------------------------------------------------
 
 
-class Amqp091ShovelSource(RabbitMQBase):
+class Amqp091ShovelSource(RabbitMQRequest):
     src_protocol: Literal["amqp091"] = Field("amqp091", alias="src-protocol", frozen=True)
     src_queue: str | None = Field(None, alias="src-queue")
     src_queue_args: dict[str, object] | None = Field(None, alias="src-queue-args")
@@ -36,7 +36,7 @@ class Amqp091ShovelSource(RabbitMQBase):
         return self
 
 
-class LocalShovelSource(RabbitMQBase):
+class LocalShovelSource(RabbitMQRequest):
     """Source config for local protocol (RabbitMQ 4.2+).
 
     Uses an internal cluster API instead of a TCP connection —
@@ -66,7 +66,7 @@ class LocalShovelSource(RabbitMQBase):
         return self
 
 
-class Amqp10ShovelSource(RabbitMQBase):
+class Amqp10ShovelSource(RabbitMQRequest):
     src_protocol: Literal["amqp10"] = Field("amqp10", alias="src-protocol", frozen=True)
     src_address: str = Field(alias="src-address")
     src_prefetch_count: int = Field(1000, alias="src-prefetch-count")
@@ -83,7 +83,7 @@ type ShovelSourceArguments = Annotated[
 # ---------------------------------------------------------------------------
 
 
-class Amqp091ShovelDestination(RabbitMQBase):
+class Amqp091ShovelDestination(RabbitMQRequest):
     dest_protocol: Literal["amqp091"] = Field("amqp091", alias="dest-protocol", frozen=True)
     dest_queue: str | None = Field(None, alias="dest-queue")
     dest_queue_args: dict[str, object] | None = Field(None, alias="dest-queue-args")
@@ -101,7 +101,7 @@ class Amqp091ShovelDestination(RabbitMQBase):
         return self
 
 
-class LocalShovelDestination(RabbitMQBase):
+class LocalShovelDestination(RabbitMQRequest):
     """Destination config for local protocol (RabbitMQ 4.2+).
 
     Same field set as amqp091 destination — local shovels share
@@ -125,7 +125,7 @@ class LocalShovelDestination(RabbitMQBase):
         return self
 
 
-class Amqp10ShovelDestination(RabbitMQBase):
+class Amqp10ShovelDestination(RabbitMQRequest):
     dest_protocol: Literal["amqp10"] = Field("amqp10", alias="dest-protocol", frozen=True)
     dest_address: str = Field(alias="dest-address")
     dest_application_properties: dict[str, str | int | float | bool] | None = Field(
@@ -148,7 +148,7 @@ type ShovelDestinationArguments = Annotated[
 # ---------------------------------------------------------------------------
 
 
-class ShovelRequest(RabbitMQBase):
+class ShovelRequest(RabbitMQRequest):
     """Full payload for PUT /api/parameters/shovel/{vhost}/{name}.
 
     Common transfer fields sit at the top level alongside src-uri and
@@ -232,7 +232,7 @@ class ShovelRequest(RabbitMQBase):
 # ---------------------------------------------------------------------------
 
 
-class UpsertShovelRequest(RabbitMQBase):
+class UpsertShovelRequest(RabbitMQRequest):
     """Request body for PUT /api/parameters/shovel/{vhost}/{name}."""
 
     value: ShovelRequest

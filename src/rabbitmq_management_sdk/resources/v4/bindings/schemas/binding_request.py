@@ -4,10 +4,10 @@ from typing import Any
 
 from pydantic import Field
 
-from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQRequest
 
 
-class BindingRequest(RabbitMQBase):
+class BindingRequest(RabbitMQRequest):
     """Payload for creating a binding.
 
     Used for both exchange-to-queue and exchange-to-exchange bindings.

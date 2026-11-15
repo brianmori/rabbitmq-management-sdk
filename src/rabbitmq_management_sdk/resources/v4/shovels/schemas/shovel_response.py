@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
-from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQResponse
 from rabbitmq_management_sdk.resources.v4.shovels.schemas.common import AckMode, DeleteAfter
 
 # ---------------------------------------------------------------------------
@@ -21,7 +21,7 @@ from rabbitmq_management_sdk.resources.v4.shovels.schemas.common import AckMode,
 # ---------------------------------------------------------------------------
 
 
-class Amqp091ShovelSourceResponse(RabbitMQBase):
+class Amqp091ShovelSourceResponse(RabbitMQResponse):
     src_protocol: Literal["amqp091"] = Field(alias="src-protocol")
     src_queue: str | None = Field(None, alias="src-queue")
     src_queue_args: dict[str, object] | None = Field(None, alias="src-queue-args")
@@ -33,7 +33,7 @@ class Amqp091ShovelSourceResponse(RabbitMQBase):
     src_prefetch_count: int = Field(1000, alias="src-prefetch-count")
 
 
-class LocalShovelSourceResponse(RabbitMQBase):
+class LocalShovelSourceResponse(RabbitMQResponse):
     src_protocol: Literal["local"] = Field(alias="src-protocol")
     src_queue: str | None = Field(None, alias="src-queue")
     src_queue_args: dict[str, object] | None = Field(None, alias="src-queue-args")
@@ -45,7 +45,7 @@ class LocalShovelSourceResponse(RabbitMQBase):
     src_prefetch_count: int = Field(1000, alias="src-prefetch-count")
 
 
-class Amqp10ShovelSourceResponse(RabbitMQBase):
+class Amqp10ShovelSourceResponse(RabbitMQResponse):
     src_protocol: Literal["amqp10"] = Field(alias="src-protocol")
     src_address: str = Field(alias="src-address")
     src_consumer_name: str | None = Field(None, alias="src-consumer-name")
@@ -58,7 +58,7 @@ type ShovelSourceArgumentsResponse = Annotated[
 ]
 
 
-class Amqp091ShovelDestinationResponse(RabbitMQBase):
+class Amqp091ShovelDestinationResponse(RabbitMQResponse):
     dest_protocol: Literal["amqp091"] = Field(alias="dest-protocol")
     dest_queue: str | None = Field(None, alias="dest-queue")
     dest_queue_args: dict[str, object] | None = Field(None, alias="dest-queue-args")
@@ -70,7 +70,7 @@ class Amqp091ShovelDestinationResponse(RabbitMQBase):
     dest_publish_properties: dict[str, object] | None = Field(None, alias="dest-publish-properties")
 
 
-class LocalShovelDestinationResponse(RabbitMQBase):
+class LocalShovelDestinationResponse(RabbitMQResponse):
     dest_protocol: Literal["local"] = Field(alias="dest-protocol")
     dest_queue: str | None = Field(None, alias="dest-queue")
     dest_queue_args: dict[str, object] | None = Field(None, alias="dest-queue-args")
@@ -82,7 +82,7 @@ class LocalShovelDestinationResponse(RabbitMQBase):
     dest_publish_properties: dict[str, object] | None = Field(None, alias="dest-publish-properties")
 
 
-class Amqp10ShovelDestinationResponse(RabbitMQBase):
+class Amqp10ShovelDestinationResponse(RabbitMQResponse):
     dest_protocol: Literal["amqp10"] = Field(alias="dest-protocol")
     dest_address: str = Field(alias="dest-address")
     dest_application_properties: dict[str, str | int | float | bool] | None = Field(
@@ -100,7 +100,7 @@ type ShovelDestinationArgumentsResponse = Annotated[
 ]
 
 
-class ShovelResponse(RabbitMQBase):
+class ShovelResponse(RabbitMQResponse):
     """The value object inside GET /api/parameters/shovel/{vhost}/{name}.
 
     The server echoes the stored definition flat — same shape as the PUT
@@ -183,7 +183,7 @@ class ShovelResponse(RabbitMQBase):
         return remainder
 
 
-class ShovelParameterResponse(RabbitMQBase):
+class ShovelParameterResponse(RabbitMQResponse):
     """Envelope for GET /api/parameters/shovel/{vhost}/{name}.
 
     Wire shape:
@@ -221,7 +221,7 @@ class ShovelState(StrEnum):
     FLOW = "flow"
 
 
-class ShovelStatusResponse(RabbitMQBase):
+class ShovelStatusResponse(RabbitMQResponse):
     """Runtime status for GET /api/shovels/vhost/{vhost}/{name}.
 
     Note: keys here use underscores, not hyphens — the status API

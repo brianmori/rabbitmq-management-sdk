@@ -103,5 +103,5 @@ def test_policy_api_and_definitions_export_use_independent_models() -> None:
 
     assert isinstance(response.definition, PolicyDefinitionResponse)
     assert not isinstance(response.definition, PolicyDefinition)
-    assert not isinstance(ExportPolicySettings(max_length=1000), PolicyDefinition)
+    assert not isinstance(ExportPolicySettings.from_fields(max_length=1000), PolicyDefinition)
     assert not issubclass(PolicyResponse, PolicyRequest)

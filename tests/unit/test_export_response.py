@@ -244,13 +244,13 @@ def test_export_arguments_still_validate_reserved_wire_keys(
         )
 
 
-def test_explicit_argument_models_keep_python_constructor_convenience() -> None:
+def test_explicit_argument_field_factories_keep_python_name_convenience() -> None:
     queue = ClusterExportQueue(
         name="q",
         vhost="/",
         durable=True,
         auto_delete=False,
-        arguments=ExportQueueArguments(dead_letter_exchange="dlx"),
+        arguments=ExportQueueArguments.from_fields(dead_letter_exchange="dlx"),
     )
     exchange = ClusterExportExchange(
         name="headers",
@@ -258,7 +258,7 @@ def test_explicit_argument_models_keep_python_constructor_convenience() -> None:
         type="headers",
         durable=True,
         auto_delete=False,
-        arguments=ExportExchangeArguments(alternate_exchange="ae"),
+        arguments=ExportExchangeArguments.from_fields(alternate_exchange="ae"),
     )
     binding = ClusterExportBinding(
         source="headers",
@@ -266,7 +266,7 @@ def test_explicit_argument_models_keep_python_constructor_convenience() -> None:
         destination="q",
         destination_type="queue",
         routing_key="",
-        arguments=ExportBindingArguments(x_match=HeadersMatchMode.ANY),
+        arguments=ExportBindingArguments.from_fields(x_match=HeadersMatchMode.ANY),
     )
 
     assert queue.arguments.model_dump(by_alias=True, exclude_unset=True) == {"x-dead-letter-exchange": "dlx"}

@@ -2,17 +2,19 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import ClassVar, Literal
 
-from pydantic import BeforeValidator, ConfigDict, Field, JsonValue, model_validator
+from pydantic import Field, JsonValue, model_validator
+from typing_extensions import TypedDict
 
-from rabbitmq_management_sdk.resources._arguments import _WireArguments
-from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources._argument_map import JsonArgumentEntries, ResponseArgumentMap
+from rabbitmq_management_sdk.resources.base import RabbitMQResponse
 from rabbitmq_management_sdk.resources.v4.common import (
     DeadLetterStrategy,
     OverflowBehaviour,
     QueueLeaderLocator,
 )
+from rabbitmq_management_sdk.resources.v4.policies.schemas._definition import _PolicyDefinitionMap
 from rabbitmq_management_sdk.resources.v4.policies.schemas.common import (
     OperatorPolicyApplyTo,
     PolicyApplyTo,
@@ -45,7 +47,7 @@ class HeadersMatchMode(StrEnum):
 # ---------------------------------------------------------------------------
 
 
-class ClusterExportUser(RabbitMQBase):
+class ClusterExportUser(RabbitMQResponse):
     name: str
     password_hash: str
     hashing_algorithm: str
@@ -57,20 +59,20 @@ class ClusterExportUser(RabbitMQBase):
     """
 
 
-class ClusterExportVhostMetadata(RabbitMQBase):
+class ClusterExportVhostMetadata(RabbitMQResponse):
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     default_queue_type: str | None = None
 
 
-class ClusterExportVhost(RabbitMQBase):
+class ClusterExportVhost(RabbitMQResponse):
     name: str
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     metadata: ClusterExportVhostMetadata | None = None
 
 
-class ClusterExportPermission(RabbitMQBase):
+class ClusterExportPermission(RabbitMQResponse):
     user: str
     vhost: str
     configure: str
@@ -78,7 +80,7 @@ class ClusterExportPermission(RabbitMQBase):
     read: str
 
 
-class ClusterExportTopicPermission(RabbitMQBase):
+class ClusterExportTopicPermission(RabbitMQResponse):
     user: str
     vhost: str
     exchange: str
@@ -86,7 +88,7 @@ class ClusterExportTopicPermission(RabbitMQBase):
     read: str
 
 
-class ClusterExportGlobalParameter(RabbitMQBase):
+class ClusterExportGlobalParameter(RabbitMQResponse):
     """Cluster-wide (virtual-host-independent) runtime parameter.
 
     `value` stays a generic union since its shape depends on `name` and
@@ -147,34 +149,8 @@ class ClusterExportGlobalParameter(RabbitMQBase):
         return self.value
 
 
-class ExportPolicySettings(RabbitMQBase):
-    """The `definition` object of a policy (or an operator-policy value).
-
-    Known keys are typed. `extra="allow"` preserves anything else losslessly —
-    plugin-contributed keys (e.g. federation's `federation-upstream` /
-    `federation-upstream-set`) and any newer broker keys this SDK doesn't
-    implement yet.
-    """
-
-    model_config = RabbitMQBase.model_config | {"extra": "allow"}
-
-    max_length: int | None = Field(None, alias="max-length")
-    max_length_bytes: int | None = Field(None, alias="max-length-bytes")
-    message_ttl: int | None = Field(None, alias="message-ttl")
-    expires: int | None = None
-    overflow: OverflowBehaviour | None = None
-    dead_letter_exchange: str | None = Field(None, alias="dead-letter-exchange")
-    dead_letter_routing_key: str | None = Field(None, alias="dead-letter-routing-key")
-    dead_letter_strategy: DeadLetterStrategy | None = Field(None, alias="dead-letter-strategy")
-    delivery_limit: int | None = Field(None, alias="delivery-limit")
-    consumer_timeout: int | None = Field(None, alias="consumer-timeout")
-    queue_leader_locator: QueueLeaderLocator | None = Field(None, alias="queue-leader-locator")
-    max_age: str | None = Field(None, alias="max-age")
-    stream_filter_size_bytes: int | None = Field(None, alias="stream-filter-size-bytes")
-    max_in_memory_length: int | None = Field(None, alias="max-in-memory-length")
-    max_in_memory_bytes: int | None = Field(None, alias="max-in-memory-bytes")
-    target_group_size: int | None = Field(None, alias="target-group-size")
-    alternate_exchange: str | None = Field(None, alias="alternate-exchange")
+class ExportPolicySettings(_PolicyDefinitionMap):
+    """Captured policy settings, including plugin-defined keys."""
 
     @property
     def effective_dead_letter_strategy(self) -> DeadLetterStrategy | None:
@@ -193,7 +169,7 @@ class ExportPolicySettings(RabbitMQBase):
         return self.dead_letter_strategy
 
 
-class _ExportPolicyBase(RabbitMQBase):
+class _ExportPolicyBase(RabbitMQResponse):
     """Shared shape between a regular policy and an operator-policy value:
     pattern / definition / priority. `apply-to` differs between the two
     (see PolicyApplyTo vs. OperatorPolicyApplyTo), so it's declared on each
@@ -222,7 +198,7 @@ class OperatorPolicyParameterValue(_ExportPolicyBase):
     apply_to: OperatorPolicyApplyTo = Field(alias="apply-to")
 
 
-class ClusterExportParameter(RabbitMQBase):
+class ClusterExportParameter(RabbitMQResponse):
     """Vhost-scoped runtime parameter (shovels, operator policies, vhost
     limits, federation upstreams, ...). `value` preserves arbitrary JSON since
     its shape depends on `component`: cleared limits can be an empty list,
@@ -242,20 +218,101 @@ class ClusterExportParameter(RabbitMQBase):
         return OperatorPolicyParameterValue.model_validate(self.value)
 
 
-class ExportQueueArguments(_WireArguments):
-    queue_type: QueueType | None = Field(None, alias="x-queue-type")
-    dead_letter_exchange: str | None = Field(None, alias="x-dead-letter-exchange")
-    dead_letter_routing_key: str | None = Field(None, alias="x-dead-letter-routing-key")
-    dead_letter_strategy: DeadLetterStrategy | None = Field(None, alias="x-dead-letter-strategy")
-    delivery_limit: int | None = Field(None, alias="x-delivery-limit")
-    max_length: int | None = Field(None, alias="x-max-length")
-    max_length_bytes: int | None = Field(None, alias="x-max-length-bytes")
-    message_ttl: int | None = Field(None, alias="x-message-ttl")
-    overflow: OverflowBehaviour | None = Field(None, alias="x-overflow")
-    queue_leader_locator: QueueLeaderLocator | None = Field(None, alias="x-queue-leader-locator")
-    single_active_consumer: bool | None = Field(None, alias="x-single-active-consumer")
-    quorum_initial_group_size: int | None = Field(None, alias="x-quorum-initial-group-size")
-    quorum_target_group_size: int | None = Field(None, alias="x-quorum-target-group-size")
+_QueueArgumentFields = TypedDict(
+    "_QueueArgumentFields",
+    {
+        "x-queue-type": QueueType | None,
+        "x-dead-letter-exchange": str | None,
+        "x-dead-letter-routing-key": str | None,
+        "x-dead-letter-strategy": DeadLetterStrategy | None,
+        "x-delivery-limit": int | None,
+        "x-max-length": int | None,
+        "x-max-length-bytes": int | None,
+        "x-message-ttl": int | None,
+        "x-overflow": OverflowBehaviour | None,
+        "x-queue-leader-locator": QueueLeaderLocator | None,
+        "x-single-active-consumer": bool | None,
+        "x-quorum-initial-group-size": int | None,
+        "x-quorum-target-group-size": int | None,
+    },
+    total=False,
+)
+
+
+class _QueueArgumentValues(_QueueArgumentFields, JsonArgumentEntries):
+    """Known wire keys plus additional JSON entries."""
+
+
+class ExportQueueArguments(ResponseArgumentMap[_QueueArgumentValues]):
+    """Captured arguments with exact wire keys and typed accessors."""
+
+    _field_aliases: ClassVar[dict[str, str]] = {
+        "queue_type": "x-queue-type",
+        "dead_letter_exchange": "x-dead-letter-exchange",
+        "dead_letter_routing_key": "x-dead-letter-routing-key",
+        "dead_letter_strategy": "x-dead-letter-strategy",
+        "delivery_limit": "x-delivery-limit",
+        "max_length": "x-max-length",
+        "max_length_bytes": "x-max-length-bytes",
+        "message_ttl": "x-message-ttl",
+        "overflow": "x-overflow",
+        "queue_leader_locator": "x-queue-leader-locator",
+        "single_active_consumer": "x-single-active-consumer",
+        "quorum_initial_group_size": "x-quorum-initial-group-size",
+        "quorum_target_group_size": "x-quorum-target-group-size",
+    }
+
+    @property
+    def queue_type(self) -> QueueType | None:
+        return self.root.get("x-queue-type")
+
+    @property
+    def dead_letter_exchange(self) -> str | None:
+        return self.root.get("x-dead-letter-exchange")
+
+    @property
+    def dead_letter_routing_key(self) -> str | None:
+        return self.root.get("x-dead-letter-routing-key")
+
+    @property
+    def dead_letter_strategy(self) -> DeadLetterStrategy | None:
+        return self.root.get("x-dead-letter-strategy")
+
+    @property
+    def delivery_limit(self) -> int | None:
+        return self.root.get("x-delivery-limit")
+
+    @property
+    def max_length(self) -> int | None:
+        return self.root.get("x-max-length")
+
+    @property
+    def max_length_bytes(self) -> int | None:
+        return self.root.get("x-max-length-bytes")
+
+    @property
+    def message_ttl(self) -> int | None:
+        return self.root.get("x-message-ttl")
+
+    @property
+    def overflow(self) -> OverflowBehaviour | None:
+        return self.root.get("x-overflow")
+
+    @property
+    def queue_leader_locator(self) -> QueueLeaderLocator | None:
+        return self.root.get("x-queue-leader-locator")
+
+    @property
+    def single_active_consumer(self) -> bool | None:
+        return self.root.get("x-single-active-consumer")
+
+    @property
+    def quorum_initial_group_size(self) -> int | None:
+        return self.root.get("x-quorum-initial-group-size")
+
+    @property
+    def quorum_target_group_size(self) -> int | None:
+        return self.root.get("x-quorum-target-group-size")
 
     @property
     def effective_dead_letter_strategy(self) -> DeadLetterStrategy | None:
@@ -272,28 +329,40 @@ class ExportQueueArguments(_WireArguments):
         return self.dead_letter_strategy
 
 
-class ClusterExportQueue(RabbitMQBase):
+class ClusterExportQueue(RabbitMQResponse):
     name: str
     vhost: str
     durable: bool
     auto_delete: bool
-    arguments: Annotated[ExportQueueArguments, BeforeValidator(ExportQueueArguments.from_wire)] = Field(
-        default_factory=ExportQueueArguments
-    )
+    arguments: ExportQueueArguments = Field(default_factory=ExportQueueArguments)
 
 
-class ExportExchangeArguments(_WireArguments):
-    """Strongly typed arguments for exchanges.
-
-    extra="allow" ensures that plugin arguments
-    (e.g., `x-delayed-type` for the delayed message exchange plugin,
-    or `hash-header` for consistent hashing) are preserved.
-    """
-
-    alternate_exchange: str | None = Field(None, alias="alternate-exchange")
+_ExchangeArgumentFields = TypedDict(
+    "_ExchangeArgumentFields",
+    {
+        "alternate-exchange": str | None,
+    },
+    total=False,
+)
 
 
-class ClusterExportExchange(RabbitMQBase):
+class _ExchangeArgumentValues(_ExchangeArgumentFields, JsonArgumentEntries):
+    """Known wire keys plus additional JSON entries."""
+
+
+class ExportExchangeArguments(ResponseArgumentMap[_ExchangeArgumentValues]):
+    """Captured arguments with exact wire keys and typed accessors."""
+
+    _field_aliases: ClassVar[dict[str, str]] = {
+        "alternate_exchange": "alternate-exchange",
+    }
+
+    @property
+    def alternate_exchange(self) -> str | None:
+        return self.root.get("alternate-exchange")
+
+
+class ClusterExportExchange(RabbitMQResponse):
     name: str
     vhost: str
     type: str
@@ -304,25 +373,41 @@ class ClusterExportExchange(RabbitMQBase):
     durable: bool
     auto_delete: bool
     internal: bool = False
-    arguments: Annotated[ExportExchangeArguments, BeforeValidator(ExportExchangeArguments.from_wire)] = Field(
-        default_factory=ExportExchangeArguments
-    )
+    arguments: ExportExchangeArguments = Field(default_factory=ExportExchangeArguments)
 
 
-class ExportBindingArguments(_WireArguments):
-    # Used in headers exchanges
-    x_match: HeadersMatchMode | None = Field(None, alias="x-match")
+_BindingArgumentFields = TypedDict(
+    "_BindingArgumentFields",
+    {
+        "x-match": HeadersMatchMode | None,
+    },
+    total=False,
+)
 
 
-class ClusterExportBinding(RabbitMQBase):
+class _BindingArgumentValues(_BindingArgumentFields, JsonArgumentEntries):
+    """Known wire keys plus additional JSON entries."""
+
+
+class ExportBindingArguments(ResponseArgumentMap[_BindingArgumentValues]):
+    """Captured arguments with exact wire keys and typed accessors."""
+
+    _field_aliases: ClassVar[dict[str, str]] = {
+        "x_match": "x-match",
+    }
+
+    @property
+    def x_match(self) -> HeadersMatchMode | None:
+        return self.root.get("x-match")
+
+
+class ClusterExportBinding(RabbitMQResponse):
     source: str
     vhost: str
     destination: str
     destination_type: Literal["queue", "exchange"] = Field(alias="destination_type")
     routing_key: str
-    arguments: Annotated[ExportBindingArguments, BeforeValidator(ExportBindingArguments.from_wire)] = Field(
-        default_factory=ExportBindingArguments
-    )
+    arguments: ExportBindingArguments = Field(default_factory=ExportBindingArguments)
 
 
 # ---------------------------------------------------------------------------
@@ -330,7 +415,7 @@ class ClusterExportBinding(RabbitMQBase):
 # ---------------------------------------------------------------------------
 
 
-class ClusterDefinitionsResponse(RabbitMQBase):
+class ClusterDefinitionsResponse(RabbitMQResponse):
     """Response for GET /api/definitions.
 
     Exports everything except messages: users, vhosts, permissions,
@@ -431,39 +516,33 @@ class ClusterDefinitionsResponse(RabbitMQBase):
 # ---------------------------------------------------------------------------
 
 
-class VhostExportQueue(RabbitMQBase):
+class VhostExportQueue(RabbitMQResponse):
     """Queue entry in a vhost-scoped export. No 'vhost' field."""
 
     name: str
     durable: bool
     auto_delete: bool
-    arguments: Annotated[ExportQueueArguments, BeforeValidator(ExportQueueArguments.from_wire)] = Field(
-        default_factory=ExportQueueArguments
-    )
+    arguments: ExportQueueArguments = Field(default_factory=ExportQueueArguments)
 
 
-class VhostExportExchange(RabbitMQBase):
+class VhostExportExchange(RabbitMQResponse):
     name: str
     type: str
     durable: bool
     auto_delete: bool
     internal: bool = False
-    arguments: Annotated[ExportExchangeArguments, BeforeValidator(ExportExchangeArguments.from_wire)] = Field(
-        default_factory=ExportExchangeArguments
-    )
+    arguments: ExportExchangeArguments = Field(default_factory=ExportExchangeArguments)
 
 
-class VhostExportBinding(RabbitMQBase):
+class VhostExportBinding(RabbitMQResponse):
     source: str
     destination: str
     destination_type: str
     routing_key: str
-    arguments: Annotated[ExportBindingArguments, BeforeValidator(ExportBindingArguments.from_wire)] = Field(
-        default_factory=ExportBindingArguments
-    )
+    arguments: ExportBindingArguments = Field(default_factory=ExportBindingArguments)
 
 
-class VhostExportPolicy(RabbitMQBase):
+class VhostExportPolicy(RabbitMQResponse):
     name: str
     pattern: str
     definition: ExportPolicySettings
@@ -471,7 +550,7 @@ class VhostExportPolicy(RabbitMQBase):
     apply_to: PolicyApplyTo = Field(PolicyApplyTo.ALL, alias="apply-to")
 
 
-class VhostExportParameter(RabbitMQBase):
+class VhostExportParameter(RabbitMQResponse):
     """Includes plugin parameters (shovel, federation) and a synthetic
     'vhost-limits' parameter that echoes the vhost's connection/queue
     limits. Values preserve their component-specific JSON shape.
@@ -491,18 +570,41 @@ class VhostExportParameter(RabbitMQBase):
         return OperatorPolicyParameterValue.model_validate(self.value)
 
 
-class VhostExportMetadata(RabbitMQBase):
+class VhostExportMetadata(RabbitMQResponse):
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     default_queue_type: str | None = None
 
 
-class VhostExportLimits(RabbitMQBase):
-    """Extra allowed: limit keys are broker-defined and may grow."""
+_LimitArgumentFields = TypedDict(
+    "_LimitArgumentFields",
+    {
+        "max-connections": int | None,
+        "max-queues": int | None,
+    },
+    total=False,
+)
 
-    model_config = ConfigDict(populate_by_name=True, extra="allow")
-    max_connections: int | None = Field(None, alias="max-connections")
-    max_queues: int | None = Field(None, alias="max-queues")
+
+class _LimitArgumentValues(_LimitArgumentFields, JsonArgumentEntries):
+    """Known wire keys plus additional JSON entries."""
+
+
+class VhostExportLimits(ResponseArgumentMap[_LimitArgumentValues]):
+    """Limits captured from a vhost export, including future limit keys."""
+
+    _field_aliases: ClassVar[dict[str, str]] = {
+        "max_connections": "max-connections",
+        "max_queues": "max-queues",
+    }
+
+    @property
+    def max_connections(self) -> int | None:
+        return self.root.get("max-connections")
+
+    @property
+    def max_queues(self) -> int | None:
+        return self.root.get("max-queues")
 
     @model_validator(mode="before")
     @classmethod
@@ -514,7 +616,7 @@ class VhostExportLimits(RabbitMQBase):
         return data
 
 
-class VhostDefinitionsResponse(RabbitMQBase):
+class VhostDefinitionsResponse(RabbitMQResponse):
     """GET /api/definitions/{vhost} — vhost-scoped export."""
 
     rabbit_version: str

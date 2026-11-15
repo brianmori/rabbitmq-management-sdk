@@ -4,11 +4,11 @@ from typing import Any
 
 from pydantic import Field
 
-from rabbitmq_management_sdk.resources.base import RabbitMQBase
+from rabbitmq_management_sdk.resources.base import RabbitMQResponse
 from rabbitmq_management_sdk.resources.v4.bindings.schemas.common import BindingDestinationType
 
 
-class BindingResponse(RabbitMQBase):
+class BindingResponse(RabbitMQResponse):
     """Represents a binding as returned by the RabbitMQ Management API.
 
     The ``properties_key`` is assigned by the server and required for
