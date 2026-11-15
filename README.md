@@ -35,7 +35,7 @@ test, and audit:
   shovels, and unresolved or unconfirmed shovel endpoints. Inventory queue types
   across the cluster and per vhost alongside each captured vhost default.
   Inspect effective DLX configuration and routing compatibility, with explicit
-  uncertainty.
+  uncertainty. Evaluate exchange routes for a supplied publication key.
 - **Respect broker evidence** — direct arguments take precedence, while complete
   queue and exchange observations identify broker-selected policies without
   reimplementing RabbitMQ's policy matching rules in Python.
@@ -275,6 +275,7 @@ auditor = ClusterAuditor(
 report = auditor.audit(max_cycles=100)
 fanout_groups = auditor.fanout_exchange_bindings()
 dlx_coverage = auditor.dead_letter_coverage()
+exchange_coverage = auditor.exchange_routing_coverage(routing_key="orders.failed")
 inventory = auditor.queue_type_inventory()
 for group in inventory.queue_types:
     print(group.queue_type, group.queue_count)
@@ -306,6 +307,14 @@ possible destinations, and undetermined routing. Terminal and discard queues
 remain visible for callers to classify. See the
 [DLX coverage guide](docs/dead-letter-coverage.md) for statuses, supported
 routing semantics, and a runnable example.
+
+`exchange_routing_coverage(routing_key=...)` evaluates captured exchange
+routes for that key. `None` leaves key-dependent routing undetermined, while
+`""` is an explicit empty key. `report.exchange_routing_coverage` always uses
+the unknown-key context. The existing `black_hole_exchanges()` continues to
+report exchanges without captured outgoing edges. See the
+[exchange routing guide](docs/exchange-routing-coverage.md) for the distinction
+between contextual routing failures and exchanges that cannot reach a queue.
 
 `report.queue_type_inventory` contains the same inventory, including empty
 captured vhosts. Each entry in `inventory.vhosts` exposes `vhost`,

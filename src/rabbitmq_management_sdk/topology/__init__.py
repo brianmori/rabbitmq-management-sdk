@@ -18,6 +18,7 @@ from rabbitmq_management_sdk.topology.dead_letter import (
     DeadLetterRoutingIssue,
     DeadLetterUncertainty,
 )
+from rabbitmq_management_sdk.topology.exchange_routing import ExchangeRoutingCoverage
 from rabbitmq_management_sdk.topology.fanout import FanoutExchangeBindings, FanoutQueue
 from rabbitmq_management_sdk.topology.models import (
     ClusterTopology,
@@ -40,6 +41,7 @@ from rabbitmq_management_sdk.topology.ordering import (
     node_sort_key,
 )
 from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeGroup, QueueTypeInventory, VhostQueueInventory
+from rabbitmq_management_sdk.topology.routing import RoutingIssue, RoutingStatus, RoutingUncertainty
 from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers
 
 __all__ = [
@@ -55,6 +57,7 @@ __all__ = [
     "EdgeSortKey",
     "EndpointAuthority",
     "ExchangeNode",
+    "ExchangeRoutingCoverage",
     "FanoutExchangeBindings",
     "FanoutQueue",
     "NodeId",
@@ -64,6 +67,9 @@ __all__ = [
     "QueueTypeGroup",
     "QueueTypeInventory",
     "ResourceEndpoint",
+    "RoutingIssue",
+    "RoutingStatus",
+    "RoutingUncertainty",
     "ShovelNode",
     "StronglyConnectedComponent",
     "TopologyEdge",
