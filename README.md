@@ -262,6 +262,59 @@ for status in client.shovels.get_all_shovel_statuses():
     print(status)
 ```
 
+On RabbitMQ 4.3, `Amqp10ShovelSource.src_consumer_name` sets the AMQP 1.0
+source **link name**. The same `src-consumer-name` wire setting identifies the
+consumer tag for AMQP 0-9-1 and `local` sources. If omitted or `None`, the SDK
+omits the setting and RabbitMQ chooses a random name. Leave it unset when
+targeting RabbitMQ 4.2; RabbitMQ 4.4 support is deferred. See the
+[4.3 dynamic shovel settings](https://www.rabbitmq.com/docs/4.3/shovel-dynamic)
+and [4.3.0 release notes](https://github.com/rabbitmq/rabbitmq-server/blob/v4.3.6/release-notes/4.3.0.md#shovel-plugin).
+
+This complete example requires RabbitMQ 4.3 with `rabbitmq_shovel` and
+`rabbitmq_shovel_management` enabled, an existing `orders` source queue, and an
+existing `orders-archive` destination queue. Set `RABBIT_HOST`, `RABBIT_USER`,
+and `RABBIT_PASS` for a management user allowed to configure shovels in `/`.
+Set `SHOVEL_SOURCE_URI` and `SHOVEL_DESTINATION_URI` to authenticated AMQP 1.0
+URIs accessible **from the broker**, using `hostname=vhost:...` to select each
+endpoint's virtual host (for example, `?hostname=vhost:/&sasl=plain`).
+
+```python
+import os
+
+from rabbitmq_management_sdk import (
+    Amqp10ShovelDestination,
+    Amqp10ShovelSource,
+    Config,
+    RabbitMQClient,
+    ShovelRequest,
+)
+
+config = Config(
+    host=os.environ["RABBIT_HOST"],
+    username=os.environ["RABBIT_USER"],
+    password=os.environ["RABBIT_PASS"],
+    virtual_host="/",
+)
+with RabbitMQClient(config) as client:
+    client.shovels.create(
+        "archive-amqp10",
+        ShovelRequest(
+            src_uri=os.environ["SHOVEL_SOURCE_URI"],
+            dest_uri=os.environ["SHOVEL_DESTINATION_URI"],
+            src_arguments=Amqp10ShovelSource(
+                src_address="/queues/orders",
+                src_consumer_name="orders-archive-reader",
+            ),
+            dest_arguments=Amqp10ShovelDestination(dest_address="/queues/orders-archive"),
+        ),
+    )
+    configured = client.shovels.get("archive-amqp10")
+    assert configured.value.src_arguments.src_consumer_name == "orders-archive-reader"
+```
+
+Reading the parameter back verifies the stored name. It does not prove that
+the shovel has connected or that its source link is active.
+
 ### Topology auditing
 
 Use `ClusterAuditor` to inspect a RabbitMQ definitions export for circular

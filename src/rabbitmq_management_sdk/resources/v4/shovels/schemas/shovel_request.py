@@ -69,6 +69,7 @@ class LocalShovelSource(RabbitMQRequest):
 class Amqp10ShovelSource(RabbitMQRequest):
     src_protocol: Literal["amqp10"] = Field("amqp10", alias="src-protocol", frozen=True)
     src_address: str = Field(alias="src-address")
+    src_consumer_name: str | None = Field(None, alias="src-consumer-name")
     src_prefetch_count: int = Field(1000, alias="src-prefetch-count")
 
 
