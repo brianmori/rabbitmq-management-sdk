@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Literal
 
-from rabbitmq_management_sdk.exceptions import TopologyError, TopologyParseError
+from rabbitmq_management_sdk.exceptions import TopologyError, TopologyParseError, TopologyValidationError
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import (
     ClusterDefinitionsResponse,
     ClusterExportBinding,
@@ -33,6 +33,7 @@ from rabbitmq_management_sdk.topology.models import (
     NodeId,
     NodeKind,
     QueueNode,
+    QuorumPlacement,
     ResourceEndpoint,
     ShovelNode,
     TopologyEdge,
@@ -161,15 +162,18 @@ class _TopologyBuilder:
                 f"{queue.vhost!r} has no default_queue_type; queue type cannot be determined"
             )
         queue_id = self._node_id(vhost=queue.vhost, name=queue.name, kind=NodeKind.QUEUE)
+        observed = self.queues_by_id.get(queue_id)
+        if observed is not None and observed.type != queue_type:
+            raise TopologyParseError(f"Queue {queue_id} has inconsistent declared and observed queue types")
         return QueueNode(
-            id=self._node_id(vhost=queue.vhost, name=queue.name, kind=NodeKind.QUEUE),
+            id=queue_id,
             queue_type=queue_type,
             durable=queue.durable,
-            replication_factor=self._queue_replication_factor(queue, queue_type),
+            quorum_placement=self._quorum_placement(queue_id, observed) if queue_type == "quorum" else None,
             quorum_delivery=resolve_quorum_delivery(
                 self.response,
                 queue,
-                self.queues_by_id.get(queue_id),
+                observed,
                 selected_policy=self.user_policy_selections.get(queue_id),
                 selection_captured=queue_id in self.user_policy_selections,
             )
@@ -177,19 +181,19 @@ class _TopologyBuilder:
             else None,
         )
 
-    def _queue_replication_factor(self, queue: ClusterExportQueue, queue_type: str) -> int | None:
-        """Read current quorum membership without inferring it from defaults."""
-        queue_id = self._node_id(vhost=queue.vhost, name=queue.name, kind=NodeKind.QUEUE)
-        observed = self.queues_by_id.get(queue_id)
+    @staticmethod
+    def _quorum_placement(queue_id: NodeId, observed: QueueResponse | None) -> QuorumPlacement | None:
+        """Copy placement fields without treating the observation's node as leader."""
         if observed is None:
             return None
-        if observed.type != queue_type:
-            raise TopologyParseError(f"Queue {queue_id} has inconsistent declared and observed queue types")
-        if queue_type != "quorum" or not observed.members:
-            return None
-        if any(not member for member in observed.members) or len(set(observed.members)) != len(observed.members):
-            raise TopologyParseError(f"Queue {queue_id} has invalid quorum membership")
-        return len(observed.members)
+        try:
+            return QuorumPlacement(
+                members=tuple(observed.members) if observed.members is not None else None,
+                leader=observed.leader or None,
+                online_members=tuple(observed.online) if observed.online is not None else None,
+            )
+        except TopologyValidationError as exc:
+            raise TopologyParseError(f"Queue {queue_id} has invalid quorum membership evidence: {exc}") from exc
 
     def _resolved_queue_type(self, queue: ClusterExportQueue) -> str | None:
         """Resolve a queue's explicit type or its virtual-host default."""
@@ -430,7 +434,7 @@ def parse_cluster_topology(
         observed_exchanges: Management API exchange observations used to
             supplement referenced exchanges.
         observed_queues: Management API queue observations used to retain
-            quorum membership and delivery evidence on declared queues.
+            quorum members, leader, online members, and delivery evidence on declared queues.
             Missing or empty membership means unknown; initial group sizes
             are not used. Selected/effective policy evidence resolves delivery
             settings; missing global timeout defaults remain unknown.

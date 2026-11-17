@@ -327,6 +327,40 @@ class QuorumDeliveryConfiguration:
 
 
 @dataclass(frozen=True, slots=True)
+class QuorumPlacement:
+    """Management API placement evidence for one quorum queue.
+
+    Broker node names are exact and ordered lexically. An empty or missing
+    member list cannot establish group size. An explicit empty online list
+    records zero reported online members. The leader can be absent or offline.
+    """
+
+    members: tuple[str, ...] | None = None
+    leader: str | None = None
+    online_members: tuple[str, ...] | None = None
+
+    def __post_init__(self) -> None:
+        """Validate captured identities and canonicalize lists."""
+        for field_name in ("members", "online_members"):
+            names = getattr(self, field_name)
+            if names is None:
+                continue
+            if not isinstance(names, tuple) or any(not isinstance(name, str) or not name for name in names):
+                raise TopologyValidationError(f"QuorumPlacement.{field_name} must be a tuple of nonempty strings")
+            if len(set(names)) != len(names):
+                raise TopologyValidationError(f"QuorumPlacement.{field_name} cannot contain duplicate names")
+            object.__setattr__(self, field_name, tuple(sorted(names)))
+        if self.leader is not None and (not isinstance(self.leader, str) or not self.leader):
+            raise TopologyValidationError("QuorumPlacement.leader must be a nonempty string or None")
+        if self.members:
+            members = set(self.members)
+            if self.leader is not None and self.leader not in members:
+                raise TopologyValidationError("QuorumPlacement.leader must belong to members")
+            if not members.issuperset(self.online_members or ()):
+                raise TopologyValidationError("QuorumPlacement.online_members must belong to members")
+
+
+@dataclass(frozen=True, slots=True)
 class QueueNode:
     """Represent a queue and the attributes retained by the graph.
 
@@ -340,6 +374,8 @@ class QueueNode:
             the number of online members or a physical disk-write estimate.
         quorum_delivery: Frozen queue-level delivery evidence for quorum queues.
             ``None`` means this configuration was not captured.
+        quorum_placement: Frozen member, leader, and online evidence for
+            quorum queues. Nonempty membership supplies the replication factor.
     """
 
     id: NodeId
@@ -347,6 +383,7 @@ class QueueNode:
     durable: bool
     replication_factor: int | None = None
     quorum_delivery: QuorumDeliveryConfiguration | None = None
+    quorum_placement: QuorumPlacement | None = None
 
     def __post_init__(self) -> None:
         """Validate queue attributes and node kind."""
@@ -363,6 +400,21 @@ class QueueNode:
                 raise TopologyValidationError("QueueNode.replication_factor must be a positive int or None")
             if self.queue_type != "quorum":
                 raise TopologyValidationError("QueueNode.replication_factor requires a quorum queue")
+        _require_optional_instance(self.quorum_placement, QuorumPlacement, "QueueNode.quorum_placement")
+        if self.quorum_placement is not None:
+            if self.queue_type != "quorum":
+                raise TopologyValidationError("QueueNode.quorum_placement requires a quorum queue")
+            if self.quorum_placement.members:
+                member_count = len(self.quorum_placement.members)
+                if self.replication_factor is not None and self.replication_factor != member_count:
+                    raise TopologyValidationError("QueueNode.replication_factor must match captured membership")
+                object.__setattr__(self, "replication_factor", member_count)
+            elif self.replication_factor is not None:
+                reported_members = set(self.quorum_placement.online_members or ())
+                if self.quorum_placement.leader is not None:
+                    reported_members.add(self.quorum_placement.leader)
+                if len(reported_members) > self.replication_factor:
+                    raise TopologyValidationError("QueueNode.replication_factor cannot be below reported membership")
 
 
 @dataclass(frozen=True, slots=True)
