@@ -31,6 +31,7 @@ from rabbitmq_management_sdk.topology.models import ClusterTopology
 from rabbitmq_management_sdk.topology.ordering import edge_sort_key
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeInventory, queue_type_inventory
+from rabbitmq_management_sdk.topology.quorum import QuorumQueueConfiguration, quorum_delivery_configuration
 from rabbitmq_management_sdk.topology.reachability import (
     black_hole_exchanges,
     cross_vhost_shovels,
@@ -83,6 +84,7 @@ class TopologyAuditReport:
     queue_type_inventory: QueueTypeInventory = field(default_factory=QueueTypeInventory)
     dead_letter_coverage: tuple[DeadLetterCoverage, ...] = ()
     exchange_routing_coverage: tuple[ExchangeRoutingCoverage, ...] = ()
+    quorum_delivery_configuration: tuple[QuorumQueueConfiguration, ...] = ()
 
 
 class ClusterAuditor:
@@ -98,7 +100,9 @@ class ClusterAuditor:
         definitions: Validated cluster-wide definitions export.
         queues: Queue observations from a complete broker snapshot. Supply
             this together with ``exchanges`` when policy-derived routing must
-            be resolved or captured quorum replication factors are needed.
+            be resolved or quorum membership and delivery configuration are
+            needed. Selected operator policies and effective policy definitions
+            enrich delivery evidence without evaluating policy patterns locally.
         exchanges: Exchange observations from the same complete broker
             snapshot. They resolve broker-selected policies and referenced
             predeclared or system exchanges omitted by definitions exports.
@@ -411,6 +415,14 @@ class ClusterAuditor:
         """
         return tuple(sorted(self._topology.dangling_edges(), key=edge_sort_key))
 
+    def quorum_delivery_configuration(self) -> tuple[QuorumQueueConfiguration, ...]:
+        """Return captured quorum settings, their evidence, and advisory facts.
+
+        Missing evidence remains unknown. Results describe queue-level
+        configuration, not individual consumers or guaranteed cycle termination.
+        """
+        return quorum_delivery_configuration(self._topology)
+
     def audit(self, *, max_cycles: int = 0) -> TopologyAuditReport:
         """Return all supported findings for this definitions snapshot.
 
@@ -439,4 +451,5 @@ class ClusterAuditor:
             queue_type_inventory=self.queue_type_inventory(),
             dead_letter_coverage=self.dead_letter_coverage(),
             exchange_routing_coverage=self.exchange_routing_coverage(),
+            quorum_delivery_configuration=self.quorum_delivery_configuration(),
         )

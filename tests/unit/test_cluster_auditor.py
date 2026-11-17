@@ -149,6 +149,7 @@ def test_audit_returns_all_findings_from_the_public_facade() -> None:
     assert report.queue_type_inventory.queue_count == 2
     assert report.dead_letter_coverage == auditor.dead_letter_coverage()
     assert report.exchange_routing_coverage == auditor.exchange_routing_coverage()
+    assert report.quorum_delivery_configuration == auditor.quorum_delivery_configuration() == ()
 
 
 def test_exchange_routing_coverage_survives_graph_transfer_and_source_mutation() -> None:

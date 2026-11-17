@@ -53,6 +53,7 @@ from rabbitmq_management_sdk.resources.v4.bindings.schemas.binding_response impo
 from rabbitmq_management_sdk.resources.v4.bindings.schemas.common import BindingDestinationType
 from rabbitmq_management_sdk.resources.v4.common import (
     DeadLetterStrategy,
+    DelayedRetryType,
     OverflowBehaviour,
     QueueLeaderLocator,
 )
@@ -116,6 +117,7 @@ __all__ = [
     "ConflictError",
     "ConnectionError",
     "DeadLetterStrategy",
+    "DelayedRetryType",
     "DeleteAfter",
     "ExchangeArguments",
     "ExchangeRequest",

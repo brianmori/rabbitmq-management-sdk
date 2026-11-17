@@ -11,6 +11,7 @@ from rabbitmq_management_sdk.resources._argument_map import JsonArgumentEntries,
 from rabbitmq_management_sdk.resources.base import RabbitMQResponse
 from rabbitmq_management_sdk.resources.v4.common import (
     DeadLetterStrategy,
+    DelayedRetryType,
     OverflowBehaviour,
     QueueLeaderLocator,
 )
@@ -226,6 +227,11 @@ _QueueArgumentFields = TypedDict(
         "x-dead-letter-routing-key": str | None,
         "x-dead-letter-strategy": DeadLetterStrategy | None,
         "x-delivery-limit": int | None,
+        "x-delayed-retry-type": DelayedRetryType | None,
+        "x-delayed-retry-min": int | None,
+        "x-delayed-retry-max": int | None,
+        "x-consumer-timeout": int | None,
+        "x-consumer-disconnected-timeout": int | None,
         "x-max-length": int | None,
         "x-max-length-bytes": int | None,
         "x-message-ttl": int | None,
@@ -252,6 +258,11 @@ class ExportQueueArguments(ResponseArgumentMap[_QueueArgumentValues]):
         "dead_letter_routing_key": "x-dead-letter-routing-key",
         "dead_letter_strategy": "x-dead-letter-strategy",
         "delivery_limit": "x-delivery-limit",
+        "delayed_retry_type": "x-delayed-retry-type",
+        "delayed_retry_min": "x-delayed-retry-min",
+        "delayed_retry_max": "x-delayed-retry-max",
+        "consumer_timeout": "x-consumer-timeout",
+        "consumer_disconnected_timeout": "x-consumer-disconnected-timeout",
         "max_length": "x-max-length",
         "max_length_bytes": "x-max-length-bytes",
         "message_ttl": "x-message-ttl",
@@ -281,6 +292,26 @@ class ExportQueueArguments(ResponseArgumentMap[_QueueArgumentValues]):
     @property
     def delivery_limit(self) -> int | None:
         return self.root.get("x-delivery-limit")
+
+    @property
+    def delayed_retry_type(self) -> DelayedRetryType | None:
+        return self.root.get("x-delayed-retry-type")
+
+    @property
+    def delayed_retry_min(self) -> int | None:
+        return self.root.get("x-delayed-retry-min")
+
+    @property
+    def delayed_retry_max(self) -> int | None:
+        return self.root.get("x-delayed-retry-max")
+
+    @property
+    def consumer_timeout(self) -> int | None:
+        return self.root.get("x-consumer-timeout")
+
+    @property
+    def consumer_disconnected_timeout(self) -> int | None:
+        return self.root.get("x-consumer-disconnected-timeout")
 
     @property
     def max_length(self) -> int | None:

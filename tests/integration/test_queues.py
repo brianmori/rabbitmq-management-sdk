@@ -5,7 +5,13 @@ import json
 import httpx2
 import pytest
 
-from rabbitmq_management_sdk import ClassicQueueRequest, QueueRequest, QuorumQueueRequest, StreamQueueRequest
+from rabbitmq_management_sdk import (
+    ClassicQueueRequest,
+    DelayedRetryType,
+    QueueRequest,
+    QuorumQueueRequest,
+    StreamQueueRequest,
+)
 from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
 from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QuorumQueueResponse, StreamQueueResponse
 from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
@@ -45,6 +51,48 @@ def test_queue_declaration_sends_explicit_type_in_arguments(
         assert ("x-overflow" in wire_arguments) is strict
     if arguments.queue_type == "quorum":
         assert ("x-delivery-limit" in wire_arguments) is strict
+        assert payload == {
+            "durable": True,
+            "auto_delete": False,
+            "arguments": {"x-queue-type": "quorum", "x-delivery-limit": 20, "x-overflow": "drop-head"}
+            if strict
+            else {"x-queue-type": "quorum"},
+        }
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("strict", [False, True], ids=["compatibility", "strict"])
+@pytest.mark.parametrize("retry_type", list(DelayedRetryType))
+def test_queue_manager_sends_quorum_retry_and_timeout_configuration(strict: bool, retry_type: DelayedRetryType) -> None:
+    sent: list[dict[str, object]] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        assert request.method == "PUT"
+        assert request.url.raw_path == b"/api/queues/%2F/retry"
+        sent.append(json.loads(request.content))
+        return httpx2.Response(201)
+
+    arguments = QuorumQueueRequest(
+        delayed_retry_type=retry_type,
+        delayed_retry_min=1000,
+        delayed_retry_max=30_000,
+        consumer_timeout=0,
+        consumer_disconnected_timeout=0,
+    )
+    with Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
+        QueueManager(adapter, "%2F", strict).create("retry", QueueRequest(arguments=arguments))
+
+    expected: dict[str, object] = {
+        "x-queue-type": "quorum",
+        "x-delayed-retry-type": retry_type.value,
+        "x-delayed-retry-min": 1000,
+        "x-delayed-retry-max": 30_000,
+        "x-consumer-timeout": 0,
+        "x-consumer-disconnected-timeout": 0,
+    }
+    if strict:
+        expected.update({"x-delivery-limit": 20, "x-overflow": "drop-head"})
+    assert sent == [{"durable": True, "auto_delete": False, "arguments": expected}]
 
 
 @pytest.mark.integration

@@ -5,6 +5,8 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from rabbitmq_management_sdk.resources.base import RabbitMQResponse
+from rabbitmq_management_sdk.resources.v4.common import DelayedRetryType
+from rabbitmq_management_sdk.resources.v4.policies.schemas.policy_response import PolicyDefinitionResponse
 
 # ---------------------------------------------------------------------------
 # Arguments — per queue type (response side)
@@ -36,6 +38,11 @@ class QuorumQueueResponse(RabbitMQResponse):
     single_active_consumer: bool | None = Field(None, alias="x-single-active-consumer")
     max_length: int | None = Field(None, alias="x-max-length")
     initial_cluster_size: int | None = Field(None, alias="x-quorum-initial-group-size")
+    delayed_retry_type: DelayedRetryType | None = Field(None, alias="x-delayed-retry-type")
+    delayed_retry_min: int | None = Field(None, alias="x-delayed-retry-min")
+    delayed_retry_max: int | None = Field(None, alias="x-delayed-retry-max")
+    consumer_timeout: int | None = Field(None, alias="x-consumer-timeout")
+    consumer_disconnected_timeout: int | None = Field(None, alias="x-consumer-disconnected-timeout")
 
 
 class StreamQueueResponse(RabbitMQResponse):
@@ -115,6 +122,8 @@ class QueueResponse(RabbitMQResponse):
     auto_delete: bool
     exclusive: bool
     policy: str | None = None
+    operator_policy: str | None = None
+    effective_policy_definition: PolicyDefinitionResponse | None = None
     type: Literal["classic", "quorum", "stream"]
 
     # -- Cluster placement (always present in v4) --

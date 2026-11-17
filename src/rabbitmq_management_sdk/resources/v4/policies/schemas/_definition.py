@@ -5,7 +5,12 @@ from typing import ClassVar
 from typing_extensions import TypedDict
 
 from rabbitmq_management_sdk.resources._argument_map import JsonArgumentEntries, ResponseArgumentMap
-from rabbitmq_management_sdk.resources.v4.common import DeadLetterStrategy, OverflowBehaviour, QueueLeaderLocator
+from rabbitmq_management_sdk.resources.v4.common import (
+    DeadLetterStrategy,
+    DelayedRetryType,
+    OverflowBehaviour,
+    QueueLeaderLocator,
+)
 
 _PolicyFields = TypedDict(
     "_PolicyFields",
@@ -20,6 +25,10 @@ _PolicyFields = TypedDict(
         "dead-letter-strategy": DeadLetterStrategy | None,
         "delivery-limit": int | None,
         "consumer-timeout": int | None,
+        "consumer-disconnected-timeout": int | None,
+        "delayed-retry-type": DelayedRetryType | None,
+        "delayed-retry-min": int | None,
+        "delayed-retry-max": int | None,
         "queue-leader-locator": QueueLeaderLocator | None,
         "max-age": str | None,
         "stream-filter-size-bytes": int | None,
@@ -48,6 +57,10 @@ class _PolicyDefinitionMap(ResponseArgumentMap[_PolicyValues]):
         "dead_letter_strategy": "dead-letter-strategy",
         "delivery_limit": "delivery-limit",
         "consumer_timeout": "consumer-timeout",
+        "consumer_disconnected_timeout": "consumer-disconnected-timeout",
+        "delayed_retry_type": "delayed-retry-type",
+        "delayed_retry_min": "delayed-retry-min",
+        "delayed_retry_max": "delayed-retry-max",
         "queue_leader_locator": "queue-leader-locator",
         "max_age": "max-age",
         "stream_filter_size_bytes": "stream-filter-size-bytes",
@@ -96,6 +109,22 @@ class _PolicyDefinitionMap(ResponseArgumentMap[_PolicyValues]):
     @property
     def consumer_timeout(self) -> int | None:
         return self.root.get("consumer-timeout")
+
+    @property
+    def consumer_disconnected_timeout(self) -> int | None:
+        return self.root.get("consumer-disconnected-timeout")
+
+    @property
+    def delayed_retry_type(self) -> DelayedRetryType | None:
+        return self.root.get("delayed-retry-type")
+
+    @property
+    def delayed_retry_min(self) -> int | None:
+        return self.root.get("delayed-retry-min")
+
+    @property
+    def delayed_retry_max(self) -> int | None:
+        return self.root.get("delayed-retry-max")
 
     @property
     def queue_leader_locator(self) -> QueueLeaderLocator | None:

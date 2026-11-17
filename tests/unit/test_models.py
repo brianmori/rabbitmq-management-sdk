@@ -17,6 +17,11 @@ from rabbitmq_management_sdk import RabbitMQError, TopologyValidationError
 from rabbitmq_management_sdk.topology import (
     ClusterTopology,
     CompetingShovelConsumers,
+    ConfigurationEvidence,
+    ConfigurationSource,
+    ConfigurationStatus,
+    ConfigurationUncertainty,
+    ConfigurationValue,
     DeadLetterCoverage,
     DeadLetterCoverageStatus,
     DeadLetterRoutingIssue,
@@ -32,6 +37,9 @@ from rabbitmq_management_sdk.topology import (
     QueueNode,
     QueueTypeGroup,
     QueueTypeInventory,
+    QuorumConfigurationIssue,
+    QuorumDeliveryConfiguration,
+    QuorumQueueConfiguration,
     ResourceEndpoint,
     RoutingIssue,
     RoutingStatus,
@@ -320,6 +328,26 @@ class TestExchangeNode:
 
 
 class TestQueueNode:
+    def test_quorum_configuration_survives_graph_value_transfer(self) -> None:
+        first = ConfigurationEvidence(ConfigurationSource.QUEUE_ARGUMENT, "x-consumer-timeout", 1000)
+        second = ConfigurationEvidence(ConfigurationSource.REGULAR_POLICY, "consumer-timeout", 2000, "timeouts")
+        timeout = ConfigurationValue(1000, ConfigurationStatus.KNOWN, (second, first, first), ())
+        config = QuorumDeliveryConfiguration(consumer_timeout=timeout)
+        node = replace(_queue("v", "q", "quorum"), quorum_delivery=config)
+        assert timeout.evidence == (first, second)
+        assert pickle.loads(pickle.dumps(node)) == node
+        assert hash(pickle.loads(pickle.dumps(node))) == hash(node)
+        assert node.id == replace(node, quorum_delivery=None).id
+        with pytest.raises(FrozenInstanceError):
+            config.consumer_timeout = ConfigurationValue()  # type: ignore[misc]
+        with pytest.raises(FrozenInstanceError):
+            timeout.value = 2000  # type: ignore[misc]
+
+    @pytest.mark.parametrize("queue_type", ["classic", "stream", "plugin"])
+    def test_quorum_configuration_requires_a_quorum_queue(self, queue_type: str) -> None:
+        with pytest.raises(TopologyValidationError, match="requires a quorum"):
+            replace(_queue("v", "q", queue_type), quorum_delivery=QuorumDeliveryConfiguration())
+
     def test_quorum_replication_factor_is_optional_and_pickleable(self) -> None:
         node = replace(_queue("v", "q", "quorum"), replication_factor=3)
         assert pickle.loads(pickle.dumps(node)) == node
@@ -342,6 +370,65 @@ class TestQueueNode:
     def test_rejects_mismatched_kind(self) -> None:
         with pytest.raises(TopologyValidationError, match="QUEUE"):
             QueueNode(id=NodeId(vhost="v", name="x", kind=NodeKind.EXCHANGE), queue_type="classic", durable=True)
+
+
+class TestQuorumConfigurationValues:
+    @pytest.mark.parametrize(
+        "values",
+        [
+            {"value": 1},
+            {"status": ConfigurationStatus.KNOWN, "uncertainties": ()},
+            {"value": True, "status": ConfigurationStatus.KNOWN, "uncertainties": ()},
+            {"status": ConfigurationStatus.UNKNOWN, "uncertainties": ()},
+            {"status": ConfigurationStatus.UNSET},
+            {"evidence": []},
+            {"uncertainties": [ConfigurationUncertainty.CAPTURED_NULL]},
+        ],
+    )
+    def test_rejects_inconsistent_setting_states(self, values: dict[str, object]) -> None:
+        with pytest.raises(TopologyValidationError):
+            ConfigurationValue(**values)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("value", [True, 1.5, [], {}])
+    def test_evidence_requires_immutable_wire_scalars(self, value: object) -> None:
+        with pytest.raises(TopologyValidationError):
+            ConfigurationEvidence(ConfigurationSource.QUEUE_ARGUMENT, "x-consumer-timeout", value)  # type: ignore[arg-type]
+
+    def test_null_and_unknown_are_distinct_from_absence_and_inapplicability(self) -> None:
+        evidence = ConfigurationEvidence(ConfigurationSource.QUEUE_ARGUMENT, "x-consumer-timeout", None)
+        unknown: ConfigurationValue[int] = ConfigurationValue(
+            evidence=(evidence,), uncertainties=(ConfigurationUncertainty.CAPTURED_NULL,)
+        )
+        assert unknown.status == ConfigurationStatus.UNKNOWN
+        assert unknown != ConfigurationValue(status=ConfigurationStatus.UNSET, uncertainties=())
+        assert unknown != ConfigurationValue(status=ConfigurationStatus.NOT_APPLICABLE, uncertainties=())
+
+    @pytest.mark.parametrize(
+        "field, value",
+        [
+            ("consumer_timeout", -1),
+            ("delayed_retry_min", 0),
+            ("delivery_limit", "20"),
+            ("delayed_retry_type", "exponential"),
+            ("overflow", "reject-publish-dlx"),
+        ],
+    )
+    def test_configuration_rejects_invalid_resolved_values(self, field: str, value: str | int) -> None:
+        setting = ConfigurationValue(value, ConfigurationStatus.KNOWN, (), ())
+        with pytest.raises(TopologyValidationError):
+            QuorumDeliveryConfiguration(**{field: setting})  # type: ignore[arg-type]
+
+    def test_audit_result_is_canonical_and_pickleable(self) -> None:
+        queue = _queue("v", "q", "quorum")
+        issues = (
+            QuorumConfigurationIssue.RETRY_DISABLED_WITHOUT_MINIMUM,
+            QuorumConfigurationIssue.FINITE_DELIVERY_LIMIT_WITHOUT_DLX,
+        )
+        result = QuorumQueueConfiguration(queue.id, QuorumDeliveryConfiguration(), (*issues, issues[0]))
+        assert result.issues == tuple(sorted(issues))
+        assert pickle.loads(pickle.dumps(result)) == result
+        with pytest.raises(TopologyValidationError):
+            QuorumQueueConfiguration(_exchange("v", "e").id, result.configuration)
 
 
 class TestFanoutValues:

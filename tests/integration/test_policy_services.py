@@ -10,6 +10,7 @@ import httpx2
 import pytest
 
 from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
+from rabbitmq_management_sdk.resources.v4.common import DelayedRetryType
 from rabbitmq_management_sdk.resources.v4.policies.schemas import (
     OperatorPolicyApplyTo,
     OperatorPolicyRequest,
@@ -25,6 +26,54 @@ from rabbitmq_management_sdk.resources.v4.policies.services import (
 )
 
 _CAPTURE_PATH = Path(__file__).parent / "rmq-4.2" / "full-export-definitions.json"
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("strict", [False, True], ids=["compatibility", "strict"])
+@pytest.mark.parametrize("operator", [False, True], ids=["regular", "operator"])
+def test_policy_manager_sends_quorum_configuration(strict: bool, operator: bool) -> None:
+    sent: list[dict[str, object]] = []
+    endpoint = "operator-policies" if operator else "policies"
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        assert request.method == "PUT"
+        assert request.url.raw_path == f"/api/{endpoint}/%2F/retry".encode()
+        sent.append(json.loads(request.content))
+        return httpx2.Response(201)
+
+    definition = PolicyDefinition(
+        delayed_retry_type=DelayedRetryType.DISABLED,
+        delayed_retry_min=1000,
+        delayed_retry_max=30_000,
+        consumer_timeout=None if operator else 0,
+        consumer_disconnected_timeout=None if operator else 0,
+    )
+    with _adapter(httpx2.MockTransport(handler)) as adapter:
+        if operator:
+            OperatorPolicyManager(adapter, "%2F", strict).create(
+                "retry",
+                OperatorPolicyRequest(
+                    pattern="^work$",
+                    definition=definition,
+                    priority=1,
+                    apply_to=OperatorPolicyApplyTo.QUORUM_QUEUES,
+                ),
+            )
+        else:
+            PolicyManager(adapter, "%2F", strict).create(
+                "retry",
+                PolicyRequest(
+                    pattern="^work$", definition=definition, priority=1, apply_to=PolicyApplyTo.QUORUM_QUEUES
+                ),
+            )
+    expected: dict[str, object] = {
+        "delayed-retry-type": "disabled",
+        "delayed-retry-min": 1000,
+        "delayed-retry-max": 30_000,
+    }
+    if not operator:
+        expected.update({"consumer-timeout": 0, "consumer-disconnected-timeout": 0})
+    assert sent == [{"pattern": "^work$", "definition": expected, "priority": 1, "apply-to": "quorum_queues"}]
 
 
 def _adapter(handler: httpx2.MockTransport) -> Httpx2Adapter:

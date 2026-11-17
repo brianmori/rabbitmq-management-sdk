@@ -49,6 +49,31 @@ mock success or a live call without result assertions adds little coverage.
 
 ## Resource-manager tests
 
+Quorum retry and timeout configuration is covered by the queue/policy model
+and manager suites, `integration/test_quorum_configuration_captures.py`, and
+`live/test_quorum_configuration.py`. The live module gates 4.3-only cases by
+the detected broker version; the rest of the live suite still runs on 4.2.
+The [4.3.6 evidence bundle](integration/rmq-4.3/quorum-configuration/README.md)
+documents the opt-in capture process and sanitization. Configuration read-back
+does not test retry timing or partition recovery.
+
+`unit/test_parser_topology.py` checks every retry selector through queue
+arguments and selected policy, with and without a DLX cycle. The settings
+preserve graph identities, route edges, and cycle paths while retaining the
+new configuration attributes. They do not create redelivery self-edges or
+suppress cycle candidates. The focused capture suite also loads
+the unmodified 4.3.6 definitions projection through `ClusterAuditor.from_files()`
+and verifies retained configuration without invented routes or unnecessary
+policy-selection evidence.
+
+Quorum delivery audit values and resolution are covered by `unit/test_models.py`
+and `unit/test_quorum_configuration.py`. The focused 4.3.6 bundle includes
+selected regular/operator policies and effective policy definitions; replay
+tests check source evidence and resolved settings through the auditor facade.
+`live/test_quorum_audit.py` runs on both 4.2 and 4.3. The 4.3-only configuration
+module also verifies argument/policy precedence. Global timeout defaults remain
+unknown when not captured, and queue settings do not imply consumer activity.
+
 Mocked tests call the manager method under test and inspect the exact HTTP
 method, encoded path, request count, and significant wire fields. The exception
 matrix verifies the specific SDK class, public base exception, retained cause,

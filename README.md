@@ -213,6 +213,13 @@ for policy in client.policies.list_by_vhost():
     print(policy.name, policy.definition)
 ```
 
+For RabbitMQ 4.3 quorum retry and timeout configuration, see the complete
+[queue and policy examples](docs/quorum-queue-configuration.md). RabbitMQ 4.2
+remains supported through the same v4 managers; 4.4 support is deferred.
+
+For audit results with effective quorum delivery settings, sources, and explicit
+uncertainty, see [quorum queue auditing](docs/quorum-queue-auditing.md).
+
 Resource managers serialize policy requests automatically. Known core settings
 are typed, while unknown definition keys are retained so settings contributed
 by RabbitMQ plugins or newer broker versions survive validation and wire

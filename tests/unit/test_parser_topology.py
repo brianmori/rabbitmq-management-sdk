@@ -1,12 +1,95 @@
 """End-to-end tests for topology graph construction."""
 
 import pytest
-from tests.shared.parser_fixtures import _exchange, _queue, _response, _shovel_param, _vhost
+from tests.shared.parser_fixtures import (
+    _binding,
+    _exchange,
+    _policy,
+    _policy_selections,
+    _queue,
+    _response,
+    _shovel_param,
+    _vhost,
+)
 
-from rabbitmq_management_sdk.topology.models import EdgeKind
+from rabbitmq_management_sdk import ClusterAuditor, DelayedRetryType
+from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
+from rabbitmq_management_sdk.topology import DeadLetterCoverageStatus, EdgeKind, NodeKind
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 
 pytestmark = pytest.mark.unit
+
+
+@pytest.mark.parametrize("retry_type", list(DelayedRetryType))
+@pytest.mark.parametrize("source", ["arguments", "policy"])
+@pytest.mark.parametrize("has_dlx", [False, True], ids=["no-dlx", "dlx-cycle"])
+def test_quorum_retry_and_timeouts_preserve_routes_and_cycle_findings(
+    retry_type: DelayedRetryType, source: str, has_dlx: bool
+) -> None:
+    route_settings: dict[str, object] = (
+        {"dead-letter-exchange": "retry", "dead-letter-routing-key": "work"} if has_dlx else {}
+    )
+    arguments: dict[str, object] = {"x-queue-type": "quorum", "x-delivery-limit": 1}
+    if source == "arguments":
+        arguments.update({f"x-{key}": value for key, value in route_settings.items()})
+    baseline = _response(
+        rabbit_version="4.3.6",
+        vhosts=[_vhost("v")],
+        queues=[_queue("work", "v", **arguments)],
+        exchanges=[_exchange("retry", "v")] if has_dlx else [],
+        bindings=[_binding("retry", "work", "work", vhost="v")] if has_dlx else [],
+        policies=[_policy("retry", "^work$", "quorum_queues", 1, vhost="v", definition=route_settings)]
+        if source == "policy"
+        else [],
+    )
+    selections = _policy_selections(
+        vhost="v", name="work", kind=NodeKind.QUEUE, policy_name="retry" if source == "policy" else None
+    )
+    settings = {
+        "delayed-retry-type": retry_type.value,
+        "delayed-retry-min": 1000,
+        "delayed-retry-max": 30_000,
+        "consumer-timeout": 120_000,
+        "consumer-disconnected-timeout": 60_000,
+    }
+    configured = baseline.model_dump(by_alias=True)
+    if source == "arguments":
+        configured["queues"][0]["arguments"].update({f"x-{key}": value for key, value in settings.items()})
+    else:
+        configured["policies"][0]["definition"].update(settings)
+    baseline_topology = parse_cluster_topology(baseline, user_policy_selections=selections)
+    topology = parse_cluster_topology(
+        ClusterDefinitionsResponse.model_validate(configured), user_policy_selections=selections
+    )
+
+    assert topology.all_node_ids == baseline_topology.all_node_ids
+    assert topology.edges == baseline_topology.edges
+    assert topology.queues != baseline_topology.queues
+    report = ClusterAuditor.from_topology(topology).audit()
+    baseline_report = ClusterAuditor.from_topology(baseline_topology).audit()
+    assert report.structural_cycles == baseline_report.structural_cycles
+    assert report.message_loop_candidates == baseline_report.message_loop_candidates
+    assert [(item.queue.id, item.status, item.destinations) for item in report.dead_letter_coverage] == [
+        (item.queue.id, item.status, item.destinations) for item in baseline_report.dead_letter_coverage
+    ]
+    assert not report.dangling_edges
+    if has_dlx:
+        # Neither backoff nor a finite delivery limit proves that repetition stops.
+        assert {(edge.source.name, edge.target.name, edge.kind, edge.routing_key) for edge in topology.edges} == {
+            ("work", "retry", EdgeKind.DEAD_LETTER, "work"),
+            ("retry", "work", EdgeKind.BINDING, "work"),
+        }
+        assert len(report.structural_cycles.cycles) == 1
+        assert report.message_loop_candidates == report.structural_cycles
+        assert len(report.message_loop_candidates.cycles[0]) == 2
+        assert report.dead_letter_coverage[0].status == DeadLetterCoverageStatus.DESTINATION_POSSIBLE
+        assert report.dead_letter_coverage[0].destinations == (next(iter(topology.queues)).id,)
+    else:
+        # Consumer redelivery is not represented as a queue self-edge.
+        assert not topology.edges
+        assert not report.structural_cycles.cycles
+        assert not report.message_loop_candidates.cycles
+        assert report.dead_letter_coverage[0].status == DeadLetterCoverageStatus.NO_DLX
 
 
 class TestParseClusterTopologyEndToEnd:
