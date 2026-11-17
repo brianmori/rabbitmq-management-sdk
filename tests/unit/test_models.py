@@ -42,6 +42,9 @@ from rabbitmq_management_sdk.topology import (
     QuorumPlacement,
     QuorumQueueConfiguration,
     ResourceEndpoint,
+    RoutingCondition,
+    RoutingConditionKind,
+    RoutingContract,
     RoutingIssue,
     RoutingStatus,
     RoutingUncertainty,
@@ -93,6 +96,44 @@ def _endpoint(
         routing_key=None,
         is_confirmed_local=is_confirmed_local,
     )
+
+
+class TestRoutingContract:
+    def test_inputs_are_frozen_and_pickleable(self) -> None:
+        exchange = _exchange("v", "entry").id
+        queue = _queue("v", "billing").id
+        selected = {queue}
+        condition = RoutingCondition.reaches_any(selected)
+        contract = RoutingContract("invoice", exchange, "", (condition,))
+        selected.clear()
+
+        assert contract.conditions[0].queues == frozenset({queue})
+        assert contract == pickle.loads(pickle.dumps(contract))
+        with pytest.raises(FrozenInstanceError):
+            contract.routing_key = None  # type: ignore[misc]
+
+    @pytest.mark.parametrize("kind", [RoutingConditionKind.REACHES_ALL, RoutingConditionKind.REACHES_ANY])
+    def test_reachability_selectors_require_at_least_one_queue(self, kind: RoutingConditionKind) -> None:
+        with pytest.raises(TopologyValidationError, match="at least one queue"):
+            RoutingCondition(kind, frozenset())
+
+    def test_input_types_and_mandatory_contract_fields(self) -> None:
+        origin = _exchange("v", "entry").id
+        queue = _queue("v", "billing").id
+        conditions = (RoutingCondition.exactly(()),)
+
+        with pytest.raises(TopologyValidationError, match="nonempty tuple"):
+            RoutingContract("invoice", origin, "", ())
+        with pytest.raises(TopologyValidationError, match="nonempty string"):
+            RoutingContract("", origin, "", conditions)
+        with pytest.raises(TopologyValidationError, match="exchange NodeId"):
+            RoutingContract("invoice", queue, "", conditions)
+        with pytest.raises(TopologyValidationError, match="str or None"):
+            RoutingContract("invoice", origin, 1, conditions)  # type: ignore[arg-type]
+        with pytest.raises(TopologyValidationError, match="queue NodeId"):
+            RoutingCondition.avoids({origin})
+        with pytest.raises(TopologyValidationError, match="must be RoutingConditionKind"):
+            RoutingCondition("exactly", frozenset({queue}))  # type: ignore[arg-type]
 
 
 class TestExchangeRoutingCoverage:
