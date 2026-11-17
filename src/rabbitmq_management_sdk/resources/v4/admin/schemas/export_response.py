@@ -191,12 +191,11 @@ class ClusterExportPolicy(_ExportPolicyBase):
 class OperatorPolicyParameterValue(_ExportPolicyBase):
     """The `value` payload of a runtime parameter where component ==
     'operator_policy'. Same shape as ClusterExportPolicy minus vhost/name,
-    which lives one level up on the parameter object itself — but apply-to
-    is restricted to queue/stream targets; operator policies can't target
-    exchanges.
+    which lives one level up on the parameter object itself. The broker's
+    runtime parameter accepts the full policy scope vocabulary.
     """
 
-    apply_to: OperatorPolicyApplyTo = Field(alias="apply-to")
+    apply_to: OperatorPolicyApplyTo | Literal["all", "exchanges"] = Field(alias="apply-to")
 
 
 class ClusterExportParameter(RabbitMQResponse):

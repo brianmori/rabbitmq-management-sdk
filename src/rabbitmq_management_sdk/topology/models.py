@@ -194,7 +194,7 @@ class ConfigurationStatus(StrEnum):
 
 
 class ConfigurationUncertainty(StrEnum):
-    """Missing evidence that prevents a quorum setting from being resolved."""
+    """Reasons captured configuration cannot resolve a setting."""
 
     CONFIGURATION_NOT_CAPTURED = "configuration_not_captured"
     BROKER_VERSION_NOT_CAPTURED = "broker_version_not_captured"
@@ -205,6 +205,10 @@ class ConfigurationUncertainty(StrEnum):
     CAPTURED_NULL = "captured_null"
     INVALID_VALUE = "invalid_value"
     CONFLICTING_EVIDENCE = "conflicting_evidence"
+    ARGUMENTS_NOT_CAPTURED = "arguments_not_captured"
+    POLICY_DEFINITIONS_NOT_CAPTURED = "policy_definitions_not_captured"
+    OPERATOR_POLICY_DEFINITIONS_NOT_CAPTURED = "operator_policy_definitions_not_captured"
+    UNSUPPORTED_QUEUE_TYPE = "unsupported_queue_type"
 
 
 @dataclass(frozen=True, slots=True)
@@ -361,6 +365,41 @@ class QuorumPlacement:
 
 
 @dataclass(frozen=True, slots=True)
+class QueueLimitsConfiguration:
+    """Captured queue limits and stream retention, with separate units.
+
+    The length limit counts messages. Size limits are in bytes, and time
+    values are in milliseconds. Stream settings describe log retention.
+    """
+
+    broker_version: str | None = None
+    max_length: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
+    max_length_bytes: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
+    overflow: ConfigurationValue[str] = field(default_factory=ConfigurationValue)
+    message_ttl_ms: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
+    queue_expiry_ms: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
+    stream_max_age_ms: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
+    stream_max_length_bytes: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
+
+    def __post_init__(self) -> None:
+        """Check the scalar type of each frozen configuration value."""
+        _require_optional_instance(self.broker_version, str, "QueueLimitsConfiguration.broker_version")
+        for name in (
+            "max_length",
+            "max_length_bytes",
+            "overflow",
+            "message_ttl_ms",
+            "queue_expiry_ms",
+            "stream_max_age_ms",
+            "stream_max_length_bytes",
+        ):
+            setting = getattr(self, name)
+            _require_instance(setting, ConfigurationValue, f"QueueLimitsConfiguration.{name}")
+            if setting.value is not None and type(setting.value) is not (str if name == "overflow" else int):
+                raise TopologyValidationError(f"QueueLimitsConfiguration.{name} has the wrong scalar type")
+
+
+@dataclass(frozen=True, slots=True)
 class QueueNode:
     """Represent a queue and the attributes retained by the graph.
 
@@ -376,6 +415,7 @@ class QueueNode:
             ``None`` means this configuration was not captured.
         quorum_placement: Frozen member, leader, and online evidence for
             quorum queues. Nonempty membership supplies the replication factor.
+        queue_limits: Frozen limits and retention evidence, if captured.
     """
 
     id: NodeId
@@ -384,6 +424,7 @@ class QueueNode:
     replication_factor: int | None = None
     quorum_delivery: QuorumDeliveryConfiguration | None = None
     quorum_placement: QuorumPlacement | None = None
+    queue_limits: QueueLimitsConfiguration | None = None
 
     def __post_init__(self) -> None:
         """Validate queue attributes and node kind."""
@@ -393,6 +434,7 @@ class QueueNode:
         _require_optional_instance(self.quorum_delivery, QuorumDeliveryConfiguration, "QueueNode.quorum_delivery")
         if self.quorum_delivery is not None and self.queue_type != "quorum":
             raise TopologyValidationError("QueueNode.quorum_delivery requires a quorum queue")
+        self._validate_limits()
         if self.id.kind != NodeKind.QUEUE:
             raise TopologyValidationError(f"QueueNode.id.kind must be NodeKind.QUEUE, got {self.id.kind!r}")
         if self.replication_factor is not None:
@@ -415,6 +457,14 @@ class QueueNode:
                     reported_members.add(self.quorum_placement.leader)
                 if len(reported_members) > self.replication_factor:
                     raise TopologyValidationError("QueueNode.replication_factor cannot be below reported membership")
+
+    def _validate_limits(self) -> None:
+        """Keep the quorum overflow evidence consistent on manually built nodes."""
+        _require_optional_instance(self.queue_limits, QueueLimitsConfiguration, "QueueNode.queue_limits")
+        if self.queue_type == "quorum" and self.queue_limits is not None:
+            overflow = self.quorum_delivery.overflow if self.quorum_delivery is not None else ConfigurationValue()
+            if self.queue_limits.overflow != overflow:
+                raise TopologyValidationError("QueueNode.queue_limits.overflow must match quorum delivery evidence")
 
 
 @dataclass(frozen=True, slots=True)

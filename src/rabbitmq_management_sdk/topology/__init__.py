@@ -38,6 +38,7 @@ from rabbitmq_management_sdk.topology.models import (
     ExchangeNode,
     NodeId,
     NodeKind,
+    QueueLimitsConfiguration,
     QueueNode,
     QuorumDeliveryConfiguration,
     QuorumPlacement,
@@ -54,6 +55,7 @@ from rabbitmq_management_sdk.topology.ordering import (
     node_sort_key,
 )
 from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeGroup, QueueTypeInventory, VhostQueueInventory
+from rabbitmq_management_sdk.topology.queue_limits import QueueLimits
 from rabbitmq_management_sdk.topology.quorum import QuorumConfigurationIssue, QuorumQueueConfiguration
 from rabbitmq_management_sdk.topology.quorum_resilience import (
     QuorumBrokerConcentration,
@@ -102,6 +104,8 @@ __all__ = [
     "NodeId",
     "NodeKind",
     "NodeSortKey",
+    "QueueLimits",
+    "QueueLimitsConfiguration",
     "QueueNode",
     "QueueTypeGroup",
     "QueueTypeInventory",

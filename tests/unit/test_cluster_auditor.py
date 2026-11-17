@@ -150,6 +150,7 @@ def test_audit_returns_all_findings_from_the_public_facade() -> None:
     assert report.queue_type_inventory == auditor.queue_type_inventory()
     assert report.queue_type_inventory.queue_count == 2
     assert report.dead_letter_coverage == auditor.dead_letter_coverage()
+    assert report.queue_limits == auditor.queue_limits()
     assert report.exchange_routing_coverage == auditor.exchange_routing_coverage()
     assert report.quorum_delivery_configuration == auditor.quorum_delivery_configuration() == ()
     assert report.direct_dependency_inventory == auditor.direct_dependency_inventory()
@@ -169,6 +170,7 @@ def test_direct_dependency_types_are_exported_and_old_report_arguments_still_wor
     )
 
     assert report.direct_dependency_inventory == DirectDependencyInventory()
+    assert report.queue_limits == ()
     assert {
         "DirectDependencyInventory",
         "DirectReference",

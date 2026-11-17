@@ -16,6 +16,7 @@ if TYPE_CHECKING:
         DeadLetterCoverage,
         DirectDependencyInventory,
         ExchangeRoutingCoverage,
+        QueueLimits,
         QueueTypeInventory,
         StronglyConnectedComponent,
     )
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
         tuple[DeadLetterCoverage, ...],
         tuple[ExchangeRoutingCoverage, ...],
         DirectDependencyInventory,
+        tuple[QueueLimits, ...],
     ]
 
 pytestmark = pytest.mark.integration
@@ -46,6 +48,7 @@ result = (
     auditor.dead_letter_coverage(),
     auditor.exchange_routing_coverage(),
     auditor.direct_dependency_inventory(),
+    auditor.queue_limits(),
 )
 sys.stdout.buffer.write(pickle.dumps(result, protocol=pickle.HIGHEST_PROTOCOL))
 """
@@ -54,8 +57,11 @@ sys.stdout.buffer.write(pickle.dumps(result, protocol=pickle.HIGHEST_PROTOCOL))
 def test_spawned_process_preserves_topology_analysis_results() -> None:
     """Canonical topology transfer must preserve analysis and vhost metadata."""
     definitions = _response(
+        rabbitmq_version="4.3.6",
         vhosts=[_vhost("audit"), _vhost("empty", "quorum")],
-        queues=[_queue("cycle-queue", "audit", **{"x-dead-letter-exchange": "cycle-exchange"})],
+        queues=[
+            _queue("cycle-queue", "audit", **{"x-dead-letter-exchange": "cycle-exchange", "x-message-ttl": 1000}),
+        ],
         exchanges=[_exchange("cycle-exchange", "audit")],
         bindings=[
             {
@@ -76,6 +82,7 @@ def test_spawned_process_preserves_topology_analysis_results() -> None:
         source_auditor.dead_letter_coverage(),
         source_auditor.exchange_routing_coverage(),
         source_auditor.direct_dependency_inventory(),
+        source_auditor.queue_limits(),
     )
 
     completed = subprocess.run(

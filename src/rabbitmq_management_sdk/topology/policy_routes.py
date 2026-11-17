@@ -19,7 +19,7 @@ type UserPolicySelections = Mapping[NodeId, str | None]
 """Observed policy name by resource; a present ``None`` means no policy."""
 
 
-def _apply_to_matches(apply_to: PolicyApplyTo, kind: NodeKind, queue_type: str | None) -> bool:
+def _apply_to_matches(apply_to: str, kind: NodeKind, queue_type: str | None) -> bool:
     """Return whether a policy's ``apply-to`` scope covers one resource."""
     if kind == NodeKind.SHOVEL:
         return False
