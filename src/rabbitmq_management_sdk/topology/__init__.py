@@ -18,6 +18,12 @@ from rabbitmq_management_sdk.topology.dead_letter import (
     DeadLetterRoutingIssue,
     DeadLetterUncertainty,
 )
+from rabbitmq_management_sdk.topology.dependencies import (
+    DirectDependencyInventory,
+    DirectReference,
+    DirectReferenceRole,
+    ResourceDependencies,
+)
 from rabbitmq_management_sdk.topology.exchange_routing import ExchangeRoutingCoverage
 from rabbitmq_management_sdk.topology.fanout import FanoutExchangeBindings, FanoutQueue
 from rabbitmq_management_sdk.topology.models import (
@@ -74,6 +80,9 @@ __all__ = [
     "DeadLetterCoverageStatus",
     "DeadLetterRoutingIssue",
     "DeadLetterUncertainty",
+    "DirectDependencyInventory",
+    "DirectReference",
+    "DirectReferenceRole",
     "EdgeKind",
     "EdgeSortKey",
     "EndpointAuthority",
@@ -97,6 +106,7 @@ __all__ = [
     "QuorumQueueFailureImpact",
     "QuorumQueueResilience",
     "QuorumResilienceReport",
+    "ResourceDependencies",
     "ResourceEndpoint",
     "RoutingIssue",
     "RoutingStatus",

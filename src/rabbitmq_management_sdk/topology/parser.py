@@ -45,7 +45,7 @@ from rabbitmq_management_sdk.topology.policy_routes import (
     resolve_dead_letter_values,
 )
 from rabbitmq_management_sdk.topology.quorum_configuration import resolve_quorum_delivery
-from rabbitmq_management_sdk.topology.shovel import parse_shovel_endpoint
+from rabbitmq_management_sdk.topology.shovel import confirmed_local_resource_id, parse_shovel_endpoint
 
 _EMPTY_USER_POLICY_SELECTIONS: UserPolicySelections = MappingProxyType({})
 _PREDECLARED_EXCHANGE_TYPES: Mapping[str, str] = {
@@ -298,19 +298,10 @@ class _TopologyBuilder:
             side,
             in_cluster_amqp_hosts=self.in_cluster_amqp_hosts,
         )
-        if (
-            endpoint.vhost is None
-            or not endpoint.is_confirmed_local
-            or endpoint.resource_name is None
-            or endpoint.resource_kind is None
-        ):
+        resource_id = confirmed_local_resource_id(endpoint, cluster_id=shovel_id.cluster_id)
+        if resource_id is None:
             return endpoint, None
 
-        resource_id = self._node_id(
-            vhost=endpoint.vhost,
-            name=endpoint.resource_name,
-            kind=endpoint.resource_kind,
-        )
         source, target = (resource_id, shovel_id) if side == "src" else (shovel_id, resource_id)
         return (
             endpoint,
