@@ -26,6 +26,10 @@ from rabbitmq_management_sdk.topology.cycles import (
     message_loop_candidates_from_complete_result,
 )
 from rabbitmq_management_sdk.topology.dead_letter import dead_letter_coverage
+from rabbitmq_management_sdk.topology.declaration_compatibility import (
+    binding_durability,
+    queue_declaration_compatibility,
+)
 from rabbitmq_management_sdk.topology.dependencies import DirectDependencyInventory, build_direct_dependency_inventory
 from rabbitmq_management_sdk.topology.exchange_routing import exchange_routing_coverage
 from rabbitmq_management_sdk.topology.fanout import fanout_exchange_bindings
@@ -53,6 +57,10 @@ if TYPE_CHECKING:
 
     from rabbitmq_management_sdk.topology.cycles import StronglyConnectedComponent
     from rabbitmq_management_sdk.topology.dead_letter import DeadLetterCoverage
+    from rabbitmq_management_sdk.topology.declaration_compatibility import (
+        BindingDurability,
+        QueueDeclarationCompatibility,
+    )
     from rabbitmq_management_sdk.topology.dependencies import ResourceDependencies
     from rabbitmq_management_sdk.topology.exchange_routing import ExchangeRoutingCoverage
     from rabbitmq_management_sdk.topology.fanout import FanoutExchangeBindings
@@ -99,6 +107,8 @@ class TopologyAuditReport:
     routing_contracts: tuple[RoutingContractResult, ...] = ()
     queue_limits: tuple[QueueLimits, ...] = ()
     shovel_safety: tuple[ShovelSafety, ...] = ()
+    binding_durability: tuple[BindingDurability, ...] = ()
+    queue_declaration_compatibility: tuple[QueueDeclarationCompatibility, ...] = ()
 
 
 class ClusterAuditor:
@@ -438,6 +448,14 @@ class ClusterAuditor:
         """Return queue limits, stream retention, and shared DLX coverage."""
         return queue_limits(self.dead_letter_coverage())
 
+    def binding_durability(self) -> tuple[BindingDurability, ...]:
+        """Return endpoint durability and classification for every captured binding."""
+        return binding_durability(self._topology)
+
+    def queue_declaration_compatibility(self) -> tuple[QueueDeclarationCompatibility, ...]:
+        """Assess non-durable classic queues against the RabbitMQ 4.3 default restriction."""
+        return queue_declaration_compatibility(self._topology)
+
     @cached_property
     def _direct_dependency_inventory(self) -> DirectDependencyInventory:
         return build_direct_dependency_inventory(self._topology)
@@ -540,4 +558,6 @@ class ClusterAuditor:
             routing_contracts=() if routing_contracts == () else self.evaluate_routing_contracts(routing_contracts),
             queue_limits=queue_limits(dlx_coverage),
             shovel_safety=self.shovel_safety(),
+            binding_durability=self.binding_durability(),
+            queue_declaration_compatibility=self.queue_declaration_compatibility(),
         )

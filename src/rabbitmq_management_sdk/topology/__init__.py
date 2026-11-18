@@ -18,6 +18,12 @@ from rabbitmq_management_sdk.topology.dead_letter import (
     DeadLetterRoutingIssue,
     DeadLetterUncertainty,
 )
+from rabbitmq_management_sdk.topology.declaration_compatibility import (
+    BindingDurability,
+    BindingDurabilityKind,
+    QueueDeclarationCompatibility,
+    QueueDeclarationStatus,
+)
 from rabbitmq_management_sdk.topology.dependencies import (
     DirectDependencyInventory,
     DirectReference,
@@ -84,6 +90,8 @@ from rabbitmq_management_sdk.topology.routing_contracts import (
 from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers, ShovelSafety
 
 __all__ = [
+    "BindingDurability",
+    "BindingDurabilityKind",
     "ClusterTopology",
     "CompetingShovelConsumers",
     "ConfigurationEvidence",
@@ -110,6 +118,8 @@ __all__ = [
     "NodeId",
     "NodeKind",
     "NodeSortKey",
+    "QueueDeclarationCompatibility",
+    "QueueDeclarationStatus",
     "QueueLimits",
     "QueueLimitsConfiguration",
     "QueueNode",

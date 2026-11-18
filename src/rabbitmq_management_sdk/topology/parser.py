@@ -187,6 +187,7 @@ class _TopologyBuilder:
             quorum_placement=self._quorum_placement(queue_id, observed) if queue_type == "quorum" else None,
             quorum_delivery=quorum_delivery,
             queue_limits=resolve_queue_limits(resolver, quorum_delivery),
+            exclusive=observed.exclusive if observed is not None and observed.durable == queue.durable else None,
         )
 
     @staticmethod

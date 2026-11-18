@@ -416,6 +416,8 @@ class QueueNode:
         quorum_placement: Frozen member, leader, and online evidence for
             quorum queues. Nonempty membership supplies the replication factor.
         queue_limits: Frozen limits and retention evidence, if captured.
+        exclusive: Observed queue exclusivity. ``None`` means it was not
+            established by a compatible queue observation.
     """
 
     id: NodeId
@@ -425,12 +427,14 @@ class QueueNode:
     quorum_delivery: QuorumDeliveryConfiguration | None = None
     quorum_placement: QuorumPlacement | None = None
     queue_limits: QueueLimitsConfiguration | None = None
+    exclusive: bool | None = None
 
     def __post_init__(self) -> None:
         """Validate queue attributes and node kind."""
         _require_instance(self.id, NodeId, "QueueNode.id")
         _require_instance(self.queue_type, str, "QueueNode.queue_type")
         _require_instance(self.durable, bool, "QueueNode.durable")
+        _require_optional_instance(self.exclusive, bool, "QueueNode.exclusive")
         _require_optional_instance(self.quorum_delivery, QuorumDeliveryConfiguration, "QueueNode.quorum_delivery")
         if self.quorum_delivery is not None and self.queue_type != "quorum":
             raise TopologyValidationError("QueueNode.quorum_delivery requires a quorum queue")
