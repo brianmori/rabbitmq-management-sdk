@@ -14,6 +14,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from rabbitmq_management_sdk.exceptions import TopologyValidationError
+from rabbitmq_management_sdk.topology.vhost_permissions import VhostPermissionsInventory
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -835,6 +836,9 @@ class ClusterTopology:
     without adding routing nodes. Omitted metadata remains unknown even when
     resource identities contain a vhost name.
 
+    ``vhost_permissions`` retains projected permission declarations and
+    vhost count limits. It defaults to an inventory without captured evidence.
+
     The typed node collections retain resource attributes. ``nodes``,
     ``all_node_ids``, and ``nodes_by_id`` provide cached unified graph views.
     """
@@ -847,6 +851,7 @@ class ClusterTopology:
     cluster_name: str | None = None
     cluster_label: str | None = field(default=None, compare=False, hash=False)
     vhosts: frozenset[VirtualHostMetadata] = frozenset()
+    vhost_permissions: VhostPermissionsInventory = field(default_factory=VhostPermissionsInventory)
     _nodes: frozenset[TopologyNode] = field(init=False, repr=False, compare=False, hash=False)
     _all_node_ids: frozenset[NodeId] = field(init=False, repr=False, compare=False, hash=False)
     _nodes_by_id: Mapping[NodeId, TopologyNode] = field(init=False, repr=False, compare=False, hash=False)
@@ -856,6 +861,7 @@ class ClusterTopology:
         _require_optional_instance(self.cluster_id, str, "ClusterTopology.cluster_id")
         _require_optional_instance(self.cluster_name, str, "ClusterTopology.cluster_name")
         _require_optional_instance(self.cluster_label, str, "ClusterTopology.cluster_label")
+        _require_instance(self.vhost_permissions, VhostPermissionsInventory, "ClusterTopology.vhost_permissions")
         collections = (
             ("ClusterTopology.exchanges", self.exchanges, ExchangeNode),
             ("ClusterTopology.queues", self.queues, QueueNode),
@@ -909,6 +915,7 @@ class ClusterTopology:
             str | None,
             str | None,
             frozenset[VirtualHostMetadata],
+            VhostPermissionsInventory,
         ],
     ]:
         """Serialize canonical graph data and rebuild derived caches on load."""
@@ -923,6 +930,7 @@ class ClusterTopology:
                 self.cluster_name,
                 self.cluster_label,
                 self.vhosts,
+                self.vhost_permissions,
             ),
         )
 

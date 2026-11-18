@@ -57,11 +57,31 @@ from rabbitmq_management_sdk.topology import (
     ShovelTransport,
     TopologyEdge,
     TopologyNode,
+    VhostLimit,
+    VhostLimitStatus,
+    VhostPermissions,
+    VhostPermissionsInventory,
     VhostQueueInventory,
     VirtualHostMetadata,
 )
 
 pytestmark = pytest.mark.unit
+
+
+def test_vhost_permissions_metadata_is_immutable_and_validated() -> None:
+    row = VhostPermissions("/v", max_queues=VhostLimit(VhostLimitStatus.BLOCKED, 0))
+    inventory = VhostPermissionsInventory((row,))
+    assert pickle.loads(pickle.dumps(inventory)) == inventory
+    with pytest.raises(FrozenInstanceError):
+        row.max_queues = VhostLimit()  # type: ignore[misc]
+    with pytest.raises(TopologyValidationError, match="must agree with its integer value"):
+        VhostLimit(VhostLimitStatus.CAPPED, 0)
+    with pytest.raises(TopologyValidationError, match="must agree with its integer value"):
+        VhostLimit(VhostLimitStatus.CAPPED, True)
+    with pytest.raises(TopologyValidationError, match="distinct names"):
+        VhostPermissionsInventory((row, row))
+    with pytest.raises(TopologyValidationError, match="agree with section presence"):
+        VhostPermissionsInventory((row,), permissions_captured=True)
 
 
 def _exchange(

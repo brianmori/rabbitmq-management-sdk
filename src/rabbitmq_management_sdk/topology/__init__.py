@@ -88,6 +88,14 @@ from rabbitmq_management_sdk.topology.routing_contracts import (
     RoutingVerdict,
 )
 from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers, ShovelSafety
+from rabbitmq_management_sdk.topology.vhost_permissions import (
+    VhostLimit,
+    VhostLimitStatus,
+    VhostPermission,
+    VhostPermissions,
+    VhostPermissionsInventory,
+    VhostTopicPermission,
+)
 
 __all__ = [
     "BindingDurability",
@@ -158,7 +166,13 @@ __all__ = [
     "StronglyConnectedComponent",
     "TopologyEdge",
     "TopologyNode",
+    "VhostLimit",
+    "VhostLimitStatus",
+    "VhostPermission",
+    "VhostPermissions",
+    "VhostPermissionsInventory",
     "VhostQueueInventory",
+    "VhostTopicPermission",
     "VirtualHostMetadata",
     "edge_sort_key",
     "node_sort_key",

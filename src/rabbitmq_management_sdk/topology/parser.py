@@ -52,6 +52,7 @@ from rabbitmq_management_sdk.topology.shovel import (
     parse_shovel_acknowledgement,
     parse_shovel_endpoint,
 )
+from rabbitmq_management_sdk.topology.vhost_permissions import capture_vhost_permissions
 
 _EMPTY_USER_POLICY_SELECTIONS: UserPolicySelections = MappingProxyType({})
 _PREDECLARED_EXCHANGE_TYPES: Mapping[str, str] = {
@@ -143,6 +144,10 @@ class _TopologyBuilder:
                     default_queue_type=vhost.metadata.default_queue_type if vhost.metadata else None,
                 )
                 for vhost in self.response.vhosts
+            ),
+            vhost_permissions=capture_vhost_permissions(
+                self.response,
+                resource_vhosts={node.id.vhost for nodes in (exchanges, queues, shovels) for node in nodes},
             ),
         )
 
