@@ -43,7 +43,13 @@ from rabbitmq_management_sdk.topology.models import (
     QuorumDeliveryConfiguration,
     QuorumPlacement,
     ResourceEndpoint,
+    ShovelAckMode,
+    ShovelAcknowledgement,
+    ShovelAckSource,
+    ShovelAckTiming,
+    ShovelEndpointTransport,
     ShovelNode,
+    ShovelTransport,
     TopologyEdge,
     TopologyNode,
     VirtualHostMetadata,
@@ -75,7 +81,7 @@ from rabbitmq_management_sdk.topology.routing_contracts import (
     RoutingOriginStatus,
     RoutingVerdict,
 )
-from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers
+from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers, ShovelSafety
 
 __all__ = [
     "ClusterTopology",
@@ -131,7 +137,14 @@ __all__ = [
     "RoutingStatus",
     "RoutingUncertainty",
     "RoutingVerdict",
+    "ShovelAckMode",
+    "ShovelAckSource",
+    "ShovelAckTiming",
+    "ShovelAcknowledgement",
+    "ShovelEndpointTransport",
     "ShovelNode",
+    "ShovelSafety",
+    "ShovelTransport",
     "StronglyConnectedComponent",
     "TopologyEdge",
     "TopologyNode",

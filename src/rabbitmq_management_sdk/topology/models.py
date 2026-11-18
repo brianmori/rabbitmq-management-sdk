@@ -467,14 +467,105 @@ class QueueNode:
                 raise TopologyValidationError("QueueNode.queue_limits.overflow must match quorum delivery evidence")
 
 
+class ShovelAckMode(StrEnum):
+    """Source acknowledgement mode captured for a dynamic shovel."""
+
+    ON_CONFIRM = "on-confirm"
+    ON_PUBLISH = "on-publish"
+    NO_ACK = "no-ack"
+    UNKNOWN = "unknown"
+
+
+class ShovelAckSource(StrEnum):
+    """How the acknowledgement mode was established."""
+
+    EXPLICIT = "explicit"
+    BROKER_DEFAULT = "broker_default"
+    INVALID_VALUE = "invalid_value"
+    UNKNOWN = "unknown"
+
+
+class ShovelAckTiming(StrEnum):
+    """Configured acknowledgement timing relative to the destination."""
+
+    AFTER_DESTINATION_CONFIRM = "after_destination_confirm"
+    AFTER_DESTINATION_PUBLISH = "after_destination_publish"
+    AUTOMATIC = "automatic"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class ShovelAcknowledgement:
+    """Credential-free source acknowledgement evidence."""
+
+    mode: ShovelAckMode = ShovelAckMode.UNKNOWN
+    source: ShovelAckSource = ShovelAckSource.UNKNOWN
+
+    def __post_init__(self) -> None:
+        """Validate the mode and its origin without echoing supplied values."""
+        if not isinstance(self.mode, ShovelAckMode) or not isinstance(self.source, ShovelAckSource):
+            raise TopologyValidationError("ShovelAcknowledgement requires a ShovelAckMode and ShovelAckSource")
+        if (self.mode != ShovelAckMode.UNKNOWN) != (
+            self.source in {ShovelAckSource.EXPLICIT, ShovelAckSource.BROKER_DEFAULT}
+        ):
+            raise TopologyValidationError("ShovelAcknowledgement mode and source must agree")
+        if self.source == ShovelAckSource.BROKER_DEFAULT and self.mode != ShovelAckMode.ON_CONFIRM:
+            raise TopologyValidationError("ShovelAcknowledgement broker default must be on-confirm")
+
+    @property
+    def timing(self) -> ShovelAckTiming:
+        """Return the source acknowledgement behavior implied by the mode."""
+        return {
+            ShovelAckMode.ON_CONFIRM: ShovelAckTiming.AFTER_DESTINATION_CONFIRM,
+            ShovelAckMode.ON_PUBLISH: ShovelAckTiming.AFTER_DESTINATION_PUBLISH,
+            ShovelAckMode.NO_ACK: ShovelAckTiming.AUTOMATIC,
+            ShovelAckMode.UNKNOWN: ShovelAckTiming.UNKNOWN,
+        }[self.mode]
+
+
+class ShovelTransport(StrEnum):
+    """Configured transport evidence for a candidate or endpoint."""
+
+    LOCAL = "local"
+    NETWORK_AMQP = "network_amqp"
+    NETWORK_AMQPS = "network_amqps"
+    MIXED = "mixed"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class ShovelEndpointTransport:
+    """Transport classifications in captured candidate order, with duplicates."""
+
+    candidates: tuple[ShovelTransport, ...] = ()
+
+    def __post_init__(self) -> None:
+        """Validate per-candidate facts without echoing supplied values."""
+        if not isinstance(self.candidates, tuple) or any(
+            not isinstance(candidate, ShovelTransport) or candidate == ShovelTransport.MIXED
+            for candidate in self.candidates
+        ):
+            raise TopologyValidationError("ShovelEndpointTransport requires individual candidate classifications")
+
+    @property
+    def kind(self) -> ShovelTransport:
+        """Summarize the endpoint's configured transports."""
+        known = set(self.candidates) - {ShovelTransport.UNKNOWN}
+        if len(known) > 1:
+            return ShovelTransport.MIXED
+        if ShovelTransport.UNKNOWN in self.candidates:
+            return ShovelTransport.UNKNOWN
+        return next(iter(known), ShovelTransport.UNKNOWN)
+
+
 @dataclass(frozen=True, slots=True)
 class EndpointAuthority:
     """Credential-free network authority for one AMQP endpoint candidate.
 
-    ``host=None`` represents a hostless URI, which RabbitMQ interprets relative
-    to the shovel's hosting cluster. Scheme and host casing are canonicalized
-    here so independently parsed equivalent authorities compare equally. The
-    port is normalized to the scheme's default when the URI omits it.
+    ``host=None`` represents a hostless URI. Scheme and host casing are
+    canonicalized here so independently parsed equivalent authorities compare
+    equally. The port is normalized to the scheme's default when the URI
+    omits it. Interpret transport using the separate endpoint evidence.
     """
 
     scheme: str
@@ -514,6 +605,8 @@ class ResourceEndpoint:
     failover list. ``is_confirmed_local`` is true only when both its vhost and
     normalized authority evidence are known and admit the endpoint to the
     current cluster graph; false means unconfirmed, not necessarily remote.
+    ``transport`` is independent of locality and can retain individual
+    classifications when authority normalization fails for the full set.
     """
 
     protocol: str | None
@@ -523,6 +616,7 @@ class ResourceEndpoint:
     resource_kind: NodeKind | None
     routing_key: str | None
     is_confirmed_local: bool = False
+    transport: ShovelEndpointTransport = ShovelEndpointTransport()
 
     def __post_init__(self) -> None:
         """Validate normalized endpoint evidence."""
@@ -532,6 +626,8 @@ class ResourceEndpoint:
         _require_optional_instance(self.resource_kind, NodeKind, "ResourceEndpoint.resource_kind")
         _require_optional_instance(self.routing_key, str, "ResourceEndpoint.routing_key")
         _require_instance(self.is_confirmed_local, bool, "ResourceEndpoint.is_confirmed_local")
+        if not isinstance(self.transport, ShovelEndpointTransport):
+            raise TopologyValidationError("ResourceEndpoint.transport must be ShovelEndpointTransport")
         if self.authorities is not None:
             if not isinstance(self.authorities, tuple):
                 raise TopologyValidationError(
@@ -568,17 +664,21 @@ class ShovelNode:
         id: Cluster-scoped shovel identity.
         source: Normalized source connection and resource evidence.
         destination: Normalized destination connection and resource evidence.
+        acknowledgement: Source acknowledgement mode and its provenance.
     """
 
     id: NodeId
     source: ResourceEndpoint
     destination: ResourceEndpoint
+    acknowledgement: ShovelAcknowledgement = ShovelAcknowledgement()
 
     def __post_init__(self) -> None:
         """Validate endpoint metadata and shovel node identity."""
         _require_instance(self.id, NodeId, "ShovelNode.id")
         _require_instance(self.source, ResourceEndpoint, "ShovelNode.source")
         _require_instance(self.destination, ResourceEndpoint, "ShovelNode.destination")
+        if not isinstance(self.acknowledgement, ShovelAcknowledgement):
+            raise TopologyValidationError("ShovelNode.acknowledgement must be ShovelAcknowledgement")
         if self.id.kind != NodeKind.SHOVEL:
             raise TopologyValidationError(f"ShovelNode.id.kind must be NodeKind.SHOVEL, got {self.id.kind!r}")
 

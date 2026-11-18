@@ -6,7 +6,7 @@ import sys
 from typing import TYPE_CHECKING, cast
 
 import pytest
-from tests.shared.parser_fixtures import _exchange, _queue, _response, _vhost
+from tests.shared.parser_fixtures import _exchange, _queue, _response, _shovel_param, _vhost
 
 from rabbitmq_management_sdk import ClusterAuditor
 
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
         ExchangeRoutingCoverage,
         QueueLimits,
         QueueTypeInventory,
+        ShovelSafety,
         StronglyConnectedComponent,
     )
 
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
         tuple[ExchangeRoutingCoverage, ...],
         DirectDependencyInventory,
         tuple[QueueLimits, ...],
+        tuple[ShovelSafety, ...],
     ]
 
 pytestmark = pytest.mark.integration
@@ -49,6 +51,7 @@ result = (
     auditor.exchange_routing_coverage(),
     auditor.direct_dependency_inventory(),
     auditor.queue_limits(),
+    auditor.shovel_safety(),
 )
 sys.stdout.buffer.write(pickle.dumps(result, protocol=pickle.HIGHEST_PROTOCOL))
 """
@@ -63,6 +66,18 @@ def test_spawned_process_preserves_topology_analysis_results() -> None:
             _queue("cycle-queue", "audit", **{"x-dead-letter-exchange": "cycle-exchange", "x-message-ttl": 1000}),
         ],
         exchanges=[_exchange("cycle-exchange", "audit")],
+        parameters=[
+            _shovel_param(
+                "copy",
+                "audit",
+                **{
+                    "src-uri": "amqp:///audit",
+                    "src-queue": "cycle-queue",
+                    "dest-uri": "amqps://archive.example/audit",
+                    "dest-queue": "archive",
+                },
+            )
+        ],
         bindings=[
             {
                 "source": "cycle-exchange",
@@ -83,6 +98,7 @@ def test_spawned_process_preserves_topology_analysis_results() -> None:
         source_auditor.exchange_routing_coverage(),
         source_auditor.direct_dependency_inventory(),
         source_auditor.queue_limits(),
+        source_auditor.shovel_safety(),
     )
 
     completed = subprocess.run(

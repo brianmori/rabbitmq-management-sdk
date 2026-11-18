@@ -44,10 +44,14 @@ from rabbitmq_management_sdk.topology.policy_routes import (
     resolve_alternate_exchange,
     resolve_dead_letter_values,
 )
-from rabbitmq_management_sdk.topology.queue_configuration import _Resolver
+from rabbitmq_management_sdk.topology.queue_configuration import _Resolver, captured_broker_version
 from rabbitmq_management_sdk.topology.queue_limits import resolve_queue_limits
 from rabbitmq_management_sdk.topology.quorum_configuration import resolve_quorum_delivery
-from rabbitmq_management_sdk.topology.shovel import confirmed_local_resource_id, parse_shovel_endpoint
+from rabbitmq_management_sdk.topology.shovel import (
+    confirmed_local_resource_id,
+    parse_shovel_acknowledgement,
+    parse_shovel_endpoint,
+)
 
 _EMPTY_USER_POLICY_SELECTIONS: UserPolicySelections = MappingProxyType({})
 _PREDECLARED_EXCHANGE_TYPES: Mapping[str, str] = {
@@ -295,12 +299,15 @@ class _TopologyBuilder:
         value: Mapping[str, object],
         side: Literal["src", "dest"],
         shovel_id: NodeId,
+        *,
+        supported_broker: bool,
     ) -> tuple[ResourceEndpoint, TopologyEdge | None]:
         """Parse one shovel side and emit its edge when local and fixed."""
         endpoint = parse_shovel_endpoint(
             value,
             side,
             in_cluster_amqp_hosts=self.in_cluster_amqp_hosts,
+            supported_broker=supported_broker,
         )
         resource_id = confirmed_local_resource_id(endpoint, cluster_id=shovel_id.cluster_id)
         if resource_id is None:
@@ -321,6 +328,8 @@ class _TopologyBuilder:
         """Build every shovel node and its fixed, confirmed-local endpoint edges."""
         shovels: set[ShovelNode] = set()
         edges: set[TopologyEdge] = set()
+        _, minor = captured_broker_version(self.response)
+        supported_broker = minor is not None
 
         for parameter in self.response.parameters:
             if parameter.component != "shovel":
@@ -335,9 +344,16 @@ class _TopologyBuilder:
                 name=parameter.name,
                 kind=NodeKind.SHOVEL,
             )
-            source, source_edge = self._shovel_endpoint(parameter.value, "src", shovel_id)
-            destination, destination_edge = self._shovel_endpoint(parameter.value, "dest", shovel_id)
-            shovels.add(ShovelNode(id=shovel_id, source=source, destination=destination))
+            source, source_edge = self._shovel_endpoint(
+                parameter.value, "src", shovel_id, supported_broker=supported_broker
+            )
+            destination, destination_edge = self._shovel_endpoint(
+                parameter.value, "dest", shovel_id, supported_broker=supported_broker
+            )
+            acknowledgement = parse_shovel_acknowledgement(
+                parameter.value, source.protocol, destination.protocol, supported_broker=supported_broker
+            )
+            shovels.add(ShovelNode(shovel_id, source, destination, acknowledgement))
             edges.update(edge for edge in (source_edge, destination_edge) if edge is not None)
 
         return frozenset(shovels), frozenset(edges)

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from rabbitmq_management_sdk import ClusterAuditor
-from rabbitmq_management_sdk.topology import NodeKind
+from rabbitmq_management_sdk.topology import NodeKind, ShovelAckMode, ShovelAckSource, ShovelTransport
 
 pytestmark = pytest.mark.integration
 _CAPTURE_ROOT = Path(__file__).parent
@@ -26,6 +26,17 @@ _CASES = (
 )
 
 
+def _assert_captured_safety(auditor: ClusterAuditor, case_name: str) -> None:
+    (safety,) = auditor.shovel_safety()
+    assert safety.shovel.name == case_name
+    assert safety.acknowledgement.mode == ShovelAckMode.ON_CONFIRM
+    assert safety.acknowledgement.source == ShovelAckSource.BROKER_DEFAULT
+    expected_source = ShovelTransport.NETWORK_AMQP if case_name.startswith("amqp10-") else ShovelTransport.LOCAL
+    expected_dest = ShovelTransport.NETWORK_AMQP if case_name.startswith("amqp10-dest") else ShovelTransport.LOCAL
+    assert safety.source_transport.candidates == (expected_source,)
+    assert safety.destination_transport.candidates == (expected_dest,)
+
+
 @pytest.mark.parametrize("version", ["4.2", "4.3"])
 @pytest.mark.parametrize("case_name", _CASES)
 def test_directional_shovel_capture(version: str, case_name: str, tmp_path: Path) -> None:
@@ -39,13 +50,19 @@ def test_directional_shovel_capture(version: str, case_name: str, tmp_path: Path
     observations = case["observations"]
     definitions_path = tmp_path / "definitions.json"
     definitions_path.write_text(
-        json.dumps({"parameters": [{"component": "shovel", "vhost": "captured", "name": case_name, "value": value}]}),
+        json.dumps(
+            {
+                "rabbitmq_version": evidence["broker_version"],
+                "parameters": [{"component": "shovel", "vhost": "captured", "name": case_name, "value": value}],
+            }
+        ),
         encoding="utf-8",
     )
 
     auditor = ClusterAuditor.from_files(definitions_path, in_cluster_amqp_hosts={"localhost"})
 
     (shovel,) = auditor.topology.shovels
+    _assert_captured_safety(auditor, case_name)
     incoming = [edge for edge in auditor.topology.edges if edge.target == shovel.id]
     outgoing = [edge for edge in auditor.topology.edges if edge.source == shovel.id]
     (destination_edge,) = outgoing
