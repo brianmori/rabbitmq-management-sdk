@@ -33,9 +33,10 @@ from rabbitmq_management_sdk.topology.declaration_compatibility import (
 from rabbitmq_management_sdk.topology.dependencies import DirectDependencyInventory, build_direct_dependency_inventory
 from rabbitmq_management_sdk.topology.exchange_routing import exchange_routing_coverage
 from rabbitmq_management_sdk.topology.fanout import fanout_exchange_bindings
-from rabbitmq_management_sdk.topology.models import ClusterTopology, NodeId
+from rabbitmq_management_sdk.topology.models import ClusterTopology, NodeId, PolicyId, PolicyInventory
 from rabbitmq_management_sdk.topology.ordering import edge_sort_key
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
+from rabbitmq_management_sdk.topology.policy_inventory import policy_inventory
 from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeInventory, queue_type_inventory
 from rabbitmq_management_sdk.topology.queue_limits import queue_limits
 from rabbitmq_management_sdk.topology.quorum import QuorumQueueConfiguration, quorum_delivery_configuration
@@ -67,6 +68,7 @@ if TYPE_CHECKING:
     from rabbitmq_management_sdk.topology.fanout import FanoutExchangeBindings
     from rabbitmq_management_sdk.topology.models import (
         ExchangeNode,
+        PolicyCoverage,
         QueueNode,
         ShovelNode,
         TopologyEdge,
@@ -111,6 +113,7 @@ class TopologyAuditReport:
     binding_durability: tuple[BindingDurability, ...] = ()
     queue_declaration_compatibility: tuple[QueueDeclarationCompatibility, ...] = ()
     vhost_permissions_inventory: VhostPermissionsInventory = field(default_factory=VhostPermissionsInventory)
+    policy_inventory: PolicyInventory = field(default_factory=PolicyInventory)
 
 
 class ClusterAuditor:
@@ -454,6 +457,22 @@ class ClusterAuditor:
         """Return captured per-vhost permission declarations and queue and connection caps."""
         return vhost_permissions_inventory(self._topology)
 
+    def policy_inventory(self) -> PolicyInventory:
+        """Return declared policies and separate resource-level selection evidence."""
+        return policy_inventory(self._topology)
+
+    def policy_lookup(self, policy: PolicyId) -> PolicyCoverage | None:
+        """Find a unique declaration and its confirmed selections by complete identity.
+
+        Returns None when the inventory has no unique declaration for the key.
+
+        Raises:
+            TopologyAnalysisError: If policy is not a PolicyId.
+        """
+        if not isinstance(policy, PolicyId):
+            raise TopologyAnalysisError(f"policy must be PolicyId, got {type(policy).__name__}")
+        return self.policy_inventory().by_policy.get(policy)
+
     def binding_durability(self) -> tuple[BindingDurability, ...]:
         """Return endpoint durability and classification for every captured binding."""
         return binding_durability(self._topology)
@@ -567,4 +586,5 @@ class ClusterAuditor:
             binding_durability=self.binding_durability(),
             queue_declaration_compatibility=self.queue_declaration_compatibility(),
             vhost_permissions_inventory=self.vhost_permissions_inventory(),
+            policy_inventory=self.policy_inventory(),
         )

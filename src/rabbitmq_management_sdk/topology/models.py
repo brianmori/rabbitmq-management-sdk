@@ -8,8 +8,10 @@ message hop; it does not guarantee that a particular message will traverse it.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 from enum import StrEnum
+from functools import cached_property
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
@@ -73,6 +75,143 @@ class NodeId:
         """Return a compact cluster-scoped resource identifier."""
         cluster = f"{self.cluster_id}:" if self.cluster_id is not None else ""
         return f"{self.kind}:{cluster}[{self.vhost}]/{self.name}"  # useful when the vhost is empty
+
+
+class PolicyKind(StrEnum):
+    """Namespaces for regular and operator policies in one vhost."""
+
+    REGULAR = "regular"
+    OPERATOR = "operator"
+
+
+@dataclass(frozen=True, slots=True)
+class PolicyId:
+    """Identify a policy by its cluster, vhost, kind and name."""
+
+    vhost: str
+    name: str
+    kind: PolicyKind
+    cluster_id: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate policy identity fields."""
+        _require_instance(self.vhost, str, "PolicyId.vhost")
+        _require_instance(self.name, str, "PolicyId.name")
+        _require_instance(self.kind, PolicyKind, "PolicyId.kind")
+        _require_optional_instance(self.cluster_id, str, "PolicyId.cluster_id")
+
+
+@dataclass(frozen=True, slots=True)
+class PolicyDeclaration:
+    """The policy identity and the selector metadata retained from definitions."""
+
+    id: PolicyId
+    pattern: str
+    apply_to: str
+    priority: int
+
+    def __post_init__(self) -> None:
+        """Validate retained scalar declaration fields."""
+        _require_instance(self.id, PolicyId, "PolicyDeclaration.id")
+        _require_instance(self.pattern, str, "PolicyDeclaration.pattern")
+        _require_instance(self.apply_to, str, "PolicyDeclaration.apply_to")
+        if type(self.priority) is not int:
+            raise TopologyValidationError("PolicyDeclaration.priority must be an integer")
+
+
+class PolicySelectionStatus(StrEnum):
+    """Evidence about selection of one policy kind for a resource."""
+
+    SELECTED = "selected"
+    NO_SELECTION = "no_selection"
+    NOT_CAPTURED = "not_captured"
+
+
+@dataclass(frozen=True, slots=True)
+class PolicySelection:
+    """One queue or exchange's observed selection for a single policy kind."""
+
+    resource: NodeId
+    kind: PolicyKind
+    status: PolicySelectionStatus = PolicySelectionStatus.NOT_CAPTURED
+    policy_name: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate resource scope and the presence of a selected name."""
+        _require_instance(self.resource, NodeId, "PolicySelection.resource")
+        if self.resource.kind not in {NodeKind.QUEUE, NodeKind.EXCHANGE}:
+            raise TopologyValidationError("PolicySelection.resource must be a queue or exchange")
+        _require_instance(self.kind, PolicyKind, "PolicySelection.kind")
+        _require_instance(self.status, PolicySelectionStatus, "PolicySelection.status")
+        _require_optional_instance(self.policy_name, str, "PolicySelection.policy_name")
+        if (self.status == PolicySelectionStatus.SELECTED) != (self.policy_name is not None) or self.policy_name == "":
+            raise TopologyValidationError("PolicySelection requires a nonempty policy name exactly when selected")
+
+    @property
+    def policy_id(self) -> PolicyId | None:
+        """Return the reported policy identity, even if its declaration is missing."""
+        if self.policy_name is None:
+            return None
+        return PolicyId(self.resource.vhost, self.policy_name, self.kind, self.resource.cluster_id)
+
+
+@dataclass(frozen=True, slots=True)
+class PolicyCoverage:
+    """One captured policy declaration and its confirmed resource identities."""
+
+    declaration: PolicyDeclaration
+    selected_resources: tuple[NodeId, ...] = ()
+
+    def __post_init__(self) -> None:
+        """Validate that selected resource identities stay within policy scope."""
+        _require_instance(self.declaration, PolicyDeclaration, "PolicyCoverage.declaration")
+        if not isinstance(self.selected_resources, tuple):
+            raise TopologyValidationError("PolicyCoverage.selected_resources must be a tuple")
+        policy = self.declaration.id
+        for resource in self.selected_resources:
+            _require_instance(resource, NodeId, "PolicyCoverage.selected_resources")
+            if (
+                resource.cluster_id != policy.cluster_id
+                or resource.vhost != policy.vhost
+                or resource.kind not in {NodeKind.QUEUE, NodeKind.EXCHANGE}
+            ):
+                raise TopologyValidationError("selected resources must be queues or exchanges in the policy's vhost")
+
+
+@dataclass(frozen=True)
+class PolicyInventory:
+    """Policy declarations and resource-level selection evidence in canonical order."""
+
+    policies: tuple[PolicyCoverage, ...] = ()
+    selections: tuple[PolicySelection, ...] = ()
+
+    def __post_init__(self) -> None:
+        """Validate immutable row collections and unique resource/kind pairs."""
+        if not isinstance(self.policies, tuple) or any(not isinstance(row, PolicyCoverage) for row in self.policies):
+            raise TopologyValidationError("PolicyInventory.policies must be a tuple of PolicyCoverage values")
+        if not isinstance(self.selections, tuple) or any(
+            not isinstance(row, PolicySelection) for row in self.selections
+        ):
+            raise TopologyValidationError("PolicyInventory.selections must be a tuple of PolicySelection values")
+        if len({(row.resource, row.kind) for row in self.selections}) != len(self.selections):
+            raise TopologyValidationError("PolicyInventory contains duplicate resource/kind selections")
+
+    @cached_property
+    def by_policy(self) -> Mapping[PolicyId, PolicyCoverage]:
+        """Look up uniquely captured declarations by complete identity."""
+        counts = Counter(row.declaration.id for row in self.policies)
+        return MappingProxyType({row.declaration.id: row for row in self.policies if counts[row.declaration.id] == 1})
+
+    @property
+    def missing_selections(self) -> tuple[PolicySelection, ...]:
+        """Return the resource/kind rows whose selection was not captured."""
+        return tuple(row for row in self.selections if row.status == PolicySelectionStatus.NOT_CAPTURED)
+
+    def __reduce__(
+        self,
+    ) -> tuple[type[PolicyInventory], tuple[tuple[PolicyCoverage, ...], tuple[PolicySelection, ...]]]:
+        """Transfer immutable rows without serializing the derived index."""
+        return (type(self), (self.policies, self.selections))
 
 
 class EdgeKind(StrEnum):
@@ -838,6 +977,8 @@ class ClusterTopology:
 
     ``vhost_permissions`` retains projected permission declarations and
     vhost count limits. It defaults to an inventory without captured evidence.
+    ``policy_inventory`` retains declaration headers and selection evidence
+    without resource observations or policy definition payloads.
 
     The typed node collections retain resource attributes. ``nodes``,
     ``all_node_ids``, and ``nodes_by_id`` provide cached unified graph views.
@@ -852,6 +993,7 @@ class ClusterTopology:
     cluster_label: str | None = field(default=None, compare=False, hash=False)
     vhosts: frozenset[VirtualHostMetadata] = frozenset()
     vhost_permissions: VhostPermissionsInventory = field(default_factory=VhostPermissionsInventory)
+    policy_inventory: PolicyInventory = field(default_factory=PolicyInventory)
     _nodes: frozenset[TopologyNode] = field(init=False, repr=False, compare=False, hash=False)
     _all_node_ids: frozenset[NodeId] = field(init=False, repr=False, compare=False, hash=False)
     _nodes_by_id: Mapping[NodeId, TopologyNode] = field(init=False, repr=False, compare=False, hash=False)
@@ -862,6 +1004,11 @@ class ClusterTopology:
         _require_optional_instance(self.cluster_name, str, "ClusterTopology.cluster_name")
         _require_optional_instance(self.cluster_label, str, "ClusterTopology.cluster_label")
         _require_instance(self.vhost_permissions, VhostPermissionsInventory, "ClusterTopology.vhost_permissions")
+        _require_instance(self.policy_inventory, PolicyInventory, "ClusterTopology.policy_inventory")
+        if any(row.declaration.id.cluster_id != self.cluster_id for row in self.policy_inventory.policies) or any(
+            row.resource.cluster_id != self.cluster_id for row in self.policy_inventory.selections
+        ):
+            raise TopologyValidationError("policy inventory evidence must belong to the topology cluster")
         collections = (
             ("ClusterTopology.exchanges", self.exchanges, ExchangeNode),
             ("ClusterTopology.queues", self.queues, QueueNode),
@@ -916,6 +1063,7 @@ class ClusterTopology:
             str | None,
             frozenset[VirtualHostMetadata],
             VhostPermissionsInventory,
+            PolicyInventory,
         ],
     ]:
         """Serialize canonical graph data and rebuild derived caches on load."""
@@ -931,6 +1079,7 @@ class ClusterTopology:
                 self.cluster_label,
                 self.vhosts,
                 self.vhost_permissions,
+                self.policy_inventory,
             ),
         )
 

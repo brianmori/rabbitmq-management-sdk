@@ -157,6 +157,7 @@ def test_audit_returns_all_findings_from_the_public_facade() -> None:
     assert report.binding_durability == auditor.binding_durability()
     assert report.queue_declaration_compatibility == auditor.queue_declaration_compatibility()
     assert report.vhost_permissions_inventory == auditor.vhost_permissions_inventory()
+    assert report.policy_inventory == auditor.policy_inventory()
 
 
 def test_topology_finding_types_are_exported_and_old_report_arguments_still_work() -> None:
@@ -177,6 +178,7 @@ def test_topology_finding_types_are_exported_and_old_report_arguments_still_work
     assert report.binding_durability == ()
     assert report.queue_declaration_compatibility == ()
     assert report.vhost_permissions_inventory == topology.VhostPermissionsInventory()
+    assert report.policy_inventory == topology.PolicyInventory()
     assert {
         "DirectDependencyInventory",
         "DirectReference",
@@ -192,6 +194,13 @@ def test_topology_finding_types_are_exported_and_old_report_arguments_still_work
         "VhostTopicPermission",
         "VhostLimit",
         "VhostLimitStatus",
+        "PolicyCoverage",
+        "PolicyDeclaration",
+        "PolicyId",
+        "PolicyInventory",
+        "PolicyKind",
+        "PolicySelection",
+        "PolicySelectionStatus",
     } <= set(topology.__all__)
 
 
