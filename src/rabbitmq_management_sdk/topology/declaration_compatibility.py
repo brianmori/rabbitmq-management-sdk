@@ -124,6 +124,9 @@ def binding_durability(topology: ClusterTopology) -> tuple[BindingDurability, ..
 
 def queue_declaration_compatibility(topology: ClusterTopology) -> tuple[QueueDeclarationCompatibility, ...]:
     """Assess contained non-durable classic queues against RabbitMQ 4.3 defaults."""
+    # Revisit deprecation when the SDK drops support for RabbitMQ 4.2 captures.
+    # Captures from 4.3 brokers that allow transient non-exclusive queues can
+    # still be checked against the 4.3 default.
     candidates = (queue for queue in topology.queues if queue.queue_type == "classic" and not queue.durable)
     return tuple(
         QueueDeclarationCompatibility(queue.id, queue.exclusive)
