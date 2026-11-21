@@ -39,6 +39,7 @@ from rabbitmq_management_sdk.topology.models import (
     TopologyEdge,
     VirtualHostMetadata,
 )
+from rabbitmq_management_sdk.topology.policy_inventory import capture_policy_inventory
 from rabbitmq_management_sdk.topology.policy_routes import (
     UserPolicySelections,
     resolve_alternate_exchange,
@@ -148,6 +149,14 @@ class _TopologyBuilder:
             vhost_permissions=capture_vhost_permissions(
                 self.response,
                 resource_vhosts={node.id.vhost for nodes in (exchanges, queues, shovels) for node in nodes},
+            ),
+            policy_inventory=capture_policy_inventory(
+                self.response,
+                cluster_id=self.cluster_id,
+                queues=queues,
+                exchanges=exchanges,
+                observed_queues=self.observed_queues,
+                observed_exchanges=self.observed_exchanges,
             ),
         )
 

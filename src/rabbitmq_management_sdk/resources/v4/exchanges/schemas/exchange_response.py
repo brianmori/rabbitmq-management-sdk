@@ -55,6 +55,7 @@ class ExchangeResponse(RabbitMQResponse):
     auto_delete: bool = Field(validation_alias=AliasChoices("auto_delete", "auto-delete"))
     internal: bool
     policy: str | None = None
+    operator_policy: str | None = None
 
     arguments: ExchangeArgumentsResponse = Field(default_factory=ExchangeArgumentsResponse)
 

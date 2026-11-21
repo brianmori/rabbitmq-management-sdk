@@ -14,7 +14,7 @@ from rabbitmq_management_sdk.resources.v4.admin.services import AdminManager
 from rabbitmq_management_sdk.resources.v4.policies.services import PolicyManager
 from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QuorumQueueResponse
 from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
-from rabbitmq_management_sdk.topology import DeadLetterCoverageStatus
+from rabbitmq_management_sdk.topology import DeadLetterCoverageStatus, NodeId, NodeKind, PolicyId, PolicyKind
 
 pytestmark = pytest.mark.integration
 _CAPTURE = Path(__file__).parent / "rmq-4.3" / "quorum-configuration" / "configuration.json"
@@ -120,8 +120,49 @@ def test_captured_policy_observations_resolve_quorum_delivery_audit(tmp_path: Pa
             "retry",
             "operator",
         }
+        resource = NodeId("captured", "configured", NodeKind.QUEUE, auditor.topology.cluster_id)
+        operator = auditor.policy_lookup(PolicyId("captured", "operator", PolicyKind.OPERATOR, resource.cluster_id))
+        regular = auditor.policy_lookup(PolicyId("captured", "retry", PolicyKind.REGULAR, resource.cluster_id))
+        assert operator is not None
+        assert regular is not None
+        assert operator.selected_resources == regular.selected_resources == (resource,)
+        assert operator.declaration.apply_to == "quorum_queues"
+        assert NodeId("captured", "amq.direct", NodeKind.EXCHANGE, resource.cluster_id) in {
+            row.resource for row in auditor.policy_inventory().missing_selections if row.kind is PolicyKind.OPERATOR
+        }
     else:
         assert results["policy-queue"].delayed_retry_min.value == 2000
     assert not auditor.structural_cycles().cycles
     assert not auditor.message_loop_candidates().cycles
     assert auditor.audit().quorum_delivery_configuration == auditor.quorum_delivery_configuration()
+
+
+def test_rabbitmq_42_operator_parameters_are_inventory_declarations(tmp_path: Path) -> None:
+    original = _CAPTURE.parents[2] / "rmq-4.2" / "full-export-definitions.json"
+    capture = json.loads(original.read_text(encoding="utf-8"))
+    path = tmp_path / "declarations.json"
+    parameters = [
+        parameter
+        for parameter in capture["parameters"]
+        if parameter["component"] == "operator_policy" and parameter["vhost"] == "policy"
+    ]
+    path.write_text(
+        json.dumps({"rabbitmq_version": capture["rabbitmq_version"], "parameters": parameters}), encoding="utf-8"
+    )
+    auditor = ClusterAuditor.from_files(path)
+
+    assert [row.declaration.id.name for row in auditor.policy_inventory().policies] == [
+        "all-queues",
+        "classic-queues",
+        "quorum.q",
+        "quorum.s",
+        "stream.queues",
+    ]
+    row = auditor.policy_lookup(PolicyId("policy", "quorum.s", PolicyKind.OPERATOR))
+    assert row is not None
+    assert (row.declaration.pattern, row.declaration.apply_to, row.declaration.priority) == (
+        "quorum123.*",
+        "quorum_queues",
+        300,
+    )
+    assert row.selected_resources == ()

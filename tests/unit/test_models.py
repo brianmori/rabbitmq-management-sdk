@@ -34,6 +34,13 @@ from rabbitmq_management_sdk.topology import (
     FanoutQueue,
     NodeId,
     NodeKind,
+    PolicyCoverage,
+    PolicyDeclaration,
+    PolicyId,
+    PolicyInventory,
+    PolicyKind,
+    PolicySelection,
+    PolicySelectionStatus,
     QueueLimitsConfiguration,
     QueueNode,
     QueueTypeGroup,
@@ -66,6 +73,29 @@ from rabbitmq_management_sdk.topology import (
 )
 
 pytestmark = pytest.mark.unit
+
+
+def test_policy_evidence_identity_scope_and_lookup_transfer() -> None:
+    resource = NodeId("/v", "q", NodeKind.QUEUE, "cluster")
+    selection = PolicySelection(resource, PolicyKind.REGULAR, PolicySelectionStatus.SELECTED, "retention")
+    identity = PolicyId("/v", "retention", PolicyKind.REGULAR, "cluster")
+    assert selection.policy_id == identity
+    declaration = PolicyDeclaration(identity, "^q$", "queues", 2)
+    coverage = PolicyCoverage(declaration, (resource,))
+    inventory = PolicyInventory((coverage,), (selection,))
+    assert inventory.by_policy[identity] == coverage
+    restored = pickle.loads(pickle.dumps(inventory))
+    assert restored == inventory
+    assert restored.by_policy[identity] == coverage
+
+    with pytest.raises(TopologyValidationError, match="nonempty"):
+        PolicySelection(resource, PolicyKind.REGULAR, PolicySelectionStatus.SELECTED)
+    with pytest.raises(TopologyValidationError, match="duplicate"):
+        PolicyInventory(selections=(selection, selection))
+    with pytest.raises(TopologyValidationError, match="policy's vhost"):
+        PolicyCoverage(declaration, (replace(resource, vhost="/other"),))
+    with pytest.raises(TopologyValidationError, match="topology cluster"):
+        ClusterTopology(frozenset(), frozenset(), frozenset(), frozenset(), policy_inventory=inventory)
 
 
 def test_vhost_permissions_metadata_is_immutable_and_validated() -> None:
