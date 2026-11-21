@@ -43,10 +43,11 @@ from rabbitmq_management_sdk.topology.reachability import (
     shovels_with_unresolved_vhost,
     unreachable_internal_exchanges,
 )
+from rabbitmq_management_sdk.topology.routing_contracts import evaluate_routing_contracts
 from rabbitmq_management_sdk.topology.shovel_audit import competing_shovel_consumers
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Mapping
+    from collections.abc import Collection, Mapping, Sequence
     from pathlib import Path
 
     from rabbitmq_management_sdk.topology.cycles import StronglyConnectedComponent
@@ -61,6 +62,7 @@ if TYPE_CHECKING:
         TopologyEdge,
     )
     from rabbitmq_management_sdk.topology.quorum_resilience import QuorumFailureScenario
+    from rabbitmq_management_sdk.topology.routing_contracts import RoutingContract, RoutingContractResult
     from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers
 
 
@@ -92,6 +94,7 @@ class TopologyAuditReport:
     quorum_delivery_configuration: tuple[QuorumQueueConfiguration, ...] = ()
     quorum_resilience: QuorumResilienceReport = field(default_factory=QuorumResilienceReport)
     direct_dependency_inventory: DirectDependencyInventory = field(default_factory=DirectDependencyInventory)
+    routing_contracts: tuple[RoutingContractResult, ...] = ()
 
 
 class ClusterAuditor:
@@ -353,6 +356,14 @@ class ClusterAuditor:
         """
         return exchange_routing_coverage(self._topology, routing_key=routing_key)
 
+    def evaluate_routing_contracts(self, contracts: Sequence[RoutingContract]) -> tuple[RoutingContractResult, ...]:
+        """Evaluate caller-supplied publication contracts in input order.
+
+        Each distinct exchange and key is traced at most once in this batch.
+        Results describe the captured configuration for a single publication.
+        """
+        return evaluate_routing_contracts(self._topology, contracts)
+
     def unreachable_internal_exchanges(self) -> tuple[ExchangeNode, ...]:
         """Return internal exchanges with no captured incoming route."""
         return unreachable_internal_exchanges(self._topology)
@@ -478,13 +489,15 @@ class ClusterAuditor:
         max_cycles: int = 0,
         failure_domains: Mapping[str, str] | None = None,
         scenarios: Collection[QuorumFailureScenario] = (),
+        routing_contracts: Sequence[RoutingContract] = (),
     ) -> TopologyAuditReport:
         """Return all supported findings for this definitions snapshot.
 
         The report is immutable and each sequence is deterministically
         ordered, making it suitable for comparisons, policy evaluation, and
         reproducible CI output. Failure domains and scenarios are forwarded to
-        :meth:`quorum_resilience`.
+        :meth:`quorum_resilience`. Supply routing contracts to evaluate them
+        in one batch and include their results in the report.
         """
         resilience = self.quorum_resilience(failure_domains=failure_domains, scenarios=scenarios)
         structural_cycles = self.structural_cycles(max_cycles=max_cycles)
@@ -511,4 +524,5 @@ class ClusterAuditor:
             quorum_delivery_configuration=self.quorum_delivery_configuration(),
             quorum_resilience=resilience,
             direct_dependency_inventory=self.direct_dependency_inventory(),
+            routing_contracts=() if routing_contracts == () else self.evaluate_routing_contracts(routing_contracts),
         )

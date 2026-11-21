@@ -64,6 +64,15 @@ from rabbitmq_management_sdk.topology.quorum_resilience import (
     QuorumResilienceReport,
 )
 from rabbitmq_management_sdk.topology.routing import RoutingIssue, RoutingStatus, RoutingUncertainty
+from rabbitmq_management_sdk.topology.routing_contracts import (
+    RoutingCondition,
+    RoutingConditionKind,
+    RoutingConditionResult,
+    RoutingContract,
+    RoutingContractResult,
+    RoutingOriginStatus,
+    RoutingVerdict,
+)
 from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers
 
 __all__ = [
@@ -108,9 +117,16 @@ __all__ = [
     "QuorumResilienceReport",
     "ResourceDependencies",
     "ResourceEndpoint",
+    "RoutingCondition",
+    "RoutingConditionKind",
+    "RoutingConditionResult",
+    "RoutingContract",
+    "RoutingContractResult",
     "RoutingIssue",
+    "RoutingOriginStatus",
     "RoutingStatus",
     "RoutingUncertainty",
+    "RoutingVerdict",
     "ShovelNode",
     "StronglyConnectedComponent",
     "TopologyEdge",
