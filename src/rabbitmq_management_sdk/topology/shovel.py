@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Literal
 from urllib.parse import SplitResult, unquote, urlsplit
 
-from rabbitmq_management_sdk.topology.models import EndpointAuthority, NodeKind, ResourceEndpoint
+from rabbitmq_management_sdk.topology.models import EndpointAuthority, NodeId, NodeKind, ResourceEndpoint
 
 DEFAULT_VHOST = "/"
 _DEFAULT_PORT_BY_SCHEME = {"amqp": 5672, "amqps": 5671}
@@ -23,6 +23,18 @@ _ASCII_DELETE = 0x7F
 _ASCII_DIGITS = frozenset("0123456789")
 _URI_COMPONENT_CHARACTERS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~!$&'()*+,;=")
 _IP_LITERAL_CHARACTERS = _URI_COMPONENT_CHARACTERS | frozenset("%:")
+
+
+def confirmed_local_resource_id(endpoint: ResourceEndpoint, *, cluster_id: str | None) -> NodeId | None:
+    """Identify a fixed, confirmed-local endpoint without requiring a declaration."""
+    if (
+        not endpoint.is_confirmed_local
+        or endpoint.vhost is None
+        or endpoint.resource_name is None
+        or endpoint.resource_kind is None
+    ):
+        return None
+    return NodeId(cluster_id=cluster_id, vhost=endpoint.vhost, name=endpoint.resource_name, kind=endpoint.resource_kind)
 
 
 @dataclass(frozen=True, slots=True)

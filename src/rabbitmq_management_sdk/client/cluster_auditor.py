@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import TYPE_CHECKING, overload
 
 from pydantic import ValidationError
@@ -25,9 +26,10 @@ from rabbitmq_management_sdk.topology.cycles import (
     message_loop_candidates_from_complete_result,
 )
 from rabbitmq_management_sdk.topology.dead_letter import dead_letter_coverage
+from rabbitmq_management_sdk.topology.dependencies import DirectDependencyInventory, build_direct_dependency_inventory
 from rabbitmq_management_sdk.topology.exchange_routing import exchange_routing_coverage
 from rabbitmq_management_sdk.topology.fanout import fanout_exchange_bindings
-from rabbitmq_management_sdk.topology.models import ClusterTopology
+from rabbitmq_management_sdk.topology.models import ClusterTopology, NodeId
 from rabbitmq_management_sdk.topology.ordering import edge_sort_key
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeInventory, queue_type_inventory
@@ -49,6 +51,7 @@ if TYPE_CHECKING:
 
     from rabbitmq_management_sdk.topology.cycles import StronglyConnectedComponent
     from rabbitmq_management_sdk.topology.dead_letter import DeadLetterCoverage
+    from rabbitmq_management_sdk.topology.dependencies import ResourceDependencies
     from rabbitmq_management_sdk.topology.exchange_routing import ExchangeRoutingCoverage
     from rabbitmq_management_sdk.topology.fanout import FanoutExchangeBindings
     from rabbitmq_management_sdk.topology.models import (
@@ -88,6 +91,7 @@ class TopologyAuditReport:
     exchange_routing_coverage: tuple[ExchangeRoutingCoverage, ...] = ()
     quorum_delivery_configuration: tuple[QuorumQueueConfiguration, ...] = ()
     quorum_resilience: QuorumResilienceReport = field(default_factory=QuorumResilienceReport)
+    direct_dependency_inventory: DirectDependencyInventory = field(default_factory=DirectDependencyInventory)
 
 
 class ClusterAuditor:
@@ -411,6 +415,29 @@ class ClusterAuditor:
         """
         return dead_letter_coverage(self._topology)
 
+    @cached_property
+    def _direct_dependency_inventory(self) -> DirectDependencyInventory:
+        return build_direct_dependency_inventory(self._topology)
+
+    def direct_dependencies(self, resource: NodeId) -> ResourceDependencies | None:
+        """Look up captured references to one queue or exchange by full identity.
+
+        Contains an empty reference tuple for a contained resource with no
+        references. A referenced resource missing from the graph has
+        ``is_present=False``. Returns ``None`` if the identity is in neither set.
+        The first query builds a shared index for subsequent lookups.
+
+        Raises:
+            TopologyAnalysisError: If ``resource`` is not a NodeId.
+        """
+        if not isinstance(resource, NodeId):
+            raise TopologyAnalysisError(f"resource must be NodeId, got {type(resource).__name__}")
+        return self._direct_dependency_inventory.by_resource.get(resource)
+
+    def direct_dependency_inventory(self) -> DirectDependencyInventory:
+        """Return the ordered index of captured queue and exchange references."""
+        return self._direct_dependency_inventory
+
     def dangling_edges(self) -> tuple[TopologyEdge, ...]:
         """Return declared routes whose source or target is absent from the export.
 
@@ -483,4 +510,5 @@ class ClusterAuditor:
             exchange_routing_coverage=self.exchange_routing_coverage(),
             quorum_delivery_configuration=self.quorum_delivery_configuration(),
             quorum_resilience=resilience,
+            direct_dependency_inventory=self.direct_dependency_inventory(),
         )

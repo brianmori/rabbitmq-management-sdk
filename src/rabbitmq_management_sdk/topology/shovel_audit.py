@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from rabbitmq_management_sdk.exceptions import TopologyValidationError
 from rabbitmq_management_sdk.topology.models import NodeId, NodeKind, ShovelNode
 from rabbitmq_management_sdk.topology.ordering import node_sort_key
+from rabbitmq_management_sdk.topology.shovel import confirmed_local_resource_id
 
 if TYPE_CHECKING:
     from rabbitmq_management_sdk.topology.models import ClusterTopology
@@ -17,20 +18,9 @@ _MIN_COMPETING_SHOVELS = 2
 
 def _source_queue_id(shovel: ShovelNode) -> NodeId | None:
     """Resolve a fixed, confirmed-local queue source without inventing a node."""
-    source = shovel.source
-    if (
-        not source.is_confirmed_local
-        or source.resource_kind != NodeKind.QUEUE
-        or source.vhost is None
-        or source.resource_name is None
-    ):
+    if shovel.source.resource_kind != NodeKind.QUEUE:
         return None
-    return NodeId(
-        cluster_id=shovel.id.cluster_id,
-        vhost=source.vhost,
-        name=source.resource_name,
-        kind=NodeKind.QUEUE,
-    )
+    return confirmed_local_resource_id(shovel.source, cluster_id=shovel.id.cluster_id)
 
 
 @dataclass(frozen=True, slots=True)

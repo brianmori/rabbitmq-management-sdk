@@ -18,12 +18,14 @@ from rabbitmq_management_sdk import (
     TopologyDefinitionsError,
     TopologyLoadError,
     TopologyResourceSnapshotError,
+    topology,
 )
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
 from rabbitmq_management_sdk.topology import (
     ClusterTopology,
     CycleSearchResult,
+    DirectDependencyInventory,
     EdgeKind,
     StronglyConnectedComponent,
 )
@@ -150,6 +152,39 @@ def test_audit_returns_all_findings_from_the_public_facade() -> None:
     assert report.dead_letter_coverage == auditor.dead_letter_coverage()
     assert report.exchange_routing_coverage == auditor.exchange_routing_coverage()
     assert report.quorum_delivery_configuration == auditor.quorum_delivery_configuration() == ()
+    assert report.direct_dependency_inventory == auditor.direct_dependency_inventory()
+
+
+def test_direct_dependency_types_are_exported_and_old_report_arguments_still_work() -> None:
+    report = TopologyAuditReport(
+        CycleSearchResult((), False),
+        CycleSearchResult((), False),
+        (),
+        (),
+        (),
+        (),
+        (),
+        (),
+        (),
+    )
+
+    assert report.direct_dependency_inventory == DirectDependencyInventory()
+    assert {
+        "DirectDependencyInventory",
+        "DirectReference",
+        "DirectReferenceRole",
+        "ResourceDependencies",
+    } <= set(topology.__all__)
+
+
+def test_aggregate_with_cached_dependency_lookup_can_be_pickled() -> None:
+    auditor = ClusterAuditor(_definitions())
+    report = auditor.audit()
+    by_resource = report.direct_dependency_inventory.by_resource
+    restored = pickle.loads(pickle.dumps(report))
+
+    assert restored == report
+    assert restored.direct_dependency_inventory.by_resource == by_resource
 
 
 def test_exchange_routing_coverage_survives_graph_transfer_and_source_mutation() -> None:
