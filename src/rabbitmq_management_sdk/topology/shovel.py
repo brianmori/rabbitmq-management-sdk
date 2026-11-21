@@ -11,7 +11,17 @@ from dataclasses import dataclass
 from typing import Literal
 from urllib.parse import SplitResult, unquote, urlsplit
 
-from rabbitmq_management_sdk.topology.models import EndpointAuthority, NodeId, NodeKind, ResourceEndpoint
+from rabbitmq_management_sdk.topology.models import (
+    EndpointAuthority,
+    NodeId,
+    NodeKind,
+    ResourceEndpoint,
+    ShovelAckMode,
+    ShovelAcknowledgement,
+    ShovelAckSource,
+    ShovelEndpointTransport,
+    ShovelTransport,
+)
 
 DEFAULT_VHOST = "/"
 _DEFAULT_PORT_BY_SCHEME = {"amqp": 5672, "amqps": 5671}
@@ -23,6 +33,27 @@ _ASCII_DELETE = 0x7F
 _ASCII_DIGITS = frozenset("0123456789")
 _URI_COMPONENT_CHARACTERS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~!$&'()*+,;=")
 _IP_LITERAL_CHARACTERS = _URI_COMPONENT_CHARACTERS | frozenset("%:")
+_SHOVEL_PROTOCOLS = frozenset({"amqp091", "amqp10", "local"})
+_EXPLICIT_ACK_MODES = {mode.value: mode for mode in ShovelAckMode if mode != ShovelAckMode.UNKNOWN}
+
+
+def parse_shovel_acknowledgement(
+    value: Mapping[str, object],
+    source_protocol: str | None,
+    destination_protocol: str | None,
+    *,
+    supported_broker: bool,
+) -> ShovelAcknowledgement:
+    """Resolve the captured mode or the supported dynamic shovel default."""
+    if "ack-mode" in value:
+        supplied = value["ack-mode"]
+        mode = _EXPLICIT_ACK_MODES.get(supplied) if isinstance(supplied, str) else None
+        if mode is None:
+            return ShovelAcknowledgement(source=ShovelAckSource.INVALID_VALUE)
+        return ShovelAcknowledgement(mode, ShovelAckSource.EXPLICIT)
+    if supported_broker and source_protocol in _SHOVEL_PROTOCOLS and destination_protocol in _SHOVEL_PROTOCOLS:
+        return ShovelAcknowledgement(ShovelAckMode.ON_CONFIRM, ShovelAckSource.BROKER_DEFAULT)
+    return ShovelAcknowledgement()
 
 
 def confirmed_local_resource_id(endpoint: ResourceEndpoint, *, cluster_id: str | None) -> NodeId | None:
@@ -43,6 +74,7 @@ class _UriCandidate:
 
     vhost: str | None
     authority: EndpointAuthority
+    has_explicit_port: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +83,7 @@ class _UriEvidence:
 
     vhost: str | None
     authorities: tuple[EndpointAuthority, ...] | None
+    transport: ShovelEndpointTransport
 
 
 def _contains_disallowed_raw_character(value: str) -> bool:
@@ -197,15 +230,16 @@ def _parse_uri_candidate(uri: str, protocol: str) -> _UriCandidate | None:
         return None
     parsed, authority = parsed_base
 
+    has_explicit_port = parsed.port is not None
     if protocol in ("amqp091", "local"):
         vhost = _amqp091_vhost(parsed.path)
-        return _UriCandidate(vhost=vhost, authority=authority) if vhost is not None else None
+        return _UriCandidate(vhost, authority, has_explicit_port) if vhost is not None else None
 
     if protocol == "amqp10":
         if parsed.path:
             return None
         valid_query, vhost = _amqp10_vhost(parsed.query)
-        return _UriCandidate(vhost=vhost, authority=authority) if valid_query else None
+        return _UriCandidate(vhost, authority, has_explicit_port) if valid_query else None
 
     return None
 
@@ -237,36 +271,48 @@ def vhost_from_amqp10_uri(uri: str) -> str | None:
     return candidate.vhost if candidate is not None else None
 
 
-def _uri_candidates(uri: object) -> tuple[str, ...] | None:
-    """Normalize one URI or a non-empty failover list without dropping entries."""
-    candidates = (uri,) if isinstance(uri, str) else tuple(uri) if isinstance(uri, list) else ()
-    if not candidates or not all(isinstance(candidate, str) and candidate for candidate in candidates):
-        return None
-    return candidates
+def _candidate_transport(candidate: _UriCandidate | None, protocol: str, *, supported_broker: bool) -> ShovelTransport:
+    """Classify protocol and authority evidence independently of locality."""
+    if candidate is None:
+        return ShovelTransport.UNKNOWN
+    authority = candidate.authority
+    if authority.host is None:
+        # AMQP 1.0 goes through a socket client. The 0-9-1 URI parser
+        # produces a direct record only for hostless amqp without a port.
+        if (
+            protocol != "amqp10"
+            and authority.scheme == "amqp"
+            and not candidate.has_explicit_port
+            and (supported_broker or protocol == "local")
+        ):
+            return ShovelTransport.LOCAL
+        return ShovelTransport.UNKNOWN
+    if protocol == "local":
+        return ShovelTransport.LOCAL
+    return ShovelTransport.NETWORK_AMQPS if authority.scheme == "amqps" else ShovelTransport.NETWORK_AMQP
 
 
-def _protocol_uri_evidence(uri: object, protocol: str | None) -> _UriEvidence:
+def _protocol_uri_evidence(uri: object, protocol: str | None, *, supported_broker: bool) -> _UriEvidence:
     """Parse vhost and authority evidence once for every failover candidate.
 
     A network endpoint has ``authorities=None`` when any candidate is invalid;
     otherwise its non-empty tuple preserves candidate order and duplicates.
     The ``local`` protocol always has an empty authority tuple because it makes
     no network connection. Its vhost still resolves only from valid URI
-    evidence.
+    evidence. Transport preserves the classifications of individual entries
+    even when their combined authority evidence cannot be normalized.
     """
-    if protocol not in ("amqp091", "amqp10", "local"):
-        return _UriEvidence(vhost=None, authorities=None)
+    candidates: tuple[object, ...] = (uri,) if isinstance(uri, str) else tuple(uri) if isinstance(uri, list) else ()
+    if protocol is None or protocol not in _SHOVEL_PROTOCOLS:
+        return _UriEvidence(None, None, ShovelEndpointTransport((ShovelTransport.UNKNOWN,) * len(candidates)))
 
-    candidates = _uri_candidates(uri)
-    if candidates is None:
-        return _UriEvidence(vhost=None, authorities=() if protocol == "local" else None)
-
-    parsed_candidates: list[_UriCandidate] = []
-    for candidate in candidates:
-        parsed = _parse_uri_candidate(candidate, protocol)
-        if parsed is None:
-            return _UriEvidence(vhost=None, authorities=() if protocol == "local" else None)
-        parsed_candidates.append(parsed)
+    parsed = tuple(_parse_uri_candidate(item, protocol) if isinstance(item, str) else None for item in candidates)
+    transport = ShovelEndpointTransport(
+        tuple(_candidate_transport(item, protocol, supported_broker=supported_broker) for item in parsed)
+    )
+    parsed_candidates = tuple(item for item in parsed if item is not None)
+    if not parsed_candidates or len(parsed_candidates) != len(candidates):
+        return _UriEvidence(None, () if protocol == "local" else None, transport)
 
     first_vhost = parsed_candidates[0].vhost
     vhost = (
@@ -275,7 +321,7 @@ def _protocol_uri_evidence(uri: object, protocol: str | None) -> _UriEvidence:
         else None
     )
     authorities = () if protocol == "local" else tuple(candidate.authority for candidate in parsed_candidates)
-    return _UriEvidence(vhost=vhost, authorities=authorities)
+    return _UriEvidence(vhost, authorities, transport)
 
 
 def parse_amqp10_address(address: object, *, side: Literal["src", "dest"]) -> tuple[str, NodeKind, str | None] | None:
@@ -379,6 +425,7 @@ def parse_shovel_endpoint(
     side: Literal["src", "dest"],
     *,
     in_cluster_amqp_hosts: frozenset[str],
+    supported_broker: bool = False,
 ) -> ResourceEndpoint:
     """Normalize all retained evidence for one shovel endpoint.
 
@@ -389,7 +436,7 @@ def parse_shovel_endpoint(
     """
     protocol_value = value.get(f"{side}-protocol", "amqp091")
     protocol = protocol_value if isinstance(protocol_value, str) else None
-    uri_evidence = _protocol_uri_evidence(value.get(f"{side}-uri"), protocol)
+    uri_evidence = _protocol_uri_evidence(value.get(f"{side}-uri"), protocol, supported_broker=supported_broker)
     resource = shovel_side_resource(value, side, protocol)
     name, kind, routing_key = (None, None, None) if resource is None else resource
 
@@ -406,4 +453,5 @@ def parse_shovel_endpoint(
             authorities=uri_evidence.authorities,
             in_cluster_amqp_hosts=in_cluster_amqp_hosts,
         ),
+        transport=uri_evidence.transport,
     )

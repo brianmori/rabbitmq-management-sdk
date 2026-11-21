@@ -45,7 +45,7 @@ from rabbitmq_management_sdk.topology.reachability import (
     unreachable_internal_exchanges,
 )
 from rabbitmq_management_sdk.topology.routing_contracts import evaluate_routing_contracts
-from rabbitmq_management_sdk.topology.shovel_audit import competing_shovel_consumers
+from rabbitmq_management_sdk.topology.shovel_audit import competing_shovel_consumers, shovel_safety
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Mapping, Sequence
@@ -65,7 +65,7 @@ if TYPE_CHECKING:
     from rabbitmq_management_sdk.topology.queue_limits import QueueLimits
     from rabbitmq_management_sdk.topology.quorum_resilience import QuorumFailureScenario
     from rabbitmq_management_sdk.topology.routing_contracts import RoutingContract, RoutingContractResult
-    from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers
+    from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers, ShovelSafety
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +98,7 @@ class TopologyAuditReport:
     direct_dependency_inventory: DirectDependencyInventory = field(default_factory=DirectDependencyInventory)
     routing_contracts: tuple[RoutingContractResult, ...] = ()
     queue_limits: tuple[QueueLimits, ...] = ()
+    shovel_safety: tuple[ShovelSafety, ...] = ()
 
 
 class ClusterAuditor:
@@ -379,6 +380,10 @@ class ClusterAuditor:
         """Return shovels whose resolved source and destination vhosts differ."""
         return cross_vhost_shovels(self._topology)
 
+    def shovel_safety(self) -> tuple[ShovelSafety, ...]:
+        """Return captured acknowledgement and per-candidate transport facts."""
+        return shovel_safety(self._topology)
+
     def competing_shovel_consumers(self) -> tuple[CompetingShovelConsumers, ...]:
         """Return advisory groups of shovels sharing a local source queue.
 
@@ -534,4 +539,5 @@ class ClusterAuditor:
             direct_dependency_inventory=self.direct_dependency_inventory(),
             routing_contracts=() if routing_contracts == () else self.evaluate_routing_contracts(routing_contracts),
             queue_limits=queue_limits(dlx_coverage),
+            shovel_safety=self.shovel_safety(),
         )

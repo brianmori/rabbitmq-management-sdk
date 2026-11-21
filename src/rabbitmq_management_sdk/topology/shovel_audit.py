@@ -1,4 +1,4 @@
-"""Find shovels configured to compete for deliveries from a source queue."""
+"""Report captured shovel transport, acknowledgement, and source sharing."""
 
 from __future__ import annotations
 
@@ -6,7 +6,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from rabbitmq_management_sdk.exceptions import TopologyValidationError
-from rabbitmq_management_sdk.topology.models import NodeId, NodeKind, ShovelNode
+from rabbitmq_management_sdk.topology.models import (
+    NodeId,
+    NodeKind,
+    ShovelAcknowledgement,
+    ShovelEndpointTransport,
+    ShovelNode,
+)
 from rabbitmq_management_sdk.topology.ordering import node_sort_key
 from rabbitmq_management_sdk.topology.shovel import confirmed_local_resource_id
 
@@ -14,6 +20,35 @@ if TYPE_CHECKING:
     from rabbitmq_management_sdk.topology.models import ClusterTopology
 
 _MIN_COMPETING_SHOVELS = 2
+
+
+@dataclass(frozen=True, slots=True)
+class ShovelSafety:
+    """Configured source acknowledgement and transport for one dynamic shovel."""
+
+    shovel: NodeId
+    acknowledgement: ShovelAcknowledgement
+    source_transport: ShovelEndpointTransport
+    destination_transport: ShovelEndpointTransport
+
+    def __post_init__(self) -> None:
+        """Validate credential-free result values."""
+        if not isinstance(self.shovel, NodeId) or self.shovel.kind != NodeKind.SHOVEL:
+            raise TopologyValidationError("ShovelSafety.shovel must be a shovel NodeId")
+        if not isinstance(self.acknowledgement, ShovelAcknowledgement):
+            raise TopologyValidationError("ShovelSafety.acknowledgement must be ShovelAcknowledgement")
+        if not isinstance(self.source_transport, ShovelEndpointTransport) or not isinstance(
+            self.destination_transport, ShovelEndpointTransport
+        ):
+            raise TopologyValidationError("ShovelSafety transports must be ShovelEndpointTransport")
+
+
+def shovel_safety(topology: ClusterTopology) -> tuple[ShovelSafety, ...]:
+    """Return one immutable result per captured shovel in identity order."""
+    return tuple(
+        ShovelSafety(shovel.id, shovel.acknowledgement, shovel.source.transport, shovel.destination.transport)
+        for shovel in sorted(topology.shovels, key=lambda node: node_sort_key(node.id))
+    )
 
 
 def _source_queue_id(shovel: ShovelNode) -> NodeId | None:

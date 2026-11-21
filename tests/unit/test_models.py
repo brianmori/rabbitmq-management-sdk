@@ -49,7 +49,12 @@ from rabbitmq_management_sdk.topology import (
     RoutingIssue,
     RoutingStatus,
     RoutingUncertainty,
+    ShovelAckMode,
+    ShovelAcknowledgement,
+    ShovelAckSource,
+    ShovelEndpointTransport,
     ShovelNode,
+    ShovelTransport,
     TopologyEdge,
     TopologyNode,
     VhostQueueInventory,
@@ -585,6 +590,21 @@ class TestFanoutValues:
             FanoutQueue(id=_queue("v", "q").id, queue_type=3)  # type: ignore[arg-type]
         with pytest.raises(TopologyValidationError, match="requires a quorum"):
             FanoutQueue(id=_queue("v", "q").id, queue_type=None, replication_factor=3)
+
+
+class TestShovelSafetyEvidence:
+    def test_acknowledgement_rejects_inconsistent_provenance(self) -> None:
+        with pytest.raises(TopologyValidationError, match="mode and source must agree"):
+            ShovelAcknowledgement(ShovelAckMode.ON_CONFIRM, ShovelAckSource.INVALID_VALUE)
+        with pytest.raises(TopologyValidationError, match="broker default must be on-confirm"):
+            ShovelAcknowledgement(ShovelAckMode.NO_ACK, ShovelAckSource.BROKER_DEFAULT)
+
+    def test_transport_validation_does_not_echo_candidate_input(self) -> None:
+        with pytest.raises(TopologyValidationError, match="individual candidate classifications") as error:
+            ShovelEndpointTransport(("SENTINEL_URI",))  # type: ignore[arg-type]
+        assert "SENTINEL_URI" not in str(error.value)
+        with pytest.raises(TopologyValidationError, match="individual candidate classifications"):
+            ShovelEndpointTransport((ShovelTransport.MIXED,))
 
 
 class TestEndpointAuthority:
