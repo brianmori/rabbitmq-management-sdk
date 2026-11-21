@@ -34,6 +34,7 @@ from rabbitmq_management_sdk.topology.models import (
     NodeKind,
     QueueNode,
     QuorumDeliveryConfiguration,
+    QuorumPlacement,
     ResourceEndpoint,
     ShovelNode,
     TopologyEdge,
@@ -48,6 +49,14 @@ from rabbitmq_management_sdk.topology.ordering import (
 )
 from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeGroup, QueueTypeInventory, VhostQueueInventory
 from rabbitmq_management_sdk.topology.quorum import QuorumConfigurationIssue, QuorumQueueConfiguration
+from rabbitmq_management_sdk.topology.quorum_resilience import (
+    QuorumBrokerConcentration,
+    QuorumFailureScenario,
+    QuorumFailureScenarioResult,
+    QuorumQueueFailureImpact,
+    QuorumQueueResilience,
+    QuorumResilienceReport,
+)
 from rabbitmq_management_sdk.topology.routing import RoutingIssue, RoutingStatus, RoutingUncertainty
 from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers
 
@@ -78,9 +87,16 @@ __all__ = [
     "QueueNode",
     "QueueTypeGroup",
     "QueueTypeInventory",
+    "QuorumBrokerConcentration",
     "QuorumConfigurationIssue",
     "QuorumDeliveryConfiguration",
+    "QuorumFailureScenario",
+    "QuorumFailureScenarioResult",
+    "QuorumPlacement",
     "QuorumQueueConfiguration",
+    "QuorumQueueFailureImpact",
+    "QuorumQueueResilience",
+    "QuorumResilienceReport",
     "ResourceEndpoint",
     "RoutingIssue",
     "RoutingStatus",

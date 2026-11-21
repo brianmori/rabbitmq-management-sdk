@@ -36,9 +36,12 @@ test, and audit:
   across the cluster and per vhost alongside each captured vhost default.
   Inspect effective DLX configuration and routing compatibility, with explicit
   uncertainty. Evaluate exchange routes for a supplied publication key.
-- **Respect broker evidence** — direct arguments take precedence, while complete
-  queue and exchange observations identify broker-selected policies without
-  reimplementing RabbitMQ's policy matching rules in Python.
+- **Respect broker evidence** — direct arguments take precedence per key for
+  DLX and alternate-exchange routes, while complete queue and exchange
+  observations identify broker-selected policies without reimplementing
+  RabbitMQ's policy matching rules in Python. Quorum delivery settings use
+  [setting-specific resolution](docs/quorum-queue-auditing.md#values-and-evidence),
+  including regular/operator policies and explicit uncertainty.
 - **Run deterministic offline analysis** — load sanitized captures from files,
   retain stable cluster identity, produce consistently ordered findings, and
   serialize trusted topology values for analysis in another process.
@@ -391,6 +394,12 @@ the complete `QueueNode` values in `queues`. A missing default stays `None`.
 Existing queue types can differ from their vhost's default. See the
 [queue inventory guide](docs/topology-auditing.md#queue-types-and-vhost-defaults)
 for a runnable offline example.
+
+`report.quorum_resilience` shows each quorum queue's required majority and
+reported online failure margin, plus known member and leader concentration by
+broker. Pass explicit failed nodes or caller-defined failure domains to
+`quorum_resilience()` or `audit()` to evaluate captured placement under those
+losses. See the [RabbitMQ 4.2 and 4.3 resilience guide](docs/quorum-resilience.md).
 
 #### Topology serialization
 

@@ -4,7 +4,7 @@ import pytest
 from tests.shared.parser_fixtures import _exchange, _observed_queue, _queue, _response, _vhost
 
 from rabbitmq_management_sdk import TopologyParseError, TopologyValidationError
-from rabbitmq_management_sdk.topology.models import NodeKind, VirtualHostMetadata
+from rabbitmq_management_sdk.topology.models import NodeKind, QuorumPlacement, VirtualHostMetadata
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 
 pytestmark = pytest.mark.unit
@@ -69,13 +69,37 @@ class TestParseQueue:
         response = _response(
             queues=[_queue("q", "v", **{"x-queue-type": "quorum", "x-quorum-initial-group-size": 5})],
         )
-        observation = _observed_queue("q", "v", members=members, online=["rabbit@a"])
+        observation = _observed_queue("q", "v", members=members, online=members[:1] if members else ["rabbit@a"])
 
         (node,) = parse_cluster_topology(response, observed_queues=[observation]).queues
 
         assert node.replication_factor == expected
         (without_observation,) = parse_cluster_topology(response).queues
         assert without_observation.replication_factor is None
+        assert without_observation.quorum_placement is None
+
+    def test_copies_placement_without_using_node_as_leader(self) -> None:
+        response = _response(queues=[_queue("q", "v", **{"x-queue-type": "quorum"})])
+        observation = _observed_queue("q", "v", members=["c", "b", "a"], leader="", online=["b", "a"])
+
+        (node,) = parse_cluster_topology(response, observed_queues=[observation]).queues
+
+        assert observation.members is not None and observation.online is not None
+        observation.members.clear()
+        observation.online.clear()
+        assert node.quorum_placement == QuorumPlacement(("a", "b", "c"), None, ("a", "b"))
+
+    @pytest.mark.parametrize(
+        "fields",
+        [{"leader": "c"}, {"online": ["c"]}, {"online": ["b", "b"]}, {"online": [""]}],
+    )
+    def test_rejects_invalid_quorum_placement_with_queue_context(self, fields: dict[str, object]) -> None:
+        response = _response(queues=[_queue("q", "v", **{"x-queue-type": "quorum"})])
+        observation = _observed_queue("q", "v", members=["a", "b"], **fields)
+
+        with pytest.raises(TopologyParseError, match=r"\[v\]/q has invalid quorum membership") as error:
+            parse_cluster_topology(response, observed_queues=[observation])
+        assert isinstance(error.value.__cause__, TopologyValidationError)
 
     def test_same_named_queues_use_only_their_own_vhost_observations(self) -> None:
         response = _response(
@@ -105,9 +129,18 @@ class TestParseQueue:
     @pytest.mark.parametrize("queue_type", ["classic", "stream"])
     def test_other_queue_types_do_not_claim_quorum_replication(self, queue_type: str) -> None:
         response = _response(queues=[_queue("q", "v", **{"x-queue-type": queue_type})])
-        observation = _observed_queue("q", "v", type=queue_type, arguments={"x-queue-type": queue_type}, members=["a"])
+        observation = _observed_queue(
+            "q",
+            "v",
+            type=queue_type,
+            arguments={"x-queue-type": queue_type},
+            members=["a"],
+            leader="a",
+            online=["a"],
+        )
         (node,) = parse_cluster_topology(response, observed_queues=[observation]).queues
         assert node.replication_factor is None
+        assert node.quorum_placement is None
 
     def test_uses_declared_queue_type(self) -> None:
         response = _response(

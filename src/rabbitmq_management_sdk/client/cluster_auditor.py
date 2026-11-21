@@ -32,6 +32,7 @@ from rabbitmq_management_sdk.topology.ordering import edge_sort_key
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeInventory, queue_type_inventory
 from rabbitmq_management_sdk.topology.quorum import QuorumQueueConfiguration, quorum_delivery_configuration
+from rabbitmq_management_sdk.topology.quorum_resilience import QuorumResilienceReport, quorum_resilience
 from rabbitmq_management_sdk.topology.reachability import (
     black_hole_exchanges,
     cross_vhost_shovels,
@@ -43,7 +44,7 @@ from rabbitmq_management_sdk.topology.reachability import (
 from rabbitmq_management_sdk.topology.shovel_audit import competing_shovel_consumers
 
 if TYPE_CHECKING:
-    from collections.abc import Collection
+    from collections.abc import Collection, Mapping
     from pathlib import Path
 
     from rabbitmq_management_sdk.topology.cycles import StronglyConnectedComponent
@@ -56,12 +57,13 @@ if TYPE_CHECKING:
         ShovelNode,
         TopologyEdge,
     )
+    from rabbitmq_management_sdk.topology.quorum_resilience import QuorumFailureScenario
     from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers
 
 
 @dataclass(frozen=True, slots=True)
 class TopologyAuditReport:
-    """Structural findings from one immutable topology snapshot.
+    """Findings from one immutable topology snapshot.
 
     Findings are facts rather than severity-ranked alerts. For example, an
     exchange without outgoing edges can be an intentional discard pattern,
@@ -85,6 +87,7 @@ class TopologyAuditReport:
     dead_letter_coverage: tuple[DeadLetterCoverage, ...] = ()
     exchange_routing_coverage: tuple[ExchangeRoutingCoverage, ...] = ()
     quorum_delivery_configuration: tuple[QuorumQueueConfiguration, ...] = ()
+    quorum_resilience: QuorumResilienceReport = field(default_factory=QuorumResilienceReport)
 
 
 class ClusterAuditor:
@@ -100,7 +103,7 @@ class ClusterAuditor:
         definitions: Validated cluster-wide definitions export.
         queues: Queue observations from a complete broker snapshot. Supply
             this together with ``exchanges`` when policy-derived routing must
-            be resolved or quorum membership and delivery configuration are
+            be resolved or quorum placement and delivery configuration are
             needed. Selected operator policies and effective policy definitions
             enrich delivery evidence without evaluating policy patterns locally.
         exchanges: Exchange observations from the same complete broker
@@ -423,13 +426,40 @@ class ClusterAuditor:
         """
         return quorum_delivery_configuration(self._topology)
 
-    def audit(self, *, max_cycles: int = 0) -> TopologyAuditReport:
+    def quorum_resilience(
+        self,
+        *,
+        failure_domains: Mapping[str, str] | None = None,
+        scenarios: Collection[QuorumFailureScenario] = (),
+    ) -> QuorumResilienceReport:
+        """Return quorum majority evidence, broker concentration, and scenario impacts.
+
+        Args:
+            failure_domains: Optional mapping from exact broker node names to
+                caller-defined domain names.
+            scenarios: Explicit sets of failed broker nodes and/or domains.
+
+        Returns:
+            Captured and hypothetical majority counts for declared quorum
+            queues. Missing data can leave a result unknown.
+        """
+        return quorum_resilience(self._topology, failure_domains=failure_domains, scenarios=scenarios)
+
+    def audit(
+        self,
+        *,
+        max_cycles: int = 0,
+        failure_domains: Mapping[str, str] | None = None,
+        scenarios: Collection[QuorumFailureScenario] = (),
+    ) -> TopologyAuditReport:
         """Return all supported findings for this definitions snapshot.
 
         The report is immutable and each sequence is deterministically
         ordered, making it suitable for comparisons, policy evaluation, and
-        reproducible CI output.
+        reproducible CI output. Failure domains and scenarios are forwarded to
+        :meth:`quorum_resilience`.
         """
+        resilience = self.quorum_resilience(failure_domains=failure_domains, scenarios=scenarios)
         structural_cycles = self.structural_cycles(max_cycles=max_cycles)
         message_loop_candidates = (
             self.message_loop_candidates(max_cycles=max_cycles)
@@ -452,4 +482,5 @@ class ClusterAuditor:
             dead_letter_coverage=self.dead_letter_coverage(),
             exchange_routing_coverage=self.exchange_routing_coverage(),
             quorum_delivery_configuration=self.quorum_delivery_configuration(),
+            quorum_resilience=resilience,
         )

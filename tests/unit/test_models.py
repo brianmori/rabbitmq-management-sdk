@@ -39,6 +39,7 @@ from rabbitmq_management_sdk.topology import (
     QueueTypeInventory,
     QuorumConfigurationIssue,
     QuorumDeliveryConfiguration,
+    QuorumPlacement,
     QuorumQueueConfiguration,
     ResourceEndpoint,
     RoutingIssue,
@@ -352,6 +353,45 @@ class TestQueueNode:
         node = replace(_queue("v", "q", "quorum"), replication_factor=3)
         assert pickle.loads(pickle.dumps(node)) == node
         assert _queue("v", "q", "quorum").replication_factor is None
+
+    def test_quorum_placement_is_frozen_and_supplies_the_factor(self) -> None:
+        placement = QuorumPlacement(("rabbit@b", "rabbit@a"), "rabbit@b", ("rabbit@a",))
+        node = replace(_queue("v", "q", "quorum"), quorum_placement=placement)
+        assert placement.members == ("rabbit@a", "rabbit@b")
+        assert node.replication_factor == 2
+        assert node.id == _queue("v", "q", "quorum").id
+        assert pickle.loads(pickle.dumps(node)) == node
+        assert hash(pickle.loads(pickle.dumps(node))) == hash(node)
+        with pytest.raises(FrozenInstanceError):
+            placement.leader = "rabbit@a"  # type: ignore[misc]
+
+    def test_quorum_placement_and_replication_factor_must_agree(self) -> None:
+        quorum = _queue("v", "q", "quorum")
+        with pytest.raises(TopologyValidationError, match="must match captured membership"):
+            replace(quorum, replication_factor=3, quorum_placement=QuorumPlacement(("rabbit@a",)))
+        with pytest.raises(TopologyValidationError, match="cannot be below reported membership"):
+            replace(
+                quorum,
+                replication_factor=1,
+                quorum_placement=QuorumPlacement(leader="rabbit@a", online_members=("rabbit@b",)),
+            )
+        with pytest.raises(TopologyValidationError, match="requires a quorum queue"):
+            replace(_queue("v", "q", "stream"), quorum_placement=QuorumPlacement())
+
+    @pytest.mark.parametrize(
+        "evidence",
+        [
+            {"members": ["a"]},
+            {"members": ("a", "a")},
+            {"members": ("",)},
+            {"leader": ""},
+            {"members": ("a",), "leader": "b"},
+            {"members": ("a",), "online_members": ("b",)},
+        ],
+    )
+    def test_invalid_placement(self, evidence: dict[str, object]) -> None:
+        with pytest.raises(TopologyValidationError, match="QuorumPlacement"):
+            QuorumPlacement(**evidence)  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("factor", [0, -1, True, 3.0, "3"])
     def test_invalid_replication_factor_is_rejected(self, factor: object) -> None:
