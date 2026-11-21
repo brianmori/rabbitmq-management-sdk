@@ -3,7 +3,8 @@
 Legacy address tests require deprecated_features.permit.amqp_address_v1=true.
 The Compose brokers load this from tests/live/rabbitmq.conf. Set
 RABBIT_SHOVEL_EVIDENCE_DIR to save credential-free, projected evidence.
-The live recipe supplies RABBIT_TEST_CONTAINER for the native subject publisher.
+The live recipe supplies RABBIT_TEST_CONTAINER for native publishing and for
+checking source rejections whose reasons the management API redacts.
 """
 
 from __future__ import annotations
@@ -78,6 +79,42 @@ class _Broker:
 
     def status(self) -> dict[str, Any]:
         return next((status for status in self.objects(f"shovels/{self.vhost}") if status["name"] == "s"), {})
+
+    def exchange_source_rejected(self, address: str) -> bool:
+        status = self.status()
+        if status.get("state") != "terminated":
+            return False
+        reason = status.get("reason")
+        if reason != "internal error, see the node log":
+            return isinstance(reason, str) and ("bad_address" in reason or "invalid-field" in reason)
+
+        # RabbitMQ 4.3.8 redacts structured failure reasons in the HTTP API.
+        # Check the source detach for this shovel on the node and return only a boolean.
+        container = os.getenv("RABBIT_TEST_CONTAINER")
+        if not container:
+            pytest.fail("Checking a redacted shovel rejection requires the disposable Compose live-test recipe")
+        vhost = json.dumps(self.vhost)
+        description = json.dumps(f"Attach refused: {{unknown_destination,{json.dumps(address)}}}")
+        script = f"""
+          case rabbit_shovel_status:lookup({{<<{vhost}>>, <<"s">>}}) of
+            not_found -> false;
+            Status ->
+              case proplists:get_value(info, Status) of
+                {{terminated, {{inbound_link_detached,
+                  {{'v1_0.error', {{symbol, <<"amqp:invalid-field">>}}, {{utf8, <<{description}>>}}, _}}}}}} -> true;
+                _ -> false
+              end
+          end.
+        """
+        result = subprocess.run(
+            ["docker", "exec", container, "rabbitmqctl", "-q", "eval", script],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        assert result.returncode == 0, "could not check the broker-side shovel rejection"
+        return result.stdout.strip().splitlines()[-1:] == ["true"]
 
     def wait[T](self, callback: Callable[[], T], label: str) -> T:
         return wait_for(callback, label)
@@ -280,11 +317,7 @@ def test_v2_exchange_source_is_rejected_without_a_topology_edge(broker: _Broker,
         }
     )
 
-    def rejected() -> bool:
-        rendered = json.dumps(broker.status())
-        return "bad_address" in rendered or "invalid-field" in rendered
-
-    broker.wait(rejected, "v2 source rejection")
+    broker.wait(lambda: broker.exchange_source_rejected(address), "v2 source rejection")
     shovel = broker.assert_endpoint("src", None, None)
     assert shovel.source.authorities is not None
     assert shovel.source.authorities[0].host == "localhost"
