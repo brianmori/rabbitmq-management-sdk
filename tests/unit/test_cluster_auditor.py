@@ -156,6 +156,7 @@ def test_audit_returns_all_findings_from_the_public_facade() -> None:
     assert report.direct_dependency_inventory == auditor.direct_dependency_inventory()
     assert report.binding_durability == auditor.binding_durability()
     assert report.queue_declaration_compatibility == auditor.queue_declaration_compatibility()
+    assert report.vhost_permissions_inventory == auditor.vhost_permissions_inventory()
 
 
 def test_topology_finding_types_are_exported_and_old_report_arguments_still_work() -> None:
@@ -175,6 +176,7 @@ def test_topology_finding_types_are_exported_and_old_report_arguments_still_work
     assert report.queue_limits == ()
     assert report.binding_durability == ()
     assert report.queue_declaration_compatibility == ()
+    assert report.vhost_permissions_inventory == topology.VhostPermissionsInventory()
     assert {
         "DirectDependencyInventory",
         "DirectReference",
@@ -184,6 +186,12 @@ def test_topology_finding_types_are_exported_and_old_report_arguments_still_work
         "BindingDurabilityKind",
         "QueueDeclarationCompatibility",
         "QueueDeclarationStatus",
+        "VhostPermissionsInventory",
+        "VhostPermissions",
+        "VhostPermission",
+        "VhostTopicPermission",
+        "VhostLimit",
+        "VhostLimitStatus",
     } <= set(topology.__all__)
 
 

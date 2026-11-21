@@ -71,6 +71,8 @@ class ClusterExportVhost(RabbitMQResponse):
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     metadata: ClusterExportVhostMetadata | None = None
+    # Some cluster exports also mirror the vhost's runtime limits here.
+    limits: JsonValue = None
 
 
 class ClusterExportPermission(RabbitMQResponse):

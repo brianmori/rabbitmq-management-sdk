@@ -1,0 +1,21 @@
+{
+  "parameters": [],
+  "permissions": [
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "operator",
+      "vhost": "/control",
+      "write": ".*"
+    }
+  ],
+  "rabbitmq_definition_format": "cluster",
+  "rabbitmq_version": "4.3.6",
+  "topic_permissions": [],
+  "vhosts": [
+    {
+      "limits": {},
+      "name": "/control"
+    }
+  ]
+}

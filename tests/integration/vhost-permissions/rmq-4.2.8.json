@@ -1,0 +1,80 @@
+{
+  "parameters": [
+    {
+      "component": "vhost-limits",
+      "name": "limits",
+      "value": {
+        "max-connections": 60
+      },
+      "vhost": "/topic"
+    },
+    {
+      "component": "vhost-limits",
+      "name": "limits",
+      "value": {
+        "max-connections": 3,
+        "max-queues": 3
+      },
+      "vhost": "/limited"
+    }
+  ],
+  "permissions": [
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "application",
+      "vhost": "/topic",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "observer",
+      "vhost": "/topic",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "application",
+      "vhost": "/no-cap",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "application",
+      "vhost": "/limited",
+      "write": ".*"
+    }
+  ],
+  "rabbitmq_definition_format": "cluster",
+  "rabbitmq_version": "4.2.8",
+  "topic_permissions": [
+    {
+      "exchange": "",
+      "read": ".*",
+      "user": "observer",
+      "vhost": "/topic",
+      "write": ".*"
+    },
+    {
+      "exchange": "amq.fanout",
+      "read": ".*",
+      "user": "application",
+      "vhost": "/topic",
+      "write": ".*"
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/limited"
+    },
+    {
+      "name": "/no-cap"
+    },
+    {
+      "name": "/topic"
+    }
+  ]
+}

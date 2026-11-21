@@ -50,6 +50,7 @@ from rabbitmq_management_sdk.topology.reachability import (
 )
 from rabbitmq_management_sdk.topology.routing_contracts import evaluate_routing_contracts
 from rabbitmq_management_sdk.topology.shovel_audit import competing_shovel_consumers, shovel_safety
+from rabbitmq_management_sdk.topology.vhost_permissions import VhostPermissionsInventory, vhost_permissions_inventory
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Mapping, Sequence
@@ -109,6 +110,7 @@ class TopologyAuditReport:
     shovel_safety: tuple[ShovelSafety, ...] = ()
     binding_durability: tuple[BindingDurability, ...] = ()
     queue_declaration_compatibility: tuple[QueueDeclarationCompatibility, ...] = ()
+    vhost_permissions_inventory: VhostPermissionsInventory = field(default_factory=VhostPermissionsInventory)
 
 
 class ClusterAuditor:
@@ -448,6 +450,10 @@ class ClusterAuditor:
         """Return queue limits, stream retention, and shared DLX coverage."""
         return queue_limits(self.dead_letter_coverage())
 
+    def vhost_permissions_inventory(self) -> VhostPermissionsInventory:
+        """Return captured per-vhost permission declarations and queue and connection caps."""
+        return vhost_permissions_inventory(self._topology)
+
     def binding_durability(self) -> tuple[BindingDurability, ...]:
         """Return endpoint durability and classification for every captured binding."""
         return binding_durability(self._topology)
@@ -560,4 +566,5 @@ class ClusterAuditor:
             shovel_safety=self.shovel_safety(),
             binding_durability=self.binding_durability(),
             queue_declaration_compatibility=self.queue_declaration_compatibility(),
+            vhost_permissions_inventory=self.vhost_permissions_inventory(),
         )

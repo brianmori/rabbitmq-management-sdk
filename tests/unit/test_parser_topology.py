@@ -14,7 +14,7 @@ from tests.shared.parser_fixtures import (
 
 from rabbitmq_management_sdk import ClusterAuditor, DelayedRetryType
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
-from rabbitmq_management_sdk.topology import DeadLetterCoverageStatus, EdgeKind, NodeKind
+from rabbitmq_management_sdk.topology import DeadLetterCoverageStatus, EdgeKind, NodeKind, VhostLimit, VhostLimitStatus
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 
 pytestmark = pytest.mark.unit
@@ -93,7 +93,7 @@ def test_quorum_retry_and_timeouts_preserve_routes_and_cycle_findings(
 
 
 class TestParseClusterTopologyEndToEnd:
-    def test_preserves_but_does_not_model_non_shovel_array_parameters(self) -> None:
+    def test_cleared_vhost_limits_do_not_become_shovel_routes(self) -> None:
         response = _response(
             vhosts=[_vhost("v")],
             queues=[_queue("q", "v", **{"x-queue-type": "classic"})],
@@ -115,6 +115,71 @@ class TestParseClusterTopologyEndToEnd:
         assert not topology.edges
         assert response.parameters[0].value == []
         assert response.parameters[1].value == [{"upstream": "east"}, {"upstream": "west"}]
+        (row,) = topology.vhost_permissions.vhosts
+        assert row.max_connections == row.max_queues == VhostLimit(VhostLimitStatus.CLEARED)
+
+    @pytest.mark.parametrize(
+        ("wire_value", "status", "value"),
+        [
+            ({}, VhostLimitStatus.CLEARED, None),
+            ({"max-queues": 7}, VhostLimitStatus.CAPPED, 7),
+            ({"max-queues": 0}, VhostLimitStatus.BLOCKED, 0),
+            ({"max-queues": -20}, VhostLimitStatus.UNLIMITED, -20),
+            ({"max-connections": 80}, VhostLimitStatus.UNSET, None),
+            ({"max-queues": None}, VhostLimitStatus.UNAVAILABLE, None),
+            ({"max-queues": True}, VhostLimitStatus.UNAVAILABLE, None),
+            ({"max-queues": "100"}, VhostLimitStatus.UNAVAILABLE, None),
+            ({"max-queues": 1.0}, VhostLimitStatus.UNAVAILABLE, None),
+            (None, VhostLimitStatus.UNAVAILABLE, None),
+            ([["max-queues", 7]], VhostLimitStatus.UNAVAILABLE, None),
+        ],
+    )
+    def test_vhost_limit_wire_values(self, wire_value: object, status: VhostLimitStatus, value: int | None) -> None:
+        topology = parse_cluster_topology(
+            _response(parameters=[{"component": "vhost-limits", "name": "limits", "vhost": "v", "value": wire_value}])
+        )
+
+        (row,) = topology.vhost_permissions.vhosts
+        assert row.vhost == "v"
+        assert not topology.vhosts
+        assert row.max_queues == VhostLimit(status, value)
+
+    def test_limit_runtime_scope_and_conflicts(self) -> None:
+        matching = {"component": "vhost-limits", "name": "limits", "vhost": "v"}
+        parameters = [
+            {**matching, "value": {"max-queues": 7, "max-connections": 80}},
+            {**matching, "value": {"max-queues": 9, "max-connections": 80}},
+            {**matching, "name": "unrelated", "value": {"max-connections": 1}},
+            {**matching, "component": "user-limits", "value": {"max-connections": 2}},
+        ]
+        vhosts = [{**_vhost("v"), "limits": {"max-queues": 3, "max-connections": -1}}]
+        topology = parse_cluster_topology(_response(vhosts=vhosts, parameters=parameters))
+        reversed_topology = parse_cluster_topology(_response(vhosts=vhosts, parameters=parameters[::-1]))
+
+        assert topology.vhost_permissions == reversed_topology.vhost_permissions
+        (row,) = topology.vhost_permissions.vhosts
+        assert row.max_queues == VhostLimit(VhostLimitStatus.UNAVAILABLE)
+        assert row.max_connections == VhostLimit(VhostLimitStatus.CAPPED, 80)
+
+    def test_uses_embedded_vhost_limits_as_fallback_evidence(self) -> None:
+        topology = parse_cluster_topology(
+            ClusterDefinitionsResponse.model_validate(
+                {
+                    "rabbitmq_version": "4.3.6",
+                    "vhosts": [
+                        {"name": "empty", "limits": {}},
+                        {"name": "limited", "limits": {"max-queues": 0, "max-connections": -1}},
+                        {"name": "unknown"},
+                    ],
+                }
+            )
+        )
+
+        empty, limited, unknown = topology.vhost_permissions.vhosts
+        assert empty.max_queues == empty.max_connections == VhostLimit(VhostLimitStatus.UNSET)
+        assert limited.max_queues == VhostLimit(VhostLimitStatus.BLOCKED, 0)
+        assert limited.max_connections == VhostLimit(VhostLimitStatus.UNLIMITED, -1)
+        assert unknown.max_queues == unknown.max_connections == VhostLimit(VhostLimitStatus.UNAVAILABLE)
 
     def test_scopes_node_identity_to_internal_cluster_id_and_keeps_label_separate(self) -> None:
         response = _response(
