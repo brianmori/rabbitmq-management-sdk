@@ -83,3 +83,63 @@ def test_shovel_manager_runs_delivers_and_deletes(
         producer.shovels.delete("transfer")
         with pytest.raises(NotFoundError):
             producer.shovels.get("transfer")
+
+
+@pytest.mark.live
+def test_amqp10_source_consumer_name_is_configured_and_used_by_link(
+    rabbit_config: RabbitSettings,
+    live_client: RabbitMQClient,
+    live_vhost: str,
+    management_api: ManagementAPI,
+) -> None:
+    version = live_client.version
+    if (version.major, version.minor) != (4, 3):
+        pytest.skip("shovel source consumer names require RabbitMQ 4.3; 4.4 is deferred")
+
+    live_client.queues.create("source", QueueRequest(arguments=QuorumQueueRequest()))
+    live_client.queues.create("destination", QueueRequest(arguments=QuorumQueueRequest()))
+    userinfo = f"{quote(rabbit_config.username, safe='')}:{quote(rabbit_config.password, safe='')}"
+    consumer_name = "sdk-archive-reader"
+    # live_vhost's fixture deletes the shovel and its queues even on failure.
+    live_client.shovels.create(
+        "named-source",
+        ShovelRequest(
+            src_uri=f"amqp://{userinfo}@localhost:5672?hostname=vhost:{live_vhost}&sasl=plain",
+            dest_uri=f"amqp://{userinfo}@/{live_vhost}",
+            src_arguments=Amqp10ShovelSource(src_address="/queues/source", src_consumer_name=consumer_name),
+            dest_arguments=Amqp091ShovelDestination(dest_queue="destination", dest_predeclared=True),
+        ),
+    )
+    # The parameters endpoint proves stored configuration, not runtime naming.
+    observed = live_client.shovels.get("named-source")
+    assert observed.value.src_arguments.src_protocol == "amqp10"
+    assert observed.value.src_arguments.src_consumer_name == consumer_name
+    wait_for(
+        lambda: any(
+            status.name == "named-source" and status.state in ("running", "flow")
+            for status in live_client.shovels.get_shovel_statuses_by_vhost()
+        ),
+        "named AMQP 1.0 source shovel to run",
+    )
+
+    def named_source_link_is_active() -> bool:
+        connections = management_api.request("GET", f"vhosts/{quote(live_vhost, safe='')}/connections")
+        assert isinstance(connections, list)
+        for connection in connections:
+            if connection["protocol"] != "AMQP 1-0":
+                continue
+            sessions = management_api.request("GET", f"connections/{quote(connection['name'], safe='')}/sessions")
+            assert isinstance(sessions, list)
+            # Outgoing from the broker means delivery to the shovel's source.
+            if any(
+                link["link_name"] == consumer_name and link["source_address"] == "/queues/source"
+                for session in sessions
+                for link in session["outgoing_links"]
+            ):
+                return True
+        return False
+
+    # Session details are runtime evidence, separate from the parameter echo.
+    wait_for(named_source_link_is_active, "configured AMQP 1.0 source link name")
+    assert management_api.publish(live_vhost, "amq.default", "source", "named-link-delivery-proof")
+    management_api.delivered(live_vhost, "destination", "named-link-delivery-proof")

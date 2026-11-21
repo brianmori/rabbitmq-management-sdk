@@ -53,6 +53,7 @@ def test_shovel_response_round_trip_preserves_both_endpoints(
     response = _response(_flat_value(src_protocol, dest_protocol))
 
     assert response.value.src_arguments.src_protocol == src_protocol
+    assert response.value.src_arguments.src_consumer_name == "capture-consumer"
     assert response.value.dest_arguments.dest_protocol == dest_protocol
     assert (
         ShovelParameterResponse.model_validate_json(response.model_dump_json(by_alias=by_alias), by_name=not by_alias)
