@@ -32,8 +32,19 @@ pytestmark = pytest.mark.unit
         (ExportPolicySettings, "dead-letter-exchange", "dead_letter_exchange", "dlx"),
         (PolicyDefinitionResponse, "dead-letter-exchange", "dead_letter_exchange", "dlx"),
         (VhostExportLimits, "max-connections", "max_connections", 7),
+    ]
+    + [
+        (model, f"{prefix}{wire}", name, value)
+        for model, prefix in [(ExportQueueArguments, "x-"), (ExportPolicySettings, ""), (PolicyDefinitionResponse, "")]
+        for wire, name, value in [
+            ("delayed-retry-type", "delayed_retry_type", "all"),
+            ("delayed-retry-min", "delayed_retry_min", 1000),
+            ("delayed-retry-max", "delayed_retry_max", 30_000),
+            ("consumer-timeout", "consumer_timeout", 1_800_000),
+            ("consumer-disconnected-timeout", "consumer_disconnected_timeout", 60_000),
+        ]
     ],
-    ids=["queue", "exchange", "binding", "observed-exchange", "exported-policy", "observed-policy", "vhost-limits"],
+    ids=lambda case: f"{case[0].__name__}-{case[2]}",
 )
 def argument_case(request: pytest.FixtureRequest) -> tuple[type[ResponseArgumentMap[Any]], str, str, JsonValue]:
     return cast("tuple[type[ResponseArgumentMap[Any]], str, str, JsonValue]", request.param)
@@ -143,6 +154,11 @@ def test_validation_name_flags_never_reinterpret_literal_dictionary_keys(
         (ExportPolicySettings, "max-length"),
         (PolicyDefinitionResponse, "max-length"),
         (VhostExportLimits, "max-connections"),
+    ]
+    + [
+        (model, f"{prefix}{wire}")
+        for model, prefix in [(ExportQueueArguments, "x-"), (ExportPolicySettings, ""), (PolicyDefinitionResponse, "")]
+        for wire in ["delayed-retry-min", "delayed-retry-max", "consumer-timeout", "consumer-disconnected-timeout"]
     ],
 )
 @pytest.mark.parametrize("entry", ["model", "json", "adapter", "adapter-json"])
@@ -200,6 +216,17 @@ def test_existing_argument_instances_are_revalidated(
         model.from_wire(arguments)
     with pytest.raises(ValidationError):
         TypeAdapter(model).validate_python(arguments)
+
+
+def test_argument_maps_preserve_explicit_nulls_and_unknown_json(
+    argument_case: tuple[type[ResponseArgumentMap[Any]], str, str, JsonValue],
+) -> None:
+    model, wire_key, python_name, _ = argument_case
+    raw = {wire_key: None, python_name: {"custom": [1, None]}, "plugin": [False, {"value": None}]}
+    for arguments in (model.model_validate(raw), model.model_validate_json(json.dumps(raw))):
+        assert getattr(arguments, python_name) is None
+        assert arguments.model_dump(by_alias=True) == raw
+        assert arguments.model_dump_json() == json.dumps(raw, separators=(",", ":"))
 
 
 def test_field_factory_validates_unknown_json_entries() -> None:

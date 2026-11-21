@@ -43,6 +43,7 @@ from rabbitmq_management_sdk.topology.policy_routes import (
     resolve_alternate_exchange,
     resolve_dead_letter_values,
 )
+from rabbitmq_management_sdk.topology.quorum_configuration import resolve_quorum_delivery
 from rabbitmq_management_sdk.topology.shovel import parse_shovel_endpoint
 
 _EMPTY_USER_POLICY_SELECTIONS: UserPolicySelections = MappingProxyType({})
@@ -159,11 +160,21 @@ class _TopologyBuilder:
                 f"Queue {queue.vhost}/{queue.name} has no x-queue-type and vhost "
                 f"{queue.vhost!r} has no default_queue_type; queue type cannot be determined"
             )
+        queue_id = self._node_id(vhost=queue.vhost, name=queue.name, kind=NodeKind.QUEUE)
         return QueueNode(
             id=self._node_id(vhost=queue.vhost, name=queue.name, kind=NodeKind.QUEUE),
             queue_type=queue_type,
             durable=queue.durable,
             replication_factor=self._queue_replication_factor(queue, queue_type),
+            quorum_delivery=resolve_quorum_delivery(
+                self.response,
+                queue,
+                self.queues_by_id.get(queue_id),
+                selected_policy=self.user_policy_selections.get(queue_id),
+                selection_captured=queue_id in self.user_policy_selections,
+            )
+            if queue_type == "quorum"
+            else None,
         )
 
     def _queue_replication_factor(self, queue: ClusterExportQueue, queue_type: str) -> int | None:
@@ -419,8 +430,10 @@ def parse_cluster_topology(
         observed_exchanges: Management API exchange observations used to
             supplement referenced exchanges.
         observed_queues: Management API queue observations used to retain
-            quorum membership counts on declared queues. Missing or empty
-            membership means unknown; initial group sizes are not used.
+            quorum membership and delivery evidence on declared queues.
+            Missing or empty membership means unknown; initial group sizes
+            are not used. Selected/effective policy evidence resolves delivery
+            settings; missing global timeout defaults remain unknown.
 
     Returns:
         The parsed immutable configuration graph.

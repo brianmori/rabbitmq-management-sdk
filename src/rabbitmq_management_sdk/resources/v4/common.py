@@ -3,6 +3,15 @@ from __future__ import annotations
 from enum import StrEnum
 
 
+class DelayedRetryType(StrEnum):
+    """Quorum queue retry selectors supported starting with RabbitMQ 4.3."""
+
+    DISABLED = "disabled"
+    ALL = "all"
+    FAILED = "failed"
+    RETURNED = "returned"
+
+
 class DeadLetterStrategy(StrEnum):
     """Dead-lettering strategies used by queue and policy wire models."""
 

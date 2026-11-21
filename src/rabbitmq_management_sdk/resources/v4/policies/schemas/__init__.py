@@ -2,6 +2,7 @@
 
 from rabbitmq_management_sdk.resources.v4.common import (
     DeadLetterStrategy,
+    DelayedRetryType,
     OverflowBehaviour,
     QueueLeaderLocator,
 )
@@ -22,6 +23,7 @@ from rabbitmq_management_sdk.resources.v4.policies.schemas.policy_response impor
 
 __all__ = [
     "DeadLetterStrategy",
+    "DelayedRetryType",
     "OperatorPolicyApplyTo",
     "OperatorPolicyRequest",
     "OperatorPolicyResponse",

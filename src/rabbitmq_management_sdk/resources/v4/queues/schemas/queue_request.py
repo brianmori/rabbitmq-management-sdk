@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 from pydantic import Field, field_validator, model_validator
 
 from rabbitmq_management_sdk.resources.base import RabbitMQRequest
-from rabbitmq_management_sdk.resources.v4.common import DeadLetterStrategy, OverflowBehaviour
+from rabbitmq_management_sdk.resources.v4.common import DeadLetterStrategy, DelayedRetryType, OverflowBehaviour
 
 # ---------------------------------------------------------------------------
 # Arguments — per queue type (request side)
@@ -60,6 +60,12 @@ class QuorumQueueRequest(RabbitMQRequest):
         single_active_consumer: If True, restricts consumption to one node at a time.
         max_length: Limit on total message count before overflow logic triggers.
         initial_cluster_size: Number of nodes the queue should be hosted on.
+        delayed_retry_type: RabbitMQ 4.3 retry selector; omitted by default.
+        delayed_retry_min: Positive retry delay in milliseconds (4.3+).
+        delayed_retry_max: Positive retry delay cap in milliseconds (4.3+).
+        consumer_timeout: Nonnegative acknowledgement timeout in milliseconds (4.3+).
+        consumer_disconnected_timeout: Nonnegative disconnected-node timeout in
+            milliseconds (4.3+).
     """
 
     queue_type: Literal["quorum"] = Field("quorum", alias="x-queue-type", frozen=True)
@@ -71,6 +77,11 @@ class QuorumQueueRequest(RabbitMQRequest):
     single_active_consumer: bool | None = Field(None, alias="x-single-active-consumer")
     max_length: int | None = Field(None, alias="x-max-length")
     initial_cluster_size: int | None = Field(None, alias="x-quorum-initial-group-size")
+    delayed_retry_type: DelayedRetryType | None = Field(None, alias="x-delayed-retry-type")
+    delayed_retry_min: int | None = Field(None, alias="x-delayed-retry-min", gt=0, strict=True)
+    delayed_retry_max: int | None = Field(None, alias="x-delayed-retry-max", gt=0, strict=True)
+    consumer_timeout: int | None = Field(None, alias="x-consumer-timeout", ge=0, strict=True)
+    consumer_disconnected_timeout: int | None = Field(None, alias="x-consumer-disconnected-timeout", ge=0, strict=True)
 
     @model_validator(mode="after")
     def quorum_queue_validate(self) -> QuorumQueueRequest:

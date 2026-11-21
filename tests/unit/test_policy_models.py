@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from rabbitmq_management_sdk import (
+    DelayedRetryType,
     OperatorPolicyApplyTo,
     OperatorPolicyRequest,
     PolicyApplyTo,
@@ -105,3 +106,74 @@ def test_policy_api_and_definitions_export_use_independent_models() -> None:
     assert not isinstance(response.definition, PolicyDefinition)
     assert not isinstance(ExportPolicySettings.from_fields(max_length=1000), PolicyDefinition)
     assert not issubclass(PolicyResponse, PolicyRequest)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("retry_type", list(DelayedRetryType))
+def test_policy_quorum_configuration_names_and_aliases(retry_type: DelayedRetryType) -> None:
+    definition = PolicyDefinition(
+        delayed_retry_type=retry_type,
+        delayed_retry_min=1000,
+        delayed_retry_max=30_000,
+        consumer_timeout=0,
+        consumer_disconnected_timeout=60_000,
+    )
+    wire = definition.model_dump(by_alias=True, exclude_none=True)
+    assert wire == {
+        "delayed-retry-type": retry_type.value,
+        "delayed-retry-min": 1000,
+        "delayed-retry-max": 30_000,
+        "consumer-timeout": 0,
+        "consumer-disconnected-timeout": 60_000,
+    }
+    assert PolicyDefinition.model_validate(wire) == definition
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"delayed-retry-type": "all"},
+        {"delayed-retry-type": "failed"},
+        {"delayed-retry-type": "returned"},
+        {"delayed-retry-type": "invalid"},
+        {"delayed-retry-min": 1000, "delayed-retry-max": 999},
+        {"delayed-retry-type": "disabled", "delayed-retry-min": 1000, "delayed-retry-max": 999},
+    ],
+)
+def test_policy_retry_constraints_match_broker_validation(values: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        PolicyDefinition.model_validate(values)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("field", ["delayed-retry-min", "delayed-retry-max"])
+@pytest.mark.parametrize("value", [0, -1, 1.5, True, "1000", "1s"])
+def test_policy_retry_delays_require_positive_integer_milliseconds(field: str, value: object) -> None:
+    with pytest.raises(ValidationError):
+        PolicyDefinition.model_validate({field: value})
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("field", ["consumer-timeout", "consumer-disconnected-timeout"])
+@pytest.mark.parametrize("value", [-1, 1.5, True, "1000", "1s"])
+def test_policy_timeouts_require_nonnegative_integer_milliseconds(field: str, value: object) -> None:
+    with pytest.raises(ValidationError):
+        PolicyDefinition.model_validate({field: value})
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "values",
+    [
+        {},
+        {"delayed-retry-type": "disabled"},
+        {"delayed-retry-min": 1},
+        {"delayed-retry-max": 1},
+        {"delayed-retry-type": "all", "delayed-retry-min": 1},
+        {"delayed-retry-min": 1, "delayed-retry-max": 1},
+        {"consumer-timeout": 0, "consumer-disconnected-timeout": 0},
+    ],
+)
+def test_policy_accepts_independent_bounds_disabled_retry_and_zero_timeouts(values: dict[str, object]) -> None:
+    assert PolicyDefinition.model_validate(values).model_dump(by_alias=True, exclude_none=True) == values

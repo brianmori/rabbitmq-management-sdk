@@ -22,12 +22,18 @@ from rabbitmq_management_sdk.topology.exchange_routing import ExchangeRoutingCov
 from rabbitmq_management_sdk.topology.fanout import FanoutExchangeBindings, FanoutQueue
 from rabbitmq_management_sdk.topology.models import (
     ClusterTopology,
+    ConfigurationEvidence,
+    ConfigurationSource,
+    ConfigurationStatus,
+    ConfigurationUncertainty,
+    ConfigurationValue,
     EdgeKind,
     EndpointAuthority,
     ExchangeNode,
     NodeId,
     NodeKind,
     QueueNode,
+    QuorumDeliveryConfiguration,
     ResourceEndpoint,
     ShovelNode,
     TopologyEdge,
@@ -41,12 +47,18 @@ from rabbitmq_management_sdk.topology.ordering import (
     node_sort_key,
 )
 from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeGroup, QueueTypeInventory, VhostQueueInventory
+from rabbitmq_management_sdk.topology.quorum import QuorumConfigurationIssue, QuorumQueueConfiguration
 from rabbitmq_management_sdk.topology.routing import RoutingIssue, RoutingStatus, RoutingUncertainty
 from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers
 
 __all__ = [
     "ClusterTopology",
     "CompetingShovelConsumers",
+    "ConfigurationEvidence",
+    "ConfigurationSource",
+    "ConfigurationStatus",
+    "ConfigurationUncertainty",
+    "ConfigurationValue",
     "Cycle",
     "CycleSearchResult",
     "DeadLetterCoverage",
@@ -66,6 +78,9 @@ __all__ = [
     "QueueNode",
     "QueueTypeGroup",
     "QueueTypeInventory",
+    "QuorumConfigurationIssue",
+    "QuorumDeliveryConfiguration",
+    "QuorumQueueConfiguration",
     "ResourceEndpoint",
     "RoutingIssue",
     "RoutingStatus",

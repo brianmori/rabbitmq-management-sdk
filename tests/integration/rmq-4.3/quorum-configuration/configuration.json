@@ -1,0 +1,201 @@
+{
+  "broker_version": "4.3.6",
+  "definitions": {
+    "parameters": [],
+    "policies": [
+      {
+        "apply-to": "quorum_queues",
+        "definition": {
+          "consumer-disconnected-timeout": 90000,
+          "consumer-timeout": 180000,
+          "delayed-retry-max": 40000,
+          "delayed-retry-min": 2000,
+          "delayed-retry-type": "all"
+        },
+        "name": "retry",
+        "pattern": "^policy-queue$",
+        "priority": 1,
+        "vhost": "captured"
+      }
+    ],
+    "queues": [
+      {
+        "arguments": {
+          "x-consumer-disconnected-timeout": 60000,
+          "x-consumer-timeout": 120000,
+          "x-delayed-retry-max": 30000,
+          "x-delayed-retry-min": 1000,
+          "x-delayed-retry-type": "all",
+          "x-queue-type": "quorum"
+        },
+        "auto_delete": false,
+        "durable": true,
+        "name": "configured",
+        "type": "quorum",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {
+          "x-queue-type": "quorum"
+        },
+        "auto_delete": false,
+        "durable": true,
+        "name": "policy-queue",
+        "type": "quorum",
+        "vhost": "captured"
+      }
+    ],
+    "rabbit_version": "4.3.6"
+  },
+  "exchanges": [
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "",
+      "type": "direct",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.direct",
+      "type": "direct",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.fanout",
+      "type": "fanout",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.headers",
+      "type": "headers",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.match",
+      "type": "headers",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": true,
+      "name": "amq.rabbitmq.trace",
+      "type": "topic",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.topic",
+      "type": "topic",
+      "vhost": "captured"
+    }
+  ],
+  "policy": {
+    "apply-to": "quorum_queues",
+    "definition": {
+      "consumer-disconnected-timeout": 90000,
+      "consumer-timeout": 180000,
+      "delayed-retry-max": 40000,
+      "delayed-retry-min": 2000,
+      "delayed-retry-type": "all"
+    },
+    "name": "retry",
+    "pattern": "^policy-queue$",
+    "priority": 1,
+    "vhost": "captured"
+  },
+  "queue": {
+    "arguments": {
+      "x-consumer-disconnected-timeout": 60000,
+      "x-consumer-timeout": 120000,
+      "x-delayed-retry-max": 30000,
+      "x-delayed-retry-min": 1000,
+      "x-delayed-retry-type": "all",
+      "x-queue-type": "quorum"
+    },
+    "auto_delete": false,
+    "durable": true,
+    "effective_policy_definition": {},
+    "exclusive": false,
+    "members": [
+      "rabbit@captured-node"
+    ],
+    "name": "configured",
+    "node": "rabbit@captured-node",
+    "operator_policy": null,
+    "policy": null,
+    "state": "running",
+    "type": "quorum",
+    "vhost": "captured"
+  },
+  "queues": [
+    {
+      "arguments": {
+        "x-consumer-disconnected-timeout": 60000,
+        "x-consumer-timeout": 120000,
+        "x-delayed-retry-max": 30000,
+        "x-delayed-retry-min": 1000,
+        "x-delayed-retry-type": "all",
+        "x-queue-type": "quorum"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "effective_policy_definition": {},
+      "exclusive": false,
+      "members": [
+        "rabbit@captured-node"
+      ],
+      "name": "configured",
+      "node": "rabbit@captured-node",
+      "state": "running",
+      "type": "quorum",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "quorum"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "effective_policy_definition": {
+        "consumer-disconnected-timeout": 90000,
+        "consumer-timeout": 180000,
+        "delayed-retry-max": 40000,
+        "delayed-retry-min": 2000,
+        "delayed-retry-type": "all"
+      },
+      "exclusive": false,
+      "members": [
+        "rabbit@captured-node"
+      ],
+      "name": "policy-queue",
+      "node": "rabbit@captured-node",
+      "policy": "retry",
+      "state": "running",
+      "type": "quorum",
+      "vhost": "captured"
+    }
+  ]
+}

@@ -6,12 +6,17 @@ attribute layer keyed by node identity. An edge records a configured possible
 message hop; it does not guarantee that a particular message will traverse it.
 """
 
-from collections.abc import Mapping
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import StrEnum
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from rabbitmq_management_sdk.exceptions import TopologyValidationError
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 _MAX_NETWORK_PORT = 65535
 
@@ -144,6 +149,184 @@ class ExchangeNode:
 
 
 @dataclass(frozen=True, slots=True)
+class ConfigurationEvidence:
+    """One captured or derived input to a quorum configuration setting.
+
+    Attributes:
+        source: Origin of the value; no credentials or arbitrary JSON are stored.
+        key: Exact argument/policy key, or a documented derivation name.
+        value: Captured scalar, including an explicitly captured null.
+        policy_name: Selected policy name when known.
+    """
+
+    source: ConfigurationSource
+    key: str
+    value: str | int | None
+    policy_name: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate immutable scalar evidence."""
+        _require_instance(self.source, ConfigurationSource, "ConfigurationEvidence.source")
+        _require_instance(self.key, str, "ConfigurationEvidence.key")
+        _require_optional_instance(self.policy_name, str, "ConfigurationEvidence.policy_name")
+        if self.value is not None and type(self.value) not in (str, int):
+            raise TopologyValidationError("ConfigurationEvidence.value must be str, int, or None")
+
+
+class ConfigurationSource(StrEnum):
+    """Origins retained by quorum configuration resolution."""
+
+    QUEUE_ARGUMENT = "queue_argument"
+    REGULAR_POLICY = "regular_policy"
+    OPERATOR_POLICY = "operator_policy"
+    EFFECTIVE_POLICY = "effective_policy"
+    BROKER_DEFAULT = "broker_default"
+    DERIVED = "derived"
+
+
+class ConfigurationStatus(StrEnum):
+    """Distinguish resolved, absent, uncertain, and inapplicable settings."""
+
+    KNOWN = "known"
+    UNSET = "unset"
+    UNKNOWN = "unknown"
+    NOT_APPLICABLE = "not_applicable"
+
+
+class ConfigurationUncertainty(StrEnum):
+    """Missing evidence that prevents a quorum setting from being resolved."""
+
+    CONFIGURATION_NOT_CAPTURED = "configuration_not_captured"
+    BROKER_VERSION_NOT_CAPTURED = "broker_version_not_captured"
+    UNSUPPORTED_BROKER_VERSION = "unsupported_broker_version"
+    POLICY_SELECTION_NOT_CAPTURED = "policy_selection_not_captured"
+    OPERATOR_POLICY_SELECTION_NOT_CAPTURED = "operator_policy_selection_not_captured"
+    BROKER_DEFAULT_NOT_CAPTURED = "broker_default_not_captured"
+    CAPTURED_NULL = "captured_null"
+    INVALID_VALUE = "invalid_value"
+    CONFLICTING_EVIDENCE = "conflicting_evidence"
+
+
+@dataclass(frozen=True, slots=True)
+class ConfigurationValue[T: str | int]:
+    """A typed configuration result with canonical evidence and uncertainty.
+
+    ``unset`` means captured inputs establish absence. ``unknown`` must not be
+    interpreted as disabled. A known negative delivery limit means unlimited.
+    """
+
+    value: T | None = None
+    status: ConfigurationStatus = ConfigurationStatus.UNKNOWN
+    evidence: tuple[ConfigurationEvidence, ...] = ()
+    uncertainties: tuple[ConfigurationUncertainty, ...] = (ConfigurationUncertainty.CONFIGURATION_NOT_CAPTURED,)
+
+    def __post_init__(self) -> None:
+        """Validate result state and canonicalize its immutable evidence."""
+        _require_instance(self.status, ConfigurationStatus, "ConfigurationValue.status")
+        if self.value is not None and type(self.value) not in (str, int):
+            raise TopologyValidationError("ConfigurationValue.value must be str, int, or None")
+        if (self.status == ConfigurationStatus.KNOWN) != (self.value is not None):
+            raise TopologyValidationError("ConfigurationValue known status requires a value")
+        if not isinstance(self.evidence, tuple) or any(
+            not isinstance(item, ConfigurationEvidence) for item in self.evidence
+        ):
+            raise TopologyValidationError("ConfigurationValue.evidence must be a tuple of ConfigurationEvidence")
+        if not isinstance(self.uncertainties, tuple) or any(
+            not isinstance(item, ConfigurationUncertainty) for item in self.uncertainties
+        ):
+            raise TopologyValidationError(
+                "ConfigurationValue.uncertainties must be a tuple of ConfigurationUncertainty"
+            )
+        if (self.status == ConfigurationStatus.UNKNOWN) != bool(self.uncertainties):
+            raise TopologyValidationError("ConfigurationValue unknown status requires uncertainties exclusively")
+        object.__setattr__(
+            self,
+            "evidence",
+            tuple(
+                sorted(
+                    set(self.evidence),
+                    key=lambda item: (item.source.value, item.key, repr(item.value), item.policy_name or ""),
+                )
+            ),
+        )
+        object.__setattr__(self, "uncertainties", tuple(sorted(set(self.uncertainties), key=lambda item: item.value)))
+
+
+@dataclass(frozen=True, slots=True)
+class QuorumDeliveryConfiguration:
+    """Queue-level delivery configuration supported for captured 4.2/4.3.
+
+    Timeouts and retry bounds use milliseconds. Consumer-level overrides and
+    runtime activity are outside this value. Missing global timeout settings
+    stay unknown. The configured retry selector is retained separately from
+    its effective selector, which can be disabled by an absent minimum.
+    """
+
+    broker_version: str | None = None
+    configured_retry_type: ConfigurationValue[str] = field(default_factory=ConfigurationValue)
+    delayed_retry_type: ConfigurationValue[str] = field(default_factory=ConfigurationValue)
+    delayed_retry_min: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
+    delayed_retry_max: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
+    delivery_limit: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
+    delivery_count_basis: ConfigurationValue[str] = field(default_factory=ConfigurationValue)
+    consumer_timeout: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
+    consumer_disconnected_timeout: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
+    dead_letter_exchange: ConfigurationValue[str] = field(default_factory=ConfigurationValue)
+    dead_letter_strategy: ConfigurationValue[str] = field(default_factory=ConfigurationValue)
+    overflow: ConfigurationValue[str] = field(default_factory=ConfigurationValue)
+    effective_dead_letter_strategy: ConfigurationValue[str] = field(default_factory=ConfigurationValue)
+
+    def __post_init__(self) -> None:
+        """Validate setting types independently of queue identity."""
+        _require_optional_instance(self.broker_version, str, "QuorumDeliveryConfiguration.broker_version")
+        for name in (
+            "configured_retry_type",
+            "delayed_retry_type",
+            "delivery_count_basis",
+            "dead_letter_exchange",
+            "dead_letter_strategy",
+            "overflow",
+            "effective_dead_letter_strategy",
+            "delayed_retry_min",
+            "delayed_retry_max",
+            "delivery_limit",
+            "consumer_timeout",
+            "consumer_disconnected_timeout",
+        ):
+            setting = getattr(self, name)
+            _require_instance(setting, ConfigurationValue, f"QuorumDeliveryConfiguration.{name}")
+            expected = (
+                int
+                if name
+                in {
+                    "delayed_retry_min",
+                    "delayed_retry_max",
+                    "delivery_limit",
+                    "consumer_timeout",
+                    "consumer_disconnected_timeout",
+                }
+                else str
+            )
+            if setting.value is not None and type(setting.value) is not expected:
+                raise TopologyValidationError(f"QuorumDeliveryConfiguration.{name} has an invalid value type")
+            if type(setting.value) is int and name != "delivery_limit":
+                minimum = 1 if name in {"delayed_retry_min", "delayed_retry_max"} else 0
+                if setting.value < minimum:
+                    raise TopologyValidationError(f"QuorumDeliveryConfiguration.{name} has an invalid duration")
+        domains = {
+            "configured_retry_type": {"disabled", "all", "failed", "returned"},
+            "delayed_retry_type": {"disabled", "all", "failed", "returned"},
+            "delivery_count_basis": {"acquired", "failed"},
+            "dead_letter_strategy": {"at-most-once", "at-least-once"},
+            "overflow": {"drop-head", "reject-publish"},
+            "effective_dead_letter_strategy": {"disabled", "at-most-once", "at-least-once"},
+        }
+        for name, domain in domains.items():
+            if (value := getattr(self, name).value) is not None and value not in domain:
+                raise TopologyValidationError(f"QuorumDeliveryConfiguration.{name} has an invalid value")
+
+
+@dataclass(frozen=True, slots=True)
 class QueueNode:
     """Represent a queue and the attributes retained by the graph.
 
@@ -155,18 +338,24 @@ class QueueNode:
         replication_factor: Captured quorum membership count, including the
             leader. ``None`` means unknown or a non-quorum queue. This is not
             the number of online members or a physical disk-write estimate.
+        quorum_delivery: Frozen queue-level delivery evidence for quorum queues.
+            ``None`` means this configuration was not captured.
     """
 
     id: NodeId
     queue_type: str
     durable: bool
     replication_factor: int | None = None
+    quorum_delivery: QuorumDeliveryConfiguration | None = None
 
     def __post_init__(self) -> None:
         """Validate queue attributes and node kind."""
         _require_instance(self.id, NodeId, "QueueNode.id")
         _require_instance(self.queue_type, str, "QueueNode.queue_type")
         _require_instance(self.durable, bool, "QueueNode.durable")
+        _require_optional_instance(self.quorum_delivery, QuorumDeliveryConfiguration, "QueueNode.quorum_delivery")
+        if self.quorum_delivery is not None and self.queue_type != "quorum":
+            raise TopologyValidationError("QueueNode.quorum_delivery requires a quorum queue")
         if self.id.kind != NodeKind.QUEUE:
             raise TopologyValidationError(f"QueueNode.id.kind must be NodeKind.QUEUE, got {self.id.kind!r}")
         if self.replication_factor is not None:
@@ -504,7 +693,7 @@ class ClusterTopology:
     def __reduce__(
         self,
     ) -> tuple[
-        type["ClusterTopology"],
+        type[ClusterTopology],
         tuple[
             frozenset[ExchangeNode],
             frozenset[QueueNode],
