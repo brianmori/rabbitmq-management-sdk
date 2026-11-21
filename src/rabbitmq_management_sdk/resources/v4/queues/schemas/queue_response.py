@@ -115,12 +115,12 @@ class QueueResponse(RabbitMQResponse):
         queue.messages  # int | None — absent if stats were stripped
     """
 
-    # -- Identity (always present) --
+    # -- Identity and declaration evidence --
     name: str
     vhost: str
     durable: bool
     auto_delete: bool
-    exclusive: bool
+    exclusive: bool | None = None
     policy: str | None = None
     operator_policy: str | None = None
     effective_policy_definition: PolicyDefinitionResponse | None = None

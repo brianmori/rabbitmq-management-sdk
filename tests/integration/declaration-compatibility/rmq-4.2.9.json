@@ -1,0 +1,277 @@
+{
+  "definitions": {
+    "bindings": [
+      {
+        "arguments": {},
+        "destination": "target.durable",
+        "destination_type": "exchange",
+        "routing_key": "route",
+        "source": "source.durable",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {},
+        "destination": "work",
+        "destination_type": "queue",
+        "routing_key": "route",
+        "source": "source.transient",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {},
+        "destination": "target.transient",
+        "destination_type": "exchange",
+        "routing_key": "route",
+        "source": "source.durable",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {},
+        "destination": "work",
+        "destination_type": "queue",
+        "routing_key": "route",
+        "source": "source.durable",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {},
+        "destination": "shared",
+        "destination_type": "queue",
+        "routing_key": "route",
+        "source": "source.transient",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {},
+        "destination": "target.transient",
+        "destination_type": "exchange",
+        "routing_key": "route",
+        "source": "source.transient",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {},
+        "destination": "target.durable",
+        "destination_type": "exchange",
+        "routing_key": "route",
+        "source": "source.transient",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {},
+        "destination": "shared",
+        "destination_type": "queue",
+        "routing_key": "route",
+        "source": "source.durable",
+        "vhost": "captured"
+      }
+    ],
+    "exchanges": [
+      {
+        "arguments": {},
+        "auto_delete": false,
+        "durable": true,
+        "name": "source.durable",
+        "type": "direct",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {},
+        "auto_delete": false,
+        "durable": false,
+        "name": "source.transient",
+        "type": "direct",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {},
+        "auto_delete": false,
+        "durable": true,
+        "name": "target.durable",
+        "type": "direct",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {},
+        "auto_delete": false,
+        "durable": false,
+        "name": "target.transient",
+        "type": "direct",
+        "vhost": "captured"
+      }
+    ],
+    "parameters": [],
+    "policies": [],
+    "queues": [
+      {
+        "arguments": {
+          "x-queue-type": "classic"
+        },
+        "auto_delete": false,
+        "durable": true,
+        "name": "work",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {
+          "x-queue-type": "classic"
+        },
+        "auto_delete": false,
+        "durable": false,
+        "name": "shared",
+        "vhost": "captured"
+      }
+    ],
+    "rabbitmq_version": "4.2.9",
+    "vhosts": [
+      {
+        "metadata": {
+          "default_queue_type": "classic",
+          "description": "",
+          "tags": []
+        },
+        "name": "captured"
+      }
+    ]
+  },
+  "exchanges": [
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "",
+      "type": "direct",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.direct",
+      "type": "direct",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.fanout",
+      "type": "fanout",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.headers",
+      "type": "headers",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.match",
+      "type": "headers",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": true,
+      "name": "amq.rabbitmq.trace",
+      "type": "topic",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.topic",
+      "type": "topic",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "source.durable",
+      "type": "direct",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": false,
+      "internal": false,
+      "name": "source.transient",
+      "type": "direct",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "target.durable",
+      "type": "direct",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": false,
+      "internal": false,
+      "name": "target.transient",
+      "type": "direct",
+      "vhost": "captured"
+    }
+  ],
+  "observations": {
+    "private_declaration": "accepted",
+    "private_exported": false,
+    "shared_declaration": "accepted"
+  },
+  "queues": [
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": false,
+      "effective_policy_definition": {},
+      "exclusive": false,
+      "name": "shared",
+      "node": "rabbit@captured",
+      "operator_policy": null,
+      "policy": null,
+      "state": "running",
+      "type": "classic",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "effective_policy_definition": {},
+      "exclusive": false,
+      "name": "work",
+      "node": "rabbit@captured",
+      "operator_policy": null,
+      "policy": null,
+      "state": "running",
+      "type": "classic",
+      "vhost": "captured"
+    }
+  ]
+}

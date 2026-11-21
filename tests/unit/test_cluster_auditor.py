@@ -154,9 +154,11 @@ def test_audit_returns_all_findings_from_the_public_facade() -> None:
     assert report.exchange_routing_coverage == auditor.exchange_routing_coverage()
     assert report.quorum_delivery_configuration == auditor.quorum_delivery_configuration() == ()
     assert report.direct_dependency_inventory == auditor.direct_dependency_inventory()
+    assert report.binding_durability == auditor.binding_durability()
+    assert report.queue_declaration_compatibility == auditor.queue_declaration_compatibility()
 
 
-def test_direct_dependency_types_are_exported_and_old_report_arguments_still_work() -> None:
+def test_topology_finding_types_are_exported_and_old_report_arguments_still_work() -> None:
     report = TopologyAuditReport(
         CycleSearchResult((), False),
         CycleSearchResult((), False),
@@ -171,11 +173,17 @@ def test_direct_dependency_types_are_exported_and_old_report_arguments_still_wor
 
     assert report.direct_dependency_inventory == DirectDependencyInventory()
     assert report.queue_limits == ()
+    assert report.binding_durability == ()
+    assert report.queue_declaration_compatibility == ()
     assert {
         "DirectDependencyInventory",
         "DirectReference",
         "DirectReferenceRole",
         "ResourceDependencies",
+        "BindingDurability",
+        "BindingDurabilityKind",
+        "QueueDeclarationCompatibility",
+        "QueueDeclarationStatus",
     } <= set(topology.__all__)
 
 

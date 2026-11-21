@@ -392,6 +392,17 @@ class TestQueueLimitsConfiguration:
 
 
 class TestQueueNode:
+    def test_exclusivity_metadata_is_optional_and_frozen(self) -> None:
+        node = _queue("v", "q", durable=False)
+        observed = replace(node, exclusive=False)
+        assert node.exclusive is None
+        assert observed.id == node.id
+        assert pickle.loads(pickle.dumps(observed)) == observed
+        with pytest.raises(FrozenInstanceError):
+            observed.exclusive = True  # type: ignore[misc]
+        with pytest.raises(TopologyValidationError, match=r"QueueNode\.exclusive"):
+            replace(node, exclusive="false")  # type: ignore[arg-type]
+
     def test_quorum_configuration_survives_graph_value_transfer(self) -> None:
         first = ConfigurationEvidence(ConfigurationSource.QUEUE_ARGUMENT, "x-consumer-timeout", 1000)
         second = ConfigurationEvidence(ConfigurationSource.REGULAR_POLICY, "consumer-timeout", 2000, "timeouts")
