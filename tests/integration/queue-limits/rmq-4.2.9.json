@@ -1,0 +1,286 @@
+{
+  "definitions": {
+    "bindings": [],
+    "exchanges": [
+      {
+        "arguments": {},
+        "auto_delete": false,
+        "durable": true,
+        "name": "errors",
+        "type": "fanout",
+        "vhost": "captured"
+      }
+    ],
+    "parameters": [
+      {
+        "component": "operator_policy",
+        "name": "orders-operator-policies",
+        "value": {
+          "apply-to": "classic_queues",
+          "definition": {
+            "max-length": 2,
+            "max-length-bytes": 2048
+          },
+          "pattern": "^orders$",
+          "priority": 1
+        },
+        "vhost": "captured"
+      },
+      {
+        "component": "operator_policy",
+        "name": "work-operator-policies",
+        "value": {
+          "apply-to": "quorum_queues",
+          "definition": {
+            "message-ttl": 50000
+          },
+          "pattern": "^work$",
+          "priority": 1
+        },
+        "vhost": "captured"
+      },
+      {
+        "component": "operator_policy",
+        "name": "history-operator-policies",
+        "value": {
+          "apply-to": "streams",
+          "definition": {
+            "max-length-bytes": 2000000
+          },
+          "pattern": "^history$",
+          "priority": 1
+        },
+        "vhost": "captured"
+      }
+    ],
+    "policies": [
+      {
+        "apply-to": "quorum_queues",
+        "definition": {
+          "dead-letter-exchange": "errors",
+          "max-length": 5,
+          "overflow": "reject-publish-dlx"
+        },
+        "name": "work-policies",
+        "pattern": "^work$",
+        "priority": 1,
+        "vhost": "captured"
+      },
+      {
+        "apply-to": "classic_queues",
+        "definition": {
+          "max-length": 3,
+          "message-ttl": 60000,
+          "overflow": "reject-publish"
+        },
+        "name": "orders-policies",
+        "pattern": "^orders$",
+        "priority": 1,
+        "vhost": "captured"
+      },
+      {
+        "apply-to": "streams",
+        "definition": {
+          "max-age": "2h",
+          "max-length-bytes": 4000000
+        },
+        "name": "history-policies",
+        "pattern": "^history$",
+        "priority": 1,
+        "vhost": "captured"
+      }
+    ],
+    "queues": [
+      {
+        "arguments": {
+          "x-max-age": "30m",
+          "x-max-length-bytes": 1000000,
+          "x-queue-type": "stream"
+        },
+        "auto_delete": false,
+        "durable": true,
+        "name": "history",
+        "type": "stream",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {
+          "x-max-length": 10,
+          "x-max-length-bytes": 4096,
+          "x-message-ttl": 90000,
+          "x-overflow": "drop-head",
+          "x-queue-type": "classic"
+        },
+        "auto_delete": false,
+        "durable": true,
+        "name": "orders",
+        "type": "classic",
+        "vhost": "captured"
+      },
+      {
+        "arguments": {
+          "x-expires": 600000,
+          "x-max-length": 10,
+          "x-max-length-bytes": 8192,
+          "x-message-ttl": 80000,
+          "x-overflow": "reject-publish",
+          "x-queue-type": "quorum"
+        },
+        "auto_delete": false,
+        "durable": true,
+        "name": "work",
+        "type": "quorum",
+        "vhost": "captured"
+      }
+    ],
+    "rabbitmq_version": "4.2.9"
+  },
+  "exchanges": [
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "",
+      "type": "direct",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.direct",
+      "type": "direct",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.fanout",
+      "type": "fanout",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.headers",
+      "type": "headers",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.match",
+      "type": "headers",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": true,
+      "name": "amq.rabbitmq.trace",
+      "type": "topic",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "amq.topic",
+      "type": "topic",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {},
+      "auto_delete": false,
+      "durable": true,
+      "internal": false,
+      "name": "errors",
+      "type": "fanout",
+      "vhost": "captured"
+    }
+  ],
+  "queues": [
+    {
+      "arguments": {
+        "x-max-age": "30m",
+        "x-max-length-bytes": 1000000,
+        "x-queue-type": "stream"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "effective_policy_definition": {
+        "max-age": "2h",
+        "max-length-bytes": 2000000
+      },
+      "exclusive": false,
+      "name": "history",
+      "node": "rabbit@captured",
+      "operator_policy": "history-operator-policies",
+      "policy": "history-policies",
+      "state": "running",
+      "type": "stream",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {
+        "x-max-length": 10,
+        "x-max-length-bytes": 4096,
+        "x-message-ttl": 90000,
+        "x-overflow": "drop-head",
+        "x-queue-type": "classic"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "effective_policy_definition": {
+        "max-length": 2,
+        "max-length-bytes": 2048,
+        "message-ttl": 60000,
+        "overflow": "reject-publish"
+      },
+      "exclusive": false,
+      "name": "orders",
+      "node": "rabbit@captured",
+      "operator_policy": "orders-operator-policies",
+      "policy": "orders-policies",
+      "state": "running",
+      "type": "classic",
+      "vhost": "captured"
+    },
+    {
+      "arguments": {
+        "x-expires": 600000,
+        "x-max-length": 10,
+        "x-max-length-bytes": 8192,
+        "x-message-ttl": 80000,
+        "x-overflow": "reject-publish",
+        "x-queue-type": "quorum"
+      },
+      "auto_delete": false,
+      "durable": true,
+      "effective_policy_definition": {
+        "dead-letter-exchange": "errors",
+        "max-length": 5,
+        "message-ttl": 50000,
+        "overflow": "reject-publish-dlx"
+      },
+      "exclusive": false,
+      "name": "work",
+      "node": "rabbit@captured",
+      "operator_policy": "work-operator-policies",
+      "policy": "work-policies",
+      "state": "running",
+      "type": "quorum",
+      "vhost": "captured"
+    }
+  ]
+}

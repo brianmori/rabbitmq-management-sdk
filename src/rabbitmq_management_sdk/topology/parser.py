@@ -44,6 +44,8 @@ from rabbitmq_management_sdk.topology.policy_routes import (
     resolve_alternate_exchange,
     resolve_dead_letter_values,
 )
+from rabbitmq_management_sdk.topology.queue_configuration import _Resolver
+from rabbitmq_management_sdk.topology.queue_limits import resolve_queue_limits
 from rabbitmq_management_sdk.topology.quorum_configuration import resolve_quorum_delivery
 from rabbitmq_management_sdk.topology.shovel import confirmed_local_resource_id, parse_shovel_endpoint
 
@@ -165,20 +167,22 @@ class _TopologyBuilder:
         observed = self.queues_by_id.get(queue_id)
         if observed is not None and observed.type != queue_type:
             raise TopologyParseError(f"Queue {queue_id} has inconsistent declared and observed queue types")
+        resolver = _Resolver(
+            self.response,
+            queue,
+            observed,
+            selected_policy=self.user_policy_selections.get(queue_id),
+            selection_captured=queue_id in self.user_policy_selections,
+            queue_type=queue_type,
+        )
+        quorum_delivery = resolve_quorum_delivery(resolver) if queue_type == "quorum" else None
         return QueueNode(
             id=queue_id,
             queue_type=queue_type,
             durable=queue.durable,
             quorum_placement=self._quorum_placement(queue_id, observed) if queue_type == "quorum" else None,
-            quorum_delivery=resolve_quorum_delivery(
-                self.response,
-                queue,
-                observed,
-                selected_policy=self.user_policy_selections.get(queue_id),
-                selection_captured=queue_id in self.user_policy_selections,
-            )
-            if queue_type == "quorum"
-            else None,
+            quorum_delivery=quorum_delivery,
+            queue_limits=resolve_queue_limits(resolver, quorum_delivery),
         )
 
     @staticmethod

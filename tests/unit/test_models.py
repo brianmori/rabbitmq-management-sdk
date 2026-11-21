@@ -34,6 +34,7 @@ from rabbitmq_management_sdk.topology import (
     FanoutQueue,
     NodeId,
     NodeKind,
+    QueueLimitsConfiguration,
     QueueNode,
     QueueTypeGroup,
     QueueTypeInventory,
@@ -367,6 +368,22 @@ class TestExchangeNode:
     def test_rejects_non_node_identity(self) -> None:
         with pytest.raises(TopologyValidationError, match=r"ExchangeNode\.id"):
             ExchangeNode(id="not-a-node", exchange_type="direct", internal=False, durable=True)  # type: ignore[arg-type]
+
+
+class TestQueueLimitsConfiguration:
+    def test_quorum_node_rejects_conflicting_overflow_evidence(self) -> None:
+        known = ConfigurationValue("reject-publish", ConfigurationStatus.KNOWN, (), ())
+        queue = _queue("v", "work", "quorum")
+        with pytest.raises(TopologyValidationError, match="must match quorum delivery evidence"):
+            replace(queue, queue_limits=QueueLimitsConfiguration(overflow=known))
+        delivery = QuorumDeliveryConfiguration(overflow=known)
+        result = replace(queue, quorum_delivery=delivery, queue_limits=QueueLimitsConfiguration(overflow=known))
+        assert result == pickle.loads(pickle.dumps(result))
+
+    def test_numeric_setting_rejects_string_values(self) -> None:
+        invalid = ConfigurationValue("0", ConfigurationStatus.KNOWN, (), ())
+        with pytest.raises(TopologyValidationError, match="max_length has the wrong scalar type"):
+            QueueLimitsConfiguration(max_length=invalid)  # type: ignore[arg-type]
 
 
 class TestQueueNode:

@@ -33,6 +33,7 @@ from rabbitmq_management_sdk.topology.models import ClusterTopology, NodeId
 from rabbitmq_management_sdk.topology.ordering import edge_sort_key
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeInventory, queue_type_inventory
+from rabbitmq_management_sdk.topology.queue_limits import queue_limits
 from rabbitmq_management_sdk.topology.quorum import QuorumQueueConfiguration, quorum_delivery_configuration
 from rabbitmq_management_sdk.topology.quorum_resilience import QuorumResilienceReport, quorum_resilience
 from rabbitmq_management_sdk.topology.reachability import (
@@ -61,6 +62,7 @@ if TYPE_CHECKING:
         ShovelNode,
         TopologyEdge,
     )
+    from rabbitmq_management_sdk.topology.queue_limits import QueueLimits
     from rabbitmq_management_sdk.topology.quorum_resilience import QuorumFailureScenario
     from rabbitmq_management_sdk.topology.routing_contracts import RoutingContract, RoutingContractResult
     from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers
@@ -95,6 +97,7 @@ class TopologyAuditReport:
     quorum_resilience: QuorumResilienceReport = field(default_factory=QuorumResilienceReport)
     direct_dependency_inventory: DirectDependencyInventory = field(default_factory=DirectDependencyInventory)
     routing_contracts: tuple[RoutingContractResult, ...] = ()
+    queue_limits: tuple[QueueLimits, ...] = ()
 
 
 class ClusterAuditor:
@@ -426,6 +429,10 @@ class ClusterAuditor:
         """
         return dead_letter_coverage(self._topology)
 
+    def queue_limits(self) -> tuple[QueueLimits, ...]:
+        """Return queue limits, stream retention, and shared DLX coverage."""
+        return queue_limits(self.dead_letter_coverage())
+
     @cached_property
     def _direct_dependency_inventory(self) -> DirectDependencyInventory:
         return build_direct_dependency_inventory(self._topology)
@@ -506,6 +513,7 @@ class ClusterAuditor:
             if structural_cycles.truncated
             else message_loop_candidates_from_complete_result(structural_cycles)
         )
+        dlx_coverage = self.dead_letter_coverage()
         return TopologyAuditReport(
             structural_cycles=structural_cycles,
             message_loop_candidates=message_loop_candidates,
@@ -519,10 +527,11 @@ class ClusterAuditor:
             competing_shovel_consumers=self.competing_shovel_consumers(),
             fanout_exchange_bindings=self.fanout_exchange_bindings(),
             queue_type_inventory=self.queue_type_inventory(),
-            dead_letter_coverage=self.dead_letter_coverage(),
+            dead_letter_coverage=dlx_coverage,
             exchange_routing_coverage=self.exchange_routing_coverage(),
             quorum_delivery_configuration=self.quorum_delivery_configuration(),
             quorum_resilience=resilience,
             direct_dependency_inventory=self.direct_dependency_inventory(),
             routing_contracts=() if routing_contracts == () else self.evaluate_routing_contracts(routing_contracts),
+            queue_limits=queue_limits(dlx_coverage),
         )
