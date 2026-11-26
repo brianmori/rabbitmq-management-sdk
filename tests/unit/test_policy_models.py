@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import json
+from typing import TYPE_CHECKING
+
 import pytest
 from pydantic import ValidationError
+from tests.shared.parser_fixtures import _policy, _queue
 
 from rabbitmq_management_sdk import (
+    ClusterAuditor,
     DelayedRetryType,
     OperatorPolicyApplyTo,
     OperatorPolicyRequest,
@@ -16,6 +21,9 @@ from rabbitmq_management_sdk import (
     PolicyResponse,
 )
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ExportPolicySettings
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.unit
@@ -106,6 +114,46 @@ def test_policy_api_and_definitions_export_use_independent_models() -> None:
     assert not isinstance(response.definition, PolicyDefinition)
     assert not isinstance(ExportPolicySettings.from_fields(max_length=1000), PolicyDefinition)
     assert not issubclass(PolicyResponse, PolicyRequest)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("locator", ["random", "least-leaders"])
+def test_policy_response_preserves_legacy_queue_leader_locator(locator: str) -> None:
+    wire = _policy("placement", "^orders$", "quorum_queues", 0, definition={"queue-leader-locator": locator})
+
+    response = PolicyResponse.model_validate_json(json.dumps(wire))
+
+    assert response.definition.queue_leader_locator == locator
+    assert response.model_dump(by_alias=True) == wire
+    assert PolicyResponse.model_validate_json(response.model_dump_json(by_alias=True)) == response
+
+
+@pytest.mark.unit
+def test_policy_response_rejects_queue_only_legacy_leader_locator() -> None:
+    with pytest.raises(ValidationError):
+        PolicyDefinitionResponse.model_validate({"queue-leader-locator": "min-masters"})
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("locator", ["random", "least-leaders"])
+def test_definitions_load_with_legacy_policy_queue_leader_locator(tmp_path: Path, locator: str) -> None:
+    wire = {
+        "rabbitmq_version": "4.3.8",
+        "queues": [_queue("orders", "t", **{"x-queue-type": "quorum"})],
+        "policies": [
+            _policy("placement", "^orders$", "quorum_queues", 0, definition={"queue-leader-locator": locator}),
+        ],
+    }
+    path = tmp_path / "definitions.json"
+    path.write_text(json.dumps(wire), encoding="utf-8")
+
+    auditor = ClusterAuditor.from_files(path)
+
+    (policy,) = auditor.definitions.policies
+    assert policy.definition.queue_leader_locator == locator
+    assert auditor.definitions.model_dump(by_alias=True, exclude_unset=True) == wire
+    (coverage,) = auditor.audit().policy_inventory.policies
+    assert coverage.declaration.id.name == "placement"
 
 
 @pytest.mark.unit

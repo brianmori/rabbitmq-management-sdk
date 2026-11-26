@@ -35,7 +35,8 @@ demonstrate replicated availability across several brokers.
 
 The raw export was also imported into a second fresh 4.3.6 broker. All ten demo
 vhosts and thirteen shovels were restored. Runtime tests separately verify the
-healthy routing cases against an isolated import.
+healthy routing cases against an isolated import on the current RabbitMQ
+4.2.9 and 4.3.8 [live test targets](../../../README.md).
 
 ## Scenario map
 

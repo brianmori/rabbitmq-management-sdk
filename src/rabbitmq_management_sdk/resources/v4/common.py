@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Literal
 
 
 class DelayedRetryType(StrEnum):
@@ -32,3 +33,9 @@ class QueueLeaderLocator(StrEnum):
 
     CLIENT_LOCAL = "client-local"
     BALANCED = "balanced"
+
+
+# Preserve deprecated values still returned by the broker. Queue declarations
+# accept one additional legacy value beyond regular policy definitions.
+type CapturedPolicyLeaderLocator = QueueLeaderLocator | Literal["random", "least-leaders"]
+type CapturedQueueLeaderLocator = CapturedPolicyLeaderLocator | Literal["min-masters"]

@@ -13,7 +13,7 @@ omitted by definitions exports.
 
 import json
 from collections.abc import Collection, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Literal
 
@@ -25,7 +25,11 @@ from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import (
     ClusterExportQueue,
 )
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
-from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QueueResponse
+from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import (
+    ClassicQueueResponse,
+    QueueResponse,
+    QuorumQueueResponse,
+)
 from rabbitmq_management_sdk.topology.models import (
     ClusterTopology,
     EdgeKind,
@@ -42,6 +46,8 @@ from rabbitmq_management_sdk.topology.models import (
 from rabbitmq_management_sdk.topology.policy_inventory import capture_policy_inventory
 from rabbitmq_management_sdk.topology.policy_routes import (
     UserPolicySelections,
+    _apply_to_matches,
+    _policies_that_can_set,
     resolve_alternate_exchange,
     resolve_dead_letter_values,
 )
@@ -122,11 +128,16 @@ class _TopologyBuilder:
     def build(self) -> ClusterTopology:
         """Run the graph-construction phases in dependency order."""
         exchanges = frozenset(self._exchange_node(exchange) for exchange in self.response.exchanges)
-        queues = frozenset(self._queue_node(queue) for queue in self.response.queues)
+        queue_routes = tuple(self._queue_and_dead_letter_edge(queue) for queue in self.response.queues)
+        queues = frozenset(queue for queue, _ in queue_routes)
+        dead_letter_edges = frozenset(edge for _, edge in queue_routes if edge is not None)
         shovels, shovel_edges = self._shovels()
 
-        edges = self._binding_edges() | self._dead_letter_edges() | self._alternate_exchange_edges() | shovel_edges
+        edges = self._binding_edges() | dead_letter_edges | shovel_edges
+        alternate_edges, missing_exchange_arguments = self._alternate_exchange_routes()
+        edges |= alternate_edges
         exchanges |= self._referenced_exchange_supplements(exchanges, edges)
+        exchanges = self._with_alternate_evidence(exchanges, alternate_edges, missing_exchange_arguments)
         cluster_name = self.response.cluster_name
         if cluster_name is None:
             cluster_name = self.response.original_cluster_name
@@ -173,8 +184,8 @@ class _TopologyBuilder:
             durable=exchange.durable,
         )
 
-    def _queue_node(self, queue: ClusterExportQueue) -> QueueNode:
-        """Translate a declared queue, applying its vhost default if needed."""
+    def _queue_and_dead_letter_edge(self, queue: ClusterExportQueue) -> tuple[QueueNode, TopologyEdge | None]:
+        """Translate a queue declaration and its dead-letter route evidence."""
         queue_type = self._resolved_queue_type(queue)
         if queue_type is None:
             raise TopologyParseError(
@@ -194,7 +205,8 @@ class _TopologyBuilder:
             queue_type=queue_type,
         )
         quorum_delivery = resolve_quorum_delivery(resolver) if queue_type == "quorum" else None
-        return QueueNode(
+        dlx, routing_key, route_unknown = self._dead_letter_route(queue, queue_id, queue_type, observed)
+        node = QueueNode(
             id=queue_id,
             queue_type=queue_type,
             durable=queue.durable,
@@ -202,6 +214,16 @@ class _TopologyBuilder:
             quorum_delivery=quorum_delivery,
             queue_limits=resolve_queue_limits(resolver, quorum_delivery),
             exclusive=observed.exclusive if observed is not None and observed.durable == queue.durable else None,
+            dead_letter_route_unknown=route_unknown,
+            unresolved_dead_letter_exchange=dlx if route_unknown else None,
+        )
+        if dlx is None or route_unknown:
+            return node, None
+        return node, TopologyEdge(
+            source=queue_id,
+            target=self._node_id(vhost=queue.vhost, name=dlx, kind=NodeKind.EXCHANGE),
+            kind=EdgeKind.DEAD_LETTER,
+            routing_key=routing_key,
         )
 
     @staticmethod
@@ -246,56 +268,89 @@ class _TopologyBuilder:
             )
         return frozenset(edges)
 
-    def _dead_letter_edges(self) -> frozenset[TopologyEdge]:
-        """Build possible dead-letter hops from arguments and policy evidence."""
-        edges = set()
-        for queue in self.response.queues:
-            source = self._node_id(vhost=queue.vhost, name=queue.name, kind=NodeKind.QUEUE)
-            dlx, routing_key = resolve_dead_letter_values(
-                queue_id=source,
-                queue_type=self._resolved_queue_type(queue),
-                declared_exchange=queue.arguments.dead_letter_exchange,
-                declared_routing_key=queue.arguments.dead_letter_routing_key,
-                policies=self.response.policies,
-                user_policy_selections=self.user_policy_selections,
-            )
-            if dlx is not None:
-                edges.add(
-                    TopologyEdge(
-                        source=source,
-                        target=self._node_id(vhost=queue.vhost, name=dlx, kind=NodeKind.EXCHANGE),
-                        kind=EdgeKind.DEAD_LETTER,
-                        routing_key=routing_key,
-                    )
-                )
-        return frozenset(edges)
+    def _dead_letter_route(
+        self, queue: ClusterExportQueue, queue_id: NodeId, queue_type: str, observed: QueueResponse | None
+    ) -> tuple[str | None, str | None, bool]:
+        """Resolve exchange and key, retaining a captured name if the route is unknown."""
+        arguments_captured = "arguments" in queue.model_fields_set
+        direct_exchange = queue.arguments.dead_letter_exchange
+        direct_key = queue.arguments.dead_letter_routing_key
+        if not arguments_captured and observed is not None:
+            observed_arguments = observed.arguments
+            if isinstance(observed_arguments, (ClassicQueueResponse, QuorumQueueResponse)) and (
+                observed_arguments.queue_type == queue_type
+            ):
+                arguments_captured = True
+                direct_exchange = observed_arguments.dead_letter_exchange
+                direct_key = observed_arguments.dead_letter_routing_key
 
-    def _alternate_exchange_edges(self) -> frozenset[TopologyEdge]:
-        """Build possible alternate-exchange hops from captured evidence."""
+        dlx, routing_key = resolve_dead_letter_values(
+            queue_id=queue_id,
+            queue_type=queue_type,
+            declared_exchange=direct_exchange,
+            declared_routing_key=direct_key,
+            policies=self.response.policies,
+            user_policy_selections=self.user_policy_selections,
+        )
+        if queue_type not in {"classic", "quorum"}:
+            return dlx, routing_key, False
+        if not arguments_captured:
+            return None, None, True
+        if dlx is not None or self.user_policy_selections.get(queue_id) is not None:
+            return dlx, routing_key, False
+
+        # The policy adapter maps omitted observations to None for graph
+        # construction. Absence requires a captured selector or policy evidence.
+        selection_captured = (
+            "policy" in observed.model_fields_set if observed is not None else queue_id in self.user_policy_selections
+        )
+        if selection_captured:
+            return None, routing_key, False
+        if observed is not None and (effective := observed.effective_policy_definition) is not None:
+            return effective.dead_letter_exchange, None, "dead-letter-exchange" in effective.root
+        policies_unknown = "policies" not in self.response.model_fields_set or bool(
+            _policies_that_can_set(
+                vhost=queue_id.vhost,
+                kind=NodeKind.QUEUE,
+                queue_type=queue_type,
+                policies=self.response.policies,
+                definition_field="dead_letter_exchange",
+            )
+        )
+        return None, routing_key, policies_unknown
+
+    def _alternate_exchange_routes(self) -> tuple[frozenset[TopologyEdge], frozenset[NodeId]]:
+        """Build captured alternate hops and record exchanges with no argument map."""
         declared_ids = frozenset(
             self._node_id(vhost=exchange.vhost, name=exchange.name, kind=NodeKind.EXCHANGE)
             for exchange in self.response.exchanges
         )
-        observed_only = tuple(
-            exchange
+        observed_by_id = {
+            self._node_id(vhost=exchange.vhost, name=exchange.name, kind=NodeKind.EXCHANGE): exchange
             for exchange in self.observed_exchanges
-            if self._node_id(vhost=exchange.vhost, name=exchange.name, kind=NodeKind.EXCHANGE) not in declared_ids
-        )
+        }
         exchange_sources: tuple[ClusterExportExchange | ExchangeResponse, ...] = (
             *self.response.exchanges,
-            *observed_only,
+            *(exchange for exchange_id, exchange in observed_by_id.items() if exchange_id not in declared_ids),
         )
 
         edges = set()
+        missing_arguments = set()
         for exchange in exchange_sources:
             source = self._node_id(vhost=exchange.vhost, name=exchange.name, kind=NodeKind.EXCHANGE)
+            argument_source = exchange if "arguments" in exchange.model_fields_set else observed_by_id.get(source)
+            direct_alternate = None
+            if argument_source is None or "arguments" not in argument_source.model_fields_set:
+                missing_arguments.add(source)
+            else:
+                direct_alternate = argument_source.arguments.alternate_exchange
             alternate_exchange = resolve_alternate_exchange(
                 exchange_id=source,
-                declared_alternate_exchange=exchange.arguments.alternate_exchange,
+                declared_alternate_exchange=direct_alternate,
                 policies=self.response.policies,
                 user_policy_selections=self.user_policy_selections,
             )
-            if alternate_exchange is not None:
+            if alternate_exchange is not None and source not in missing_arguments:
                 edges.add(
                     TopologyEdge(
                         source=source,
@@ -307,7 +362,54 @@ class _TopologyBuilder:
                         kind=EdgeKind.ALTERNATE_EXCHANGE,
                     )
                 )
-        return frozenset(edges)
+        return frozenset(edges), frozenset(missing_arguments)
+
+    def _with_alternate_evidence(
+        self,
+        exchanges: frozenset[ExchangeNode],
+        alternate_edges: frozenset[TopologyEdge],
+        missing_arguments: frozenset[NodeId],
+    ) -> frozenset[ExchangeNode]:
+        """Retain unavailable alternate routing evidence without adding route edges."""
+        policies_captured = "policies" in self.response.model_fields_set
+        alternate_policy_vhosts = {
+            policy.vhost
+            for policy in self.response.policies
+            if policy.definition.alternate_exchange is not None
+            and _apply_to_matches(policy.apply_to, NodeKind.EXCHANGE, None)
+        }
+        if policies_captured and not alternate_policy_vhosts and not missing_arguments:
+            return exchanges
+
+        # The broker can omit the policy field on unselected exchanges. Keep
+        # that omission distinct from explicit null when evaluating routes.
+        omitted_selections = {
+            self._node_id(vhost=exchange.vhost, name=exchange.name, kind=NodeKind.EXCHANGE)
+            for exchange in self.observed_exchanges
+            if "policy" not in exchange.model_fields_set
+        }
+        resolved = {edge.source for edge in alternate_edges}
+        resolved.update(
+            resource
+            for resource, name in self.user_policy_selections.items()
+            if resource.kind == NodeKind.EXCHANGE and (name is not None or resource not in omitted_selections)
+        )
+        missing_policy = {
+            exchange.id
+            for exchange in exchanges
+            if exchange.id not in resolved and (not policies_captured or exchange.id.vhost in alternate_policy_vhosts)
+        }
+        uncertain = missing_policy | missing_arguments
+        return frozenset(
+            replace(
+                exchange,
+                alternate_exchange_policy_unknown=exchange.id in missing_policy,
+                alternate_exchange_arguments_unknown=exchange.id in missing_arguments,
+            )
+            if not exchange.is_default and exchange.id in uncertain
+            else exchange
+            for exchange in exchanges
+        )
 
     def _shovel_endpoint(
         self,
@@ -422,11 +524,10 @@ def parse_cluster_topology(
     runtime state, or later configuration changes.
 
     ``in_cluster_amqp_hosts`` supplies membership evidence for hosted AMQP
-    shovel endpoints. ``local`` protocol shovels and hostless AMQP URIs do not
-    need that evidence. An endpoint without a fixed resource identity, or one
-    that is unresolved or not confirmed local, remains visible on its
-    :class:`ShovelNode`. Its resource edge is excluded so it cannot be merged
-    with a same-named local resource.
+    shovel endpoints. Valid direct AMQP URIs and ``local`` protocol endpoints
+    supply locality evidence on their own. Each :class:`ShovelNode` retains
+    unresolved endpoint evidence. A resource edge requires a fixed resource
+    identity and confirmed locality.
 
     When present, the export's broker-generated ``internal_cluster_id`` is the
     graph and node identity. Older or manually constructed exports without that
@@ -446,7 +547,8 @@ def parse_cluster_topology(
 
     ``observed_exchanges`` supplies Management API observations for
     broker-created exchanges omitted by the definitions export and referenced
-    by parsed hops. Definitions remain authoritative for declared exchanges.
+    by parsed hops. An observation can also supply a declared exchange's
+    alternate argument when its definition omits the argument map.
     For a referenced exchange in a declared vhost, a standard predeclared
     RabbitMQ exchange is synthesized when it is neither declared nor observed.
 
@@ -458,7 +560,7 @@ def parse_cluster_topology(
         user_policy_selections: Broker-observed regular-policy selections by
             resource.
         observed_exchanges: Management API exchange observations used to
-            supplement referenced exchanges.
+            supplement referenced exchanges and recover omitted argument maps.
         observed_queues: Management API queue observations used to retain
             quorum members, leader, online members, and delivery evidence on declared queues.
             Missing or empty membership means unknown; initial group sizes

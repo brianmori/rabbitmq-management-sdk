@@ -37,6 +37,8 @@ class RoutingUncertainty(StrEnum):
     MISSING_RESOURCE = "missing_resource"
     INCOMPLETE_BINDING = "incomplete_binding"
     CONFLICTING_ROUTES = "conflicting_routes"
+    POLICY_SELECTION_NOT_CAPTURED = "policy_selection_not_captured"
+    EXCHANGE_ARGUMENTS_NOT_CAPTURED = "exchange_arguments_not_captured"
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,7 +132,8 @@ class _ExchangeRouter:
     def _exchange_routes(
         self, node: NodeId, routing_key: str | None, established: bool, evidence: _RoutingEvidence
     ) -> list[tuple[NodeId, bool]]:
-        exchange_type = self.exchanges[node].exchange_type
+        exchange = self.exchanges[node]
+        exchange_type = exchange.exchange_type
         if exchange_type not in {"direct", "topic", "fanout", "headers"}:
             evidence.issues.add(RoutingIssue(node, RoutingUncertainty.UNSUPPORTED_ROUTING_SEMANTICS))
             evidence.open_branch = True
@@ -143,11 +146,28 @@ class _ExchangeRouter:
             if matches_binding is not False:
                 routes.append((edge.target, established and matches_binding is True))
         alternates = self.alternates.get(node, ())
-        if alternates and not any(match is True for _, match, _ in matches):
+        policy_unknown = exchange.alternate_exchange_policy_unknown
+        arguments_unknown = exchange.alternate_exchange_arguments_unknown
+        if (not alternates and not policy_unknown and not arguments_unknown) or any(
+            match is True for _, match, _ in matches
+        ):
+            return routes
+        if policy_unknown:
+            evidence.issues.add(RoutingIssue(node, RoutingUncertainty.POLICY_SELECTION_NOT_CAPTURED))
+            evidence.open_branch = True
+        if arguments_unknown:
+            evidence.issues.add(RoutingIssue(node, RoutingUncertainty.EXCHANGE_ARGUMENTS_NOT_CAPTURED))
+            evidence.open_branch = True
+        if alternates:
             if len(alternates) > 1:
                 evidence.issues.add(RoutingIssue(node, RoutingUncertainty.CONFLICTING_ROUTES))
                 evidence.open_branch = True
-            definite = established and len(alternates) == 1 and all(match is False for _, match, _ in matches)
+            definite = (
+                established
+                and not arguments_unknown
+                and len(alternates) == 1
+                and all(match is False for _, match, _ in matches)
+            )
             routes.extend((alternate.target, definite) for alternate in alternates)
         return routes
 

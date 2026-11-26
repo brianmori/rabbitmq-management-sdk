@@ -7,7 +7,7 @@ UV_PYTHON=3.12 just check
 UV_PYTHON=3.12 just test
 ```
 
-Run the complete live suite on disposable RabbitMQ 4.2 and 4.3 brokers:
+Run the complete live suite on disposable RabbitMQ 4.2.9 and 4.3.8 brokers:
 
 ```bash
 UV_PYTHON=3.12 just test-live
@@ -18,6 +18,9 @@ The version-specific recipes are `just test-live-rmq42` and
 network, and volumes afterward. Direct live pytest runs use the environment
 and `.env`; use a disposable broker. The live tests publish and consume test
 messages and create and remove resources.
+
+Saved capture versions identify the source brokers. Replay tests load those
+fixtures directly, including ones captured on older patch releases.
 
 ## What each layer proves
 

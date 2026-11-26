@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- RabbitMQ 4.3 quorum retry and timeout settings in queue and policy requests,
+  with an audit of effective quorum delivery configuration.
+- Quorum resilience analysis for captured replica placement, broker
+  concentration, and modeled node failures.
+- Routing contracts for required, forbidden, and exclusive destinations, plus
+  direct dependency reports for queues and exchanges.
+- Queue limit, retention, and overflow audits. Shovel audits report
+  acknowledgement mode and endpoint transport.
+- AMQP 1.0 shovel source consumer names on RabbitMQ 4.3.
+- Binding durability and queue declaration compatibility audits for RabbitMQ
+  4.3 upgrades, plus inventories of vhost permissions, limits, and policies.
+- A [RabbitMQ 4.3.8 extreme topology capture and benchmark](tests/integration/rmq-4.3/extreme-topology/README.md)
+  with 5,000 resource nodes, 4,986 edges, and expected audit results.
+
+### Changed
+
+- Pinned the live test brokers to RabbitMQ 4.2.9 and 4.3.8. Synthetic test
+  inputs use those patch versions and saved captures retain their provenance.
+
+### Fixed
+
+- Routing contracts, exchange coverage, and dead-letter coverage preserve
+  uncertainty when incomplete policy evidence or missing exchange arguments
+  could hide an alternate route. Matching observations can recover an
+  alternate argument omitted from a definitions export.
+- Quorum delivery audits use captured queue observations when the definitions
+  argument map is missing and report unknown settings when missing arguments
+  or policy sections leave the default unconfirmed.
+- Dead-letter routing uses captured classic and quorum queue arguments when the
+  definitions export omits them. Coverage retains any captured DLX name and
+  reports undetermined routing when the evidence cannot establish a route.
+- Policy responses and definitions exports preserve legacy queue leader
+  locator values, including `min-masters` in exported queue arguments.
+- Shovel topology requires a valid direct URI form to confirm a hostless
+  endpoint, preventing malformed URIs from adding false loop candidates.
+- AMQP 1.0 shovel topology preserves the socket host, resolves query vhosts
+  using broker decoding rules, and handles v1 and v2 address escapes separately.
+  Malformed endpoint evidence leaves the affected hop unresolved.
+
 ## [0.5.0] - 2026-11-15
 
 ### Added

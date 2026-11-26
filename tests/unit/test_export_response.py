@@ -120,6 +120,16 @@ def test_export_exchange_defaults_internal_when_omitted(
     assert exchange.internal is False
 
 
+@pytest.mark.parametrize("locator", ["random", "least-leaders", "min-masters"])
+def test_export_queue_arguments_preserve_legacy_leader_locator(locator: str) -> None:
+    wire = {"x-queue-leader-locator": locator}
+
+    arguments = ExportQueueArguments.model_validate(wire, strict=True)
+
+    assert arguments.queue_leader_locator == locator
+    assert arguments.model_dump() == wire
+
+
 @pytest.mark.parametrize("model", [ClusterExportBinding, VhostExportBinding])
 @pytest.mark.parametrize("match_mode", ["all", "any", "all-with-x", "any-with-x"])
 def test_export_binding_preserves_headers_match_modes(

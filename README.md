@@ -557,9 +557,9 @@ automatically:
 
 ```bash
 just test                # runs unit and integration tests without a broker
-just test-live           # runs live tests against RabbitMQ 4.2 and 4.3
-just test-live-rmq42     # spins up RabbitMQ 4.2 via Docker, runs live tests, tears down
-just test-live-rmq43     # same, for RabbitMQ 4.3
+just test-live           # runs live tests against RabbitMQ 4.2.9 and 4.3.8
+just test-live-rmq42     # spins up RabbitMQ 4.2.9 via Docker, runs live tests, tears down
+just test-live-rmq43     # same, for RabbitMQ 4.3.8
 ```
 
 To run the live tests directly against an existing broker, copy

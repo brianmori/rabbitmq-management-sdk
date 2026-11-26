@@ -83,7 +83,7 @@ def resolve_quorum_delivery(resolver: _Resolver) -> QuorumDeliveryConfiguration:
 
     exchange = supported(resolver.setting("dead-letter-exchange", "left"))
     strategy = with_default(resolver.setting("dead-letter-strategy", "left"), "dead-letter-strategy", "at-most-once")
-    overflow = with_default(resolver.setting("overflow", "right", require_sections=True), "overflow", "drop-head")
+    overflow = with_default(resolver.setting("overflow", "right"), "overflow", "drop-head")
     if overflow.value == "reject-publish-dlx":
         overflow = _derived("drop-head", "unsupported_quorum_overflow_fallback", overflow)
     effective_strategy = strategy

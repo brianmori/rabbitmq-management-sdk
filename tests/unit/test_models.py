@@ -400,6 +400,10 @@ class TestExchangeNode:
         node = _exchange("v", "ex1", exchange_type="topic")
         assert node.exchange_type == "topic"
 
+    def test_rejects_invalid_alternate_argument_evidence(self) -> None:
+        with pytest.raises(TopologyValidationError, match=r"ExchangeNode\.alternate_exchange_arguments_unknown"):
+            replace(_exchange("v", "ex1"), alternate_exchange_arguments_unknown="true")  # type: ignore[arg-type]
+
     @pytest.mark.parametrize(
         ("name", "expected"),
         [
@@ -442,6 +446,18 @@ class TestQueueLimitsConfiguration:
 
 
 class TestQueueNode:
+    def test_unresolved_dead_letter_exchange_requires_unknown_route(self) -> None:
+        node = _queue("v", "q")
+        unknown = replace(node, dead_letter_route_unknown=True, unresolved_dead_letter_exchange="")
+        assert unknown.id == node.id
+        assert pickle.loads(pickle.dumps(unknown)) == unknown
+        with pytest.raises(TopologyValidationError, match="requires an unknown route"):
+            replace(node, unresolved_dead_letter_exchange="")
+        with pytest.raises(TopologyValidationError, match=r"QueueNode\.dead_letter_route_unknown"):
+            replace(node, dead_letter_route_unknown="true")  # type: ignore[arg-type]
+        with pytest.raises(TopologyValidationError, match=r"QueueNode\.unresolved_dead_letter_exchange"):
+            replace(unknown, unresolved_dead_letter_exchange=1)  # type: ignore[arg-type]
+
     def test_exclusivity_metadata_is_optional_and_frozen(self) -> None:
         node = _queue("v", "q", durable=False)
         observed = replace(node, exclusive=False)

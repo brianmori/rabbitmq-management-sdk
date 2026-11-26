@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Literal, cast
 from pydantic import ValidationError
 
 from rabbitmq_management_sdk.exceptions import TopologyParseError
+from rabbitmq_management_sdk.resources.v4.common import DeadLetterStrategy, OverflowBehaviour
+from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QuorumQueueResponse
 from rabbitmq_management_sdk.topology.models import (
     ConfigurationEvidence,
     ConfigurationSource,
@@ -46,6 +48,11 @@ _POLICY_MERGES: dict[str, _Merge] = {
     "expires": "min",
 }
 _MAX_DECLARED_EXPIRY_MS = 315_360_000_000
+_OBSERVED_QUORUM_ARGUMENT_KEYS = frozenset(field.alias for field in QuorumQueueResponse.model_fields.values())
+_OBSERVED_QUORUM_ARGUMENT_CHOICES = {
+    "x-dead-letter-strategy": frozenset(DeadLetterStrategy),
+    "x-overflow": frozenset(OverflowBehaviour),
+}
 
 
 def captured_broker_version(definitions: ClusterDefinitionsResponse) -> tuple[str | None, int | None]:
@@ -168,7 +175,7 @@ class _Resolver:
                     candidates.append((parameter.name, policy.definition.root))
         return tuple(candidates), frozenset(malformed)
 
-    def _selected(self, key: str, *, operator: bool, require_sections: bool, minimum: int | None) -> _Value:
+    def _selected(self, key: str, *, operator: bool, minimum: int | None) -> _Value:
         if operator and key not in _POLICY_MERGES:
             return _state(ConfigurationStatus.UNSET)
         field = "operator_policy" if operator else "policy"
@@ -181,7 +188,7 @@ class _Resolver:
         if captured and name is None:
             return _state(ConfigurationStatus.UNSET)
         section = "parameters" if operator else "policies"
-        if require_sections and section not in self.definitions.model_fields_set:
+        if section not in self.definitions.model_fields_set:
             return _unknown(
                 ConfigurationUncertainty.OPERATOR_POLICY_DEFINITIONS_NOT_CAPTURED
                 if operator
@@ -213,9 +220,9 @@ class _Resolver:
         )
         return _unknown(ConfigurationUncertainty.INVALID_VALUE if malformed else reason)
 
-    def _policy(self, key: str, *, require_sections: bool, minimum: int | None) -> _Value:
-        regular = self._selected(key, operator=False, require_sections=require_sections, minimum=minimum)
-        operator = self._selected(key, operator=True, require_sections=require_sections, minimum=minimum)
+    def _policy(self, key: str, *, minimum: int | None) -> _Value:
+        regular = self._selected(key, operator=False, minimum=minimum)
+        operator = self._selected(key, operator=True, minimum=minimum)
         merged = _merge(regular, operator, _POLICY_MERGES.get(key, "left"))
         if self.observed is None or "effective_policy_definition" not in self.observed.model_fields_set:
             return merged
@@ -240,12 +247,23 @@ class _Resolver:
             captured.value, captured.status, (*merged.evidence, *captured.evidence), captured.uncertainties
         )
 
-    def setting(
-        self, key: str, mode: _Merge = "min", *, require_sections: bool = False, minimum: int | None = None
-    ) -> _Value:
-        argument = (
-            _unknown(ConfigurationUncertainty.ARGUMENTS_NOT_CAPTURED)
-            if require_sections and "arguments" not in self.queue.model_fields_set
-            else _entry(self.queue.arguments.root, f"x-{key}", ConfigurationSource.QUEUE_ARGUMENT, minimum=minimum)
-        )
-        return _merge(argument, self._policy(key, require_sections=require_sections, minimum=minimum), mode)
+    @cached_property
+    def _observed_quorum_arguments(self) -> Mapping[str, object] | None:
+        if self.observed is not None and isinstance(self.observed.arguments, QuorumQueueResponse):
+            return self.observed.arguments.model_dump(by_alias=True, exclude_unset=True)
+        return None
+
+    def _argument(self, key: str, *, minimum: int | None) -> _Value:
+        if "arguments" in self.queue.model_fields_set:
+            return _entry(self.queue.arguments.root, key, ConfigurationSource.QUEUE_ARGUMENT, minimum=minimum)
+        observed = self._observed_quorum_arguments
+        if observed is None or key not in _OBSERVED_QUORUM_ARGUMENT_KEYS:
+            return _unknown(ConfigurationUncertainty.ARGUMENTS_NOT_CAPTURED)
+        setting = _entry(observed, key, ConfigurationSource.OBSERVED_QUEUE_ARGUMENT, minimum=minimum)
+        choices = _OBSERVED_QUORUM_ARGUMENT_CHOICES.get(key)
+        if choices is not None and setting.status == ConfigurationStatus.KNOWN and setting.value not in choices:
+            return _unknown(ConfigurationUncertainty.INVALID_VALUE, setting.evidence)
+        return setting
+
+    def setting(self, key: str, mode: _Merge = "min", *, minimum: int | None = None) -> _Value:
+        return _merge(self._argument(f"x-{key}", minimum=minimum), self._policy(key, minimum=minimum), mode)

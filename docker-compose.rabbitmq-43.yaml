@@ -2,7 +2,7 @@ name: rabbitmq-test-sa-4.3
 
 services:
   rabbitmq-43:
-    image: rabbitmq:4.3-management
+    image: rabbitmq:4.3.8-management
     hostname: rabbitmq-test-43
     container_name: rabbitmq-test-43
     environment:

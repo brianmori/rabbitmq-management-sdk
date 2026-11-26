@@ -6,10 +6,10 @@ from typing_extensions import TypedDict
 
 from rabbitmq_management_sdk.resources._argument_map import JsonArgumentEntries, ResponseArgumentMap
 from rabbitmq_management_sdk.resources.v4.common import (
+    CapturedPolicyLeaderLocator,
     DeadLetterStrategy,
     DelayedRetryType,
     OverflowBehaviour,
-    QueueLeaderLocator,
 )
 
 _PolicyFields = TypedDict(
@@ -29,7 +29,7 @@ _PolicyFields = TypedDict(
         "delayed-retry-type": DelayedRetryType | None,
         "delayed-retry-min": int | None,
         "delayed-retry-max": int | None,
-        "queue-leader-locator": QueueLeaderLocator | None,
+        "queue-leader-locator": CapturedPolicyLeaderLocator | None,
         "max-age": str | None,
         "stream-filter-size-bytes": int | None,
         "max-in-memory-length": int | None,
@@ -127,7 +127,7 @@ class _PolicyDefinitionMap(ResponseArgumentMap[_PolicyValues]):
         return self.root.get("delayed-retry-max")
 
     @property
-    def queue_leader_locator(self) -> QueueLeaderLocator | None:
+    def queue_leader_locator(self) -> CapturedPolicyLeaderLocator | None:
         return self.root.get("queue-leader-locator")
 
     @property

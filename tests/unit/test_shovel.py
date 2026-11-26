@@ -107,14 +107,24 @@ class TestVhostFromAmqp10Uri:
         uri = "amqp://user@host:5672?hostname=some.real.tls.sni.name&sasl=plain"
         assert vhost_from_amqp10_uri(uri) is None
 
-    def test_literal_plus_in_vhost_name_is_preserved(self) -> None:
-        """urllib.parse.parse_qs would decode '+' as a space (form-encoding
-        convention) -- this must NOT use that, or a vhost containing a
-        literal '+' gets silently corrupted."""
-        assert vhost_from_amqp10_uri("amqp://user@host:5672?hostname=vhost:my+vhost") == "my+vhost"
+    def test_raw_plus_in_query_vhost_decodes_to_space(self) -> None:
+        assert vhost_from_amqp10_uri("amqp://user@host:5672?hostname=vhost:my+vhost") == "my vhost"
 
     def test_percent_encoded_plus_in_vhost_name(self) -> None:
         assert vhost_from_amqp10_uri("amqp://user@host:5672?hostname=vhost:my%2Bvhost") == "my+vhost"
+
+    @pytest.mark.parametrize(
+        ("query", "vhost"),
+        [
+            ("hostname=vhost:team%26%2332%3Bjobs", "team jobs"),
+            ("host%26%23110%3Bame=vhost:orders", "orders"),
+            ("hostname=vhost:%26%2338%3B%2332%3B", "&#32;"),
+            ("hostname=vhost:team%7Cjobs", "team|jobs"),
+            ("hostname=vhost:caf%C3%83%C2%A9", "café"),
+        ],
+    )
+    def test_decodes_rabbitmq_vhost_query_bytes(self, query: str, vhost: str) -> None:
+        assert vhost_from_amqp10_uri(f"amqp://broker?{query}") == vhost
 
 
 class TestParseShovelEndpoint:
@@ -275,12 +285,32 @@ class TestParseShovelEndpoint:
         assert endpoint.vhost is None
         assert endpoint.is_confirmed_local is False
 
-    def test_amqp10_rejects_invalid_utf8_hostname_evidence(self) -> None:
-        endpoint = _parse_endpoint("amqp://broker.example?hostname=vhost:%FF", "amqp10")
+    @pytest.mark.parametrize("query", ["hostname=vhost:%FF", "hostname=vhost:orders&option=%FF"])
+    def test_amqp10_rejects_invalid_utf8_query_evidence(self, query: str) -> None:
+        endpoint = _parse_endpoint(f"amqp://broker.example?{query}", "amqp10")
 
         assert endpoint.authorities is None
         assert endpoint.vhost is None
         assert endpoint.is_confirmed_local is False
+
+    @pytest.mark.parametrize(
+        "hostname",
+        ["%26%2332", "%26%2355296%3B", "%26%2399999999999999999999%3B", "caf%C3%A9"],
+    )
+    def test_amqp10_does_not_resolve_invalid_hostname_bytes(self, hostname: str) -> None:
+        endpoint = _parse_endpoint(
+            f"amqp://broker?hostname=vhost:{hostname}", "amqp10", in_cluster_amqp_hosts=frozenset({"broker"})
+        )
+
+        assert endpoint.authorities is None
+        assert endpoint.vhost is None
+        assert not endpoint.is_confirmed_local
+
+    @pytest.mark.parametrize("uri", ["amqp://broker?hostname=vhost:team|jobs", "AMQP://broker?hostname=vhost:orders"])
+    def test_amqp10_uses_broker_uri_syntax_for_locality(self, uri: str) -> None:
+        endpoint = _parse_endpoint(uri, "amqp10", in_cluster_amqp_hosts=frozenset({"broker"}))
+        assert endpoint.authorities is None
+        assert not endpoint.is_confirmed_local
 
     def test_invalid_failover_candidate_invalidates_complete_network_set(self) -> None:
         endpoint = _parse_endpoint(
@@ -396,6 +426,34 @@ class TestParseAmqp10Address:
     def test_percent_encoded_segments_are_decoded(self) -> None:
         assert parse_amqp10_address("/queues/my%2Bqueue", side="dest") == ("my+queue", NodeKind.QUEUE, None)
 
+    @pytest.mark.parametrize("prefix", ["", "/queue/", "/amq/queue/"])
+    def test_v1_queue_name_only_decodes_uppercase_slash_escape(self, prefix: str) -> None:
+        assert parse_amqp10_address(f"{prefix}q%2F%2f%20%ZZ", side="src") == (
+            "q/%2f%20%ZZ",
+            NodeKind.QUEUE,
+            None,
+        )
+
+    def test_v1_exchange_and_topic_keys_only_decode_uppercase_slash_escape(self) -> None:
+        assert parse_amqp10_address("/exchange/out%2F%20/key%2f%2F", side="dest") == (
+            "out/%20",
+            NodeKind.EXCHANGE,
+            "key%2f/",
+        )
+        assert parse_amqp10_address("/topic/key%20%2F", side="src") == ("amq.topic", NodeKind.EXCHANGE, "key%20/")
+
+    def test_v2_exchange_and_routing_key_decode_once(self) -> None:
+        assert parse_amqp10_address("/exchanges/caf%C3%A9%2f/key+%252F", side="dest") == (
+            "café/",
+            NodeKind.EXCHANGE,
+            "key+%2F",
+        )
+
+    @pytest.mark.parametrize("side", ["src", "dest"])
+    @pytest.mark.parametrize("name", ["q%", "q%2", "q%ZZ", "q%FF"])
+    def test_v2_rejects_malformed_queue_address(self, side: Literal["src", "dest"], name: str) -> None:
+        assert parse_amqp10_address(f"/queues/{name}", side=side) is None
+
     @pytest.mark.parametrize(
         "address",
         [
@@ -403,8 +461,12 @@ class TestParseAmqp10Address:
             "",
             123,
             "/unrecognized-segment/name",
+            "bare/queue",
+            "/topic/",
             "/queues/name/unencoded/extra",
             "/exchanges/name/unencoded/extra",
+            "/exchanges/output%ZZ",
+            "/exchanges/output/key%ZZ",
         ],
     )
     def test_unresolvable_returns_none(self, address: object) -> None:

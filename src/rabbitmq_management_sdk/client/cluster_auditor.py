@@ -380,6 +380,8 @@ class ClusterAuditor:
 
         Each distinct exchange and key is traced at most once in this batch.
         Results describe the captured configuration for a single publication.
+        An omitted policy selection can leave a possible alternate route
+        undetermined when no immediate binding is known to match.
         """
         return evaluate_routing_contracts(self._topology, contracts)
 
@@ -514,8 +516,10 @@ class ClusterAuditor:
     def quorum_delivery_configuration(self) -> tuple[QuorumQueueConfiguration, ...]:
         """Return captured quorum settings, their evidence, and advisory facts.
 
-        Missing evidence remains unknown. Results describe queue-level
-        configuration, not individual consumers or guaranteed cycle termination.
+        Queue observations can supply arguments when the definitions map was
+        omitted. Defaults require evidence that no setting applies. Results
+        describe queue-level configuration, not individual consumers or
+        guaranteed cycle termination.
         """
         return quorum_delivery_configuration(self._topology)
 

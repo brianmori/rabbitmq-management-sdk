@@ -54,7 +54,7 @@ Changes to broker-dependent behavior should run against both supported live
 targets, with version-specific cases explicitly gated:
 
 ```bash
-UV_PYTHON=3.12 just test-live          # RabbitMQ 4.2 and 4.3, sequentially
+UV_PYTHON=3.12 just test-live          # RabbitMQ 4.2.9 and 4.3.8, sequentially
 # Or run each target separately:
 UV_PYTHON=3.12 just test-live-rmq42
 UV_PYTHON=3.12 just test-live-rmq43

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 import pytest
 
@@ -14,6 +15,8 @@ from rabbitmq_management_sdk.resources.v4.policies.schemas import (
 )
 
 if TYPE_CHECKING:
+    from tests.shared.live_broker import ManagementAPI
+
     from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
 
 
@@ -39,6 +42,48 @@ def test_create_get_delete_regular_policy(live_client: RabbitMQClient) -> None:
         live_client.policies.delete(name)
     with pytest.raises(NotFoundError):
         live_client.policies.get(name)
+
+
+@pytest.mark.live
+def test_legacy_leader_locators_round_trip_from_broker(
+    live_client: RabbitMQClient, live_vhost: str, management_api: ManagementAPI
+) -> None:
+    vhost_path = quote(live_vhost, safe="")
+    policy_locators = ("random", "least-leaders")
+    queue_locators = (*policy_locators, "min-masters")
+    for locator in policy_locators:
+        management_api.request(
+            "PUT",
+            f"policies/{vhost_path}/{locator}",
+            {
+                "pattern": f"^{locator}$",
+                "definition": {"queue-leader-locator": locator},
+                "priority": 0,
+                "apply-to": "quorum_queues",
+            },
+        )
+        assert live_client.policies.get(locator).definition.queue_leader_locator == locator
+
+    for locator in queue_locators:
+        management_api.request(
+            "PUT",
+            f"queues/{vhost_path}/{locator}",
+            {
+                "durable": True,
+                "auto_delete": False,
+                "arguments": {"x-queue-type": "quorum", "x-queue-leader-locator": locator},
+            },
+        )
+
+    definitions = live_client.admin.export_definitions()
+    assert {
+        policy.name: policy.definition.queue_leader_locator
+        for policy in definitions.policies
+        if policy.vhost == live_vhost
+    } == {locator: locator for locator in policy_locators}
+    assert {
+        queue.name: queue.arguments.queue_leader_locator for queue in definitions.queues if queue.vhost == live_vhost
+    } == {locator: locator for locator in queue_locators}
 
 
 @pytest.mark.live
