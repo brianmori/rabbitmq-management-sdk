@@ -26,7 +26,7 @@ UV_PYTHON=3.12 uv sync --locked --group dev
 Installing a Python version does not select it for later `uv` commands. Set
 `UV_PYTHON` on each recipe as shown below, or export it for your shell session.
 The CI matrix uses Python 3.12, 3.13, and 3.14; quality and live jobs use 3.12.
-See the [workflow](.github/workflows/ci.yaml) and [recipes](justfile) for the
+See the [workflow](.github/workflows/ci.yaml) and [recipes](Justfile) for the
 current commands rather than assuming documentation is a CI sign-off.
 
 ## Checks and supported versions
@@ -148,6 +148,10 @@ performed and avoid implying broker behavior was retested.
 
 ## Release verification
 
+Prepare the release from updated `main` after the intended changes merge. Set
+the package version, refresh `uv.lock`, and move the Unreleased notes into the
+new version's changelog section.
+
 Keep `project.license-files` in `pyproject.toml`. After `uv build`, inspect both
 the wheel and source archive for the expected `LICENSE` contents and license-file
 metadata. The current CI package job runs `uv build` only; it does not verify
@@ -163,6 +167,10 @@ A downstream application's exact SDK pin must include the API it uses; updating
 this repository's lockfile does not upgrade consumer environments. Inspect the
 working tree before a release: a build using local-only required files does not
 establish fresh-checkout reproducibility.
+
+Verify the exact release commit before pushing its `v`-prefixed tag. The tag
+triggers the PyPI publish workflow, which checks that the tag matches the
+package version and that the lockfile is current. [Publish workflow](.github/workflows/publish.yaml)
 
 ## Submit a pull request
 

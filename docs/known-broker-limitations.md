@@ -7,7 +7,8 @@ Live verification against RabbitMQ 4.2.9 and 4.3.6 found that
 vhost name contains `é`. The response stops immediately after the `explanation`
 field's colon. Creating, reading, and deleting the same vhost work correctly.
 The SDK's URL path encoding is also verified independently with captured
-request paths.
+request paths. The same truncation appears on RabbitMQ 4.3.8 in the pinned
+live suite.
 
 The broker's [4.3.6 definitions export implementation](https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v4.3.6/deps/rabbitmq_management/src/rabbit_mgmt_wm_definitions.erl)
 streams the JSON response after sending status 200. The observed failure is
