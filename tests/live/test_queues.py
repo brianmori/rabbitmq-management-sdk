@@ -52,6 +52,16 @@ def test_queue_type_survives_vhost_defaults(
 
 
 @pytest.mark.live
+def test_quorum_consumer_timeout_round_trips_on_both_broker_versions(live_client: RabbitMQClient) -> None:
+    timeout = 120_000
+    live_client.queues.create("with-timeout", QueueRequest(arguments=QuorumQueueRequest(consumer_timeout=timeout)))
+
+    arguments = live_client.queues.get("with-timeout").arguments
+    assert isinstance(arguments, QuorumQueueResponse)
+    assert arguments.consumer_timeout == timeout
+
+
+@pytest.mark.live
 @pytest.mark.parametrize("queue_type", ["classic", "quorum"])
 def test_sdk_dead_letter_resources_route_rejected_message(
     live_client: RabbitMQClient,

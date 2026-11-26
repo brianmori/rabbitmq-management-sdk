@@ -12,7 +12,7 @@ clean, predictable error hierarchy.
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://img.shields.io/badge/mypy-checked-blue.svg)](https://mypy-lang.org/)
 
-> ⚠️ **Status: Alpha (0.x).** The API may change between minor versions until 1.0.
+> ⚠️ **Status: Beta (0.x).** The API may change between minor versions until 1.0.
 
 ---
 
@@ -69,8 +69,9 @@ test, and audit:
 ## Requirements
 
 - **Python 3.12+**
-- **RabbitMQ 4.x** with the management plugin enabled
-  (`rabbitmq-plugins enable rabbitmq_management`)
+- **RabbitMQ 4.2 or 4.3** with the management plugin enabled
+  (`rabbitmq-plugins enable rabbitmq_management`). The live test matrix uses
+  4.2.9 and 4.3.8.
 
 ## Installation
 
@@ -216,9 +217,11 @@ for policy in client.policies.list_by_vhost():
     print(policy.name, policy.definition)
 ```
 
-For RabbitMQ 4.3 quorum retry and timeout configuration, see the complete
-[queue and policy examples](docs/quorum-queue-configuration.md). RabbitMQ 4.2
-remains supported through the same v4 managers; 4.4 support is deferred.
+Managers obtained from `RabbitMQClient` check the target broker version
+before sending delayed retry or disconnected-consumer timeout settings.
+Both require RabbitMQ 4.3.0 or later. The existing consumer timeout key keeps
+its RabbitMQ 4.2 semantics. RabbitMQ 4.4 support is deferred.
+[Quorum queue and policy examples](docs/quorum-queue-configuration.md)
 
 For audit results with effective quorum delivery settings, sources, and explicit
 uncertainty, see [quorum queue auditing](docs/quorum-queue-auditing.md).
@@ -268,10 +271,8 @@ for status in client.shovels.get_all_shovel_statuses():
 On RabbitMQ 4.3, `Amqp10ShovelSource.src_consumer_name` sets the AMQP 1.0
 source **link name**. The same `src-consumer-name` wire setting identifies the
 consumer tag for AMQP 0-9-1 and `local` sources. If omitted or `None`, the SDK
-omits the setting and RabbitMQ chooses a random name. Leave it unset when
-targeting RabbitMQ 4.2; RabbitMQ 4.4 support is deferred. See the
-[4.3 dynamic shovel settings](https://www.rabbitmq.com/docs/4.3/shovel-dynamic)
-and [4.3.0 release notes](https://github.com/rabbitmq/rabbitmq-server/blob/v4.3.6/release-notes/4.3.0.md#shovel-plugin).
+omits the setting and RabbitMQ chooses a random name. Setting a source name
+on any of these protocols requires RabbitMQ 4.3.0 or later. [4.3 dynamic shovel settings](https://www.rabbitmq.com/docs/4.3/shovel-dynamic) · [4.3.0 release notes](https://github.com/rabbitmq/rabbitmq-server/releases/tag/v4.3.0#shovel-plugin)
 
 This complete example requires RabbitMQ 4.3 with `rabbitmq_shovel` and
 `rabbitmq_shovel_management` enabled, an existing `orders` source queue, and an
@@ -473,6 +474,10 @@ specific HTTP outcomes when needed. Validation performed while you directly
 construct a Pydantic request or configuration model uses
 `pydantic.ValidationError`.
 
+`UnsupportedBrokerFeatureError` is raised before a write when a request
+contains a setting that requires a newer broker. It exposes `feature`,
+`broker_version`, and `minimum_version`.
+
 TLS certificate-loading failures during client initialization raise
 `TransportError`, preserving the original SSL or file I/O exception as
 `__cause__`. This includes invalid PEM files and certificate files that become
@@ -493,6 +498,7 @@ except RabbitMQError as exc:
 
 ```text
 RabbitMQError
+├── UnsupportedBrokerFeatureError (request requires a newer broker)
 ├── TransportError              (no HTTP response)
 │   ├── TimeoutError
 │   └── ConnectionError

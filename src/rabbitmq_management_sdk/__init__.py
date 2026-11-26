@@ -36,6 +36,7 @@ from rabbitmq_management_sdk.exceptions import (
     TransportError,
     UnauthorizedError,
     UnprocessableEntityError,
+    UnsupportedBrokerFeatureError,
 )
 from rabbitmq_management_sdk.resources.base import Page
 from rabbitmq_management_sdk.resources.v4.admin.schemas.vhost_request import (
@@ -170,6 +171,7 @@ __all__ = [
     "TransportError",
     "UnauthorizedError",
     "UnprocessableEntityError",
+    "UnsupportedBrokerFeatureError",
     "UpsertShovelRequest",
     "VhostLimitName",
     "VhostLimitRequest",
