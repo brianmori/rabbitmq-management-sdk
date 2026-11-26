@@ -5,10 +5,42 @@ from pathlib import Path
 import pytest
 
 from rabbitmq_management_sdk import ClusterAuditor
-from rabbitmq_management_sdk.topology import NodeId, NodeKind, RoutingCondition, RoutingContract, RoutingVerdict
+from rabbitmq_management_sdk.topology import (
+    NodeId,
+    NodeKind,
+    RoutingCondition,
+    RoutingContract,
+    RoutingIssue,
+    RoutingUncertainty,
+    RoutingVerdict,
+)
 
 pytestmark = pytest.mark.integration
 _CAPTURES = Path(__file__).parent
+
+
+@pytest.mark.parametrize(
+    ("folder", "queues", "exchanges", "vhost", "name"),
+    [
+        ("rmq-4.2", "queues-get-all-no-stats.json", "exchanges-get-all-no-stats.json", "policy", "ae.a"),
+        ("rmq-4.3/complex-topology", "queues.json", "exchanges.json", "topology-demo.policies", "policy.in"),
+    ],
+)
+def test_uncaptured_alternate_policy_leaves_discard_unverified(
+    folder: str, queues: str, exchanges: str, vhost: str, name: str
+) -> None:
+    capture = _CAPTURES / folder
+    auditor = ClusterAuditor.from_files(
+        capture / "full-export-definitions.json",
+        queues_path=capture / queues,
+        exchanges_path=capture / exchanges,
+    )
+    origin = NodeId(vhost, name, NodeKind.EXCHANGE, auditor.cluster_id)
+    contract = RoutingContract("discard unmatched messages", origin, "unmatched", (RoutingCondition.exactly(set()),))
+
+    (result,) = auditor.evaluate_routing_contracts([contract])
+    assert result.verdict == RoutingVerdict.UNDETERMINED
+    assert result.issues == (RoutingIssue(origin, RoutingUncertainty.POLICY_SELECTION_NOT_CAPTURED),)
 
 
 def test_rmq42_fanout_reaches_only_its_captured_queue() -> None:

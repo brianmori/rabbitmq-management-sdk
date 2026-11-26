@@ -3,9 +3,11 @@
 from dataclasses import replace
 
 import pytest
-from tests.shared.parser_fixtures import _binding, _exchange, _queue, _response, _vhost
+from tests.shared.parser_fixtures import _binding, _exchange, _observed_queue, _policy, _queue, _response, _vhost
 
 from rabbitmq_management_sdk import ClusterAuditor
+from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
+from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
 from rabbitmq_management_sdk.topology import (
     ClusterTopology,
     DeadLetterCoverage,
@@ -48,6 +50,31 @@ def _work(auditor: ClusterAuditor) -> DeadLetterCoverage:
     return next(result for result in auditor.dead_letter_coverage() if result.queue.id.name == "work")
 
 
+@pytest.mark.parametrize("declared_exchange", [True, False], ids=["declared", "observed-only"])
+def test_omitted_exchange_arguments_leave_dlx_destinations_undetermined(declared_exchange: bool) -> None:
+    arguments = {"x-queue-type": "classic", "x-dead-letter-exchange": "dlx", "x-dead-letter-routing-key": "retry"}
+    exchange = _exchange("dlx", "v")
+    del exchange["arguments"]
+    auditor = ClusterAuditor(
+        _response(
+            vhosts=[_vhost("v")],
+            queues=[_queue("work", "v", **arguments)],
+            exchanges=[exchange] if declared_exchange else [],
+        ),
+        queues=[_observed_queue("work", "v", type="classic", arguments=arguments, policy=None)],
+        exchanges=[ExchangeResponse.model_validate({**exchange, "policy": None})],
+    )
+    coverage = _work(auditor)
+    dlx = NodeId("v", "dlx", NodeKind.EXCHANGE)
+    assert coverage.status == Status.UNDETERMINED
+    assert coverage.dead_letter_exchange == dlx
+    assert not coverage.destinations
+    assert [(issue.resource, issue.reason) for issue in coverage.issues] == [
+        (dlx, Uncertainty.EXCHANGE_ARGUMENTS_NOT_CAPTURED)
+    ]
+    assert auditor.audit().dead_letter_coverage == (coverage,)
+
+
 def test_all_queues_remain_visible_including_terminal_and_discard_names() -> None:
     names = ["terminal.plq", "discard", "work"]
     auditor = ClusterAuditor(_response(queues=[_queue(name, "v", **{"x-queue-type": "classic"}) for name in names]))
@@ -56,6 +83,86 @@ def test_all_queues_remain_visible_including_terminal_and_discard_names() -> Non
         (name, Status.NO_DLX) for name in sorted(names)
     ]
     assert auditor.audit().dead_letter_coverage == auditor.dead_letter_coverage()
+
+
+@pytest.mark.parametrize("policy_key", ["dead-letter-exchange", "dead-letter-routing-key"])
+def test_classic_dlx_name_is_retained_when_policy_selection_is_omitted(policy_key: str) -> None:
+    classic_arguments = {"x-queue-type": "classic"}
+    arguments = classic_arguments.copy()
+    if policy_key == "dead-letter-routing-key":
+        arguments["x-dead-letter-exchange"] = "dlx"
+    effective_definition: dict[str, object] = {policy_key: "dlx" if policy_key == "dead-letter-exchange" else "retry"}
+    exchange = _exchange("dlx", "v", "direct")
+    auditor = ClusterAuditor(
+        _response(
+            vhosts=[_vhost("v")],
+            queues=[_queue("work", "v", **arguments), _queue("sink", "v", **classic_arguments)],
+            exchanges=[exchange],
+            bindings=[_binding("dlx", "sink")],
+            policies=[_policy("retry", "^work$", "classic_queues", 5, vhost="v", definition=effective_definition)],
+        ),
+        queues=[
+            _observed_queue(
+                "work",
+                "v",
+                type="classic",
+                arguments=arguments,
+                effective_policy_definition=effective_definition,
+            ),
+            _observed_queue("sink", "v", type="classic", arguments=classic_arguments, policy=None),
+        ],
+        exchanges=[ExchangeResponse.model_validate(exchange)],
+    )
+
+    sink, work = auditor.dead_letter_coverage()
+
+    assert sink.status == Status.NO_DLX
+    assert work.status == Status.UNDETERMINED
+    assert work.dead_letter_exchange == NodeId(vhost="v", name="dlx", kind=NodeKind.EXCHANGE)
+    assert work.routing_key is None
+    assert work.destinations == ()
+    dlx_edges = [edge for edge in auditor.topology.edges if edge.kind == EdgeKind.DEAD_LETTER]
+    if policy_key == "dead-letter-exchange":
+        assert [(issue.resource, issue.reason) for issue in work.issues] == [
+            (work.queue.id, Uncertainty.DLX_ROUTE_NOT_CAPTURED)
+        ]
+        assert not dlx_edges
+    else:
+        (edge,) = dlx_edges
+        assert edge.target == work.dead_letter_exchange
+        assert edge.routing_key is None
+        assert [(issue.resource, issue.reason) for issue in work.issues] == [
+            (edge.target, Uncertainty.ROUTING_KEY_NOT_CAPTURED)
+        ]
+    assert _work(ClusterAuditor.from_topology(auditor.topology)) == work
+    assert auditor.audit().dead_letter_coverage == (sink, work)
+
+
+def test_omitted_policy_evidence_cannot_rule_out_a_classic_dlx() -> None:
+    arguments = {"x-queue-type": "classic"}
+    queue = _queue("work", "v", **arguments)
+    definitions = _response(
+        queues=[queue],
+        policies=[
+            _policy("retry", "^work$", "classic_queues", 5, vhost="v", definition={"dead-letter-exchange": "dlx"})
+        ],
+    )
+    observation = _observed_queue("work", "v", type="classic", arguments=arguments)
+    missing_effective_policy = ClusterAuditor(definitions, queues=[observation], exchanges=[])
+    missing_policy_section = ClusterAuditor(ClusterDefinitionsResponse.model_validate({"queues": [queue]}))
+    for auditor in (missing_effective_policy, missing_policy_section):
+        coverage = _work(auditor)
+        assert coverage.status == Status.UNDETERMINED
+        assert coverage.dead_letter_exchange is None
+        assert [issue.reason for issue in coverage.issues] == [Uncertainty.DLX_ROUTE_NOT_CAPTURED]
+        assert not auditor.topology.edges
+
+    observation_with_empty_policy = _observed_queue(
+        "work", "v", type="classic", arguments=arguments, effective_policy_definition={}
+    )
+    assert _work(ClusterAuditor(definitions, queues=[observation_with_empty_policy], exchanges=[])).status == (
+        Status.NO_DLX
+    )
 
 
 def test_missing_exchange_and_empty_exchange_are_distinct() -> None:

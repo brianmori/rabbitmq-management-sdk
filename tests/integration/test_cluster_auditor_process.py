@@ -60,7 +60,7 @@ sys.stdout.buffer.write(pickle.dumps(result, protocol=pickle.HIGHEST_PROTOCOL))
 def test_spawned_process_preserves_topology_analysis_results() -> None:
     """Canonical topology transfer must preserve analysis and vhost metadata."""
     definitions = _response(
-        rabbitmq_version="4.3.6",
+        rabbitmq_version="4.3.8",
         vhosts=[_vhost("audit"), _vhost("empty", "quorum")],
         queues=[
             _queue("cycle-queue", "audit", **{"x-dead-letter-exchange": "cycle-exchange", "x-message-ttl": 1000}),

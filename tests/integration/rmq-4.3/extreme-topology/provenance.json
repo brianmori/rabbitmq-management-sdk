@@ -1,0 +1,47 @@
+{
+  "broker_version": "4.3.8",
+  "docker_image_id": "sha256:fd4626e7c8ff066fc2ad8a608fd0364419ca919de00ddaca4bf1159f8350c1c8",
+  "window_utc": [
+    "2026-11-19T19:00:54.636747+00:00",
+    "2026-11-19T19:00:54.740937+00:00"
+  ],
+  "endpoints": [
+    "/api/definitions",
+    "/api/queues?disable_stats=true",
+    "/api/exchanges?disable_stats=true"
+  ],
+  "scope": "Cluster-wide. Complete, unpaginated observation arrays. No messages published.",
+  "sanitization": "Emptied users to remove the disposable account and hash. Kept synthetic guest grants.",
+  "counts": {
+    "vhosts": 9,
+    "queues": 3060,
+    "exchanges": 1926,
+    "bindings": 4442,
+    "policies": 8,
+    "shovels_running": 13,
+    "observed_exchanges": 1989
+  },
+  "queue_types": {
+    "classic": 2900,
+    "quorum": 96,
+    "stream": 64
+  },
+  "exchange_types": [
+    "direct",
+    "fanout",
+    "headers",
+    "topic",
+    "x-consistent-hash",
+    "x-jms-topic",
+    "x-local-random",
+    "x-modulus-hash",
+    "x-random",
+    "x-recent-history"
+  ],
+  "original_definitions_sha256": "c31a924556aa777a06f4e50145ed4a40eb61edb28cc9df8be7124311ef3c3eaa",
+  "sha256": {
+    "full-export-definitions.json": "03663fd288c54cd2c4eeed29c0a8e555ff26bfe2cdbe4692d9171b64575c065f",
+    "queues.json": "a4c9a7459bf80e54bb9f419f68e8617d0b1271761e6cb5acffc7ec2c9b65e8c4",
+    "exchanges.json": "56bbfa67f31a112d931b82411f69c04fd2c4cd449ff652c86b2fca8d932ef38f"
+  }
+}

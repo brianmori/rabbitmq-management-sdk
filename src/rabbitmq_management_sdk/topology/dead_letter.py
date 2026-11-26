@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from rabbitmq_management_sdk.exceptions import TopologyValidationError
-from rabbitmq_management_sdk.topology.models import EdgeKind, NodeId, NodeKind, QueueNode
+from rabbitmq_management_sdk.topology.models import ConfigurationStatus, EdgeKind, NodeId, NodeKind, QueueNode
 from rabbitmq_management_sdk.topology.ordering import node_sort_key
 from rabbitmq_management_sdk.topology.routing import _ExchangeRouter
 
@@ -36,6 +36,9 @@ class DeadLetterUncertainty(StrEnum):
     INCOMPLETE_BINDING = "incomplete_binding"
     UNSUPPORTED_QUEUE_TYPE = "unsupported_queue_type"
     CONFLICTING_ROUTES = "conflicting_routes"
+    POLICY_SELECTION_NOT_CAPTURED = "policy_selection_not_captured"
+    EXCHANGE_ARGUMENTS_NOT_CAPTURED = "exchange_arguments_not_captured"
+    DLX_ROUTE_NOT_CAPTURED = "dlx_route_not_captured"
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,9 +65,11 @@ class DeadLetterCoverage:
     list. ``issues`` can accompany it when other branches remain unresolved.
     With no established destination, unresolved branches yield ``undetermined``.
 
-    For a configured DLX, a ``None`` routing key means the original message
-    keys are unknown; an empty string is a configured key. Terminal and intentional-discard queues
-    are retained. Streams are explicitly ``not_applicable``.
+    For a captured DLX route, a ``None`` routing key leaves the original
+    message keys unknown. An empty string is a configured key. With an
+    uncaptured DLX route, coverage retains an established exchange
+    name and leaves the routing key unavailable. Terminal and intentional
+    discard queues are retained. Streams are explicitly ``not_applicable``.
     """
 
     queue: QueueNode
@@ -159,7 +164,7 @@ class _DeadLetterRouter:
                 issues=(DeadLetterRoutingIssue(queue.id, DeadLetterUncertainty.CONFLICTING_ROUTES),),
             )
         if exchange is None:
-            return DeadLetterCoverage(queue, DeadLetterCoverageStatus.NO_DLX)
+            return self._coverage_without_dlx_edge(queue)
         if exchange not in self.router.exchanges:
             return DeadLetterCoverage(queue, DeadLetterCoverageStatus.MISSING_EXCHANGE, exchange, routing_key)
         evidence = self.router.trace(exchange, routing_key)
@@ -176,14 +181,36 @@ class _DeadLetterRouter:
             issues,
         )
 
+    @staticmethod
+    def _coverage_without_dlx_edge(queue: QueueNode) -> DeadLetterCoverage:
+        delivery = queue.quorum_delivery
+        quorum_evidence = delivery is not None and delivery.dead_letter_exchange.status in {
+            ConfigurationStatus.KNOWN,
+            ConfigurationStatus.UNKNOWN,
+        }
+        if not queue.dead_letter_route_unknown and not quorum_evidence:
+            return DeadLetterCoverage(queue, DeadLetterCoverageStatus.NO_DLX)
+
+        name = queue.unresolved_dead_letter_exchange
+        if name is None and delivery is not None:
+            name = delivery.dead_letter_exchange.value
+        exchange = NodeId(queue.id.vhost, name, NodeKind.EXCHANGE, queue.id.cluster_id) if name is not None else None
+        return DeadLetterCoverage(
+            queue,
+            DeadLetterCoverageStatus.UNDETERMINED,
+            dead_letter_exchange=exchange,
+            issues=(DeadLetterRoutingIssue(queue.id, DeadLetterUncertainty.DLX_ROUTE_NOT_CAPTURED),),
+        )
+
 
 def dead_letter_coverage(topology: ClusterTopology) -> tuple[DeadLetterCoverage, ...]:
     """Return a canonically ordered result for every contained queue.
 
     Effective arguments and selected regular-policy values are already resolved
     into dead-letter edges. Follow bindings and conditional alternate exchanges
-    within the same routing operation; stop at queues. Ignore later dead-letter
-    and shovel operations, message history, runtime health, and delivery safety.
+    within the same routing operation; stop at queues. Retain captured DLX evidence
+    where a graph edge is unavailable. Ignore later dead-letter and shovel
+    operations, message history, runtime health, and delivery safety.
     """
     router = _DeadLetterRouter(topology)
     return tuple(router.coverage(queue) for queue in sorted(topology.queues, key=lambda queue: node_sort_key(queue.id)))

@@ -35,6 +35,7 @@ class QuorumQueueResponse(RabbitMQResponse):
     dead_letter_exchange: str | None = Field(None, alias="x-dead-letter-exchange")
     dead_letter_routing_key: str | None = Field(None, alias="x-dead-letter-routing-key")
     dead_letter_strategy: str | None = Field(None, alias="x-dead-letter-strategy")
+    overflow: str | None = Field(None, alias="x-overflow")
     single_active_consumer: bool | None = Field(None, alias="x-single-active-consumer")
     max_length: int | None = Field(None, alias="x-max-length")
     initial_cluster_size: int | None = Field(None, alias="x-quorum-initial-group-size")

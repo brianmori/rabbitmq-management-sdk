@@ -10,10 +10,10 @@ from typing_extensions import TypedDict
 from rabbitmq_management_sdk.resources._argument_map import JsonArgumentEntries, ResponseArgumentMap
 from rabbitmq_management_sdk.resources.base import RabbitMQResponse
 from rabbitmq_management_sdk.resources.v4.common import (
+    CapturedQueueLeaderLocator,
     DeadLetterStrategy,
     DelayedRetryType,
     OverflowBehaviour,
-    QueueLeaderLocator,
 )
 from rabbitmq_management_sdk.resources.v4.policies.schemas._definition import _PolicyDefinitionMap
 from rabbitmq_management_sdk.resources.v4.policies.schemas.common import (
@@ -237,7 +237,7 @@ _QueueArgumentFields = TypedDict(
         "x-max-length-bytes": int | None,
         "x-message-ttl": int | None,
         "x-overflow": OverflowBehaviour | None,
-        "x-queue-leader-locator": QueueLeaderLocator | None,
+        "x-queue-leader-locator": CapturedQueueLeaderLocator | None,
         "x-single-active-consumer": bool | None,
         "x-quorum-initial-group-size": int | None,
         "x-quorum-target-group-size": int | None,
@@ -331,7 +331,7 @@ class ExportQueueArguments(ResponseArgumentMap[_QueueArgumentValues]):
         return self.root.get("x-overflow")
 
     @property
-    def queue_leader_locator(self) -> QueueLeaderLocator | None:
+    def queue_leader_locator(self) -> CapturedQueueLeaderLocator | None:
         return self.root.get("x-queue-leader-locator")
 
     @property

@@ -74,11 +74,11 @@ def resolve_queue_limits(
             return cast("ConfigurationValue[int]", unsupported_type(key))
         if stream != (resolver.queue_type == "stream"):
             return _NOT_APPLICABLE
-        setting = resolver.setting(key, "right" if stream else "min", require_sections=True, minimum=minimum)
+        setting = resolver.setting(key, "right" if stream else "min", minimum=minimum)
         return cast("ConfigurationValue[int]", setting if minor is not None else unknown_version(setting, version))
 
     if resolver.queue_type == "stream":
-        age = resolver.setting("max-age", "right", require_sections=True)
+        age = resolver.setting("max-age", "right")
         stream_age = _stream_age_ms(age if minor is not None else unknown_version(age, version))
         overflow = _NOT_APPLICABLE
     elif resolver.queue_type in _STANDARD_TYPES:
@@ -86,7 +86,7 @@ def resolve_queue_limits(
         if quorum_delivery is not None:
             overflow = quorum_delivery.overflow
         else:
-            setting = resolver.setting("overflow", "left", require_sections=True)
+            setting = resolver.setting("overflow", "left")
             overflow = cast(
                 "ConfigurationValue[str]",
                 _default(setting, "overflow", "drop-head") if minor is not None else unknown_version(setting, version),

@@ -33,7 +33,7 @@ def test_quorum_retry_and_timeouts_preserve_routes_and_cycle_findings(
     if source == "arguments":
         arguments.update({f"x-{key}": value for key, value in route_settings.items()})
     baseline = _response(
-        rabbit_version="4.3.6",
+        rabbit_version="4.3.8",
         vhosts=[_vhost("v")],
         queues=[_queue("work", "v", **arguments)],
         exchanges=[_exchange("retry", "v")] if has_dlx else [],
@@ -165,7 +165,7 @@ class TestParseClusterTopologyEndToEnd:
         topology = parse_cluster_topology(
             ClusterDefinitionsResponse.model_validate(
                 {
-                    "rabbitmq_version": "4.3.6",
+                    "rabbitmq_version": "4.3.8",
                     "vhosts": [
                         {"name": "empty", "limits": {}},
                         {"name": "limited", "limits": {"max-queues": 0, "max-connections": -1}},

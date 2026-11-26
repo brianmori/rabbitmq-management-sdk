@@ -6,10 +6,11 @@ that resource belongs to the captured cluster. An unconfirmed endpoint is not
 necessarily remote.
 """
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal
-from urllib.parse import SplitResult, unquote, urlsplit
+from urllib.parse import SplitResult, unquote, unquote_plus, urlsplit
 
 from rabbitmq_management_sdk.topology.models import (
     EndpointAuthority,
@@ -33,6 +34,8 @@ _ASCII_DELETE = 0x7F
 _ASCII_DIGITS = frozenset("0123456789")
 _URI_COMPONENT_CHARACTERS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~!$&'()*+,;=")
 _IP_LITERAL_CHARACTERS = _URI_COMPONENT_CHARACTERS | frozenset("%:")
+_URI_QUERY_CHARACTERS = _URI_COMPONENT_CHARACTERS | frozenset("%:@/?")
+_FORM_DECIMAL_REFERENCE = re.compile(r"&#(?:([0-9]*);)?")
 _SHOVEL_PROTOCOLS = frozenset({"amqp091", "amqp10", "local"})
 _EXPLICIT_ACK_MODES = {mode.value: mode for mode in ShovelAckMode if mode != ShovelAckMode.UNKNOWN}
 
@@ -79,11 +82,12 @@ class _UriCandidate:
 
 @dataclass(frozen=True, slots=True)
 class _UriEvidence:
-    """Combined vhost and authority evidence for a complete failover set."""
+    """Combined vhost, authority, and locality evidence for a failover set."""
 
     vhost: str | None
     authorities: tuple[EndpointAuthority, ...] | None
     transport: ShovelEndpointTransport
+    is_confirmed_local: bool = False
 
 
 def _contains_disallowed_raw_character(value: str) -> bool:
@@ -160,13 +164,13 @@ def _has_valid_raw_authority(authority: str) -> bool:
     return (not separator or _has_valid_userinfo(userinfo)) and _has_valid_host_and_port(host_and_port)
 
 
-def _parse_base_uri(uri: str) -> tuple[SplitResult, EndpointAuthority] | None:
+def _parse_base_uri(uri: str, protocol: str) -> tuple[SplitResult, EndpointAuthority] | None:
     """Validate common AMQP URI syntax and normalize its safe authority."""
     if not uri or _contains_disallowed_raw_character(uri) or not _has_valid_percent_encoding(uri) or "#" in uri:
         return None
 
     raw_scheme, separator, _remainder = uri.partition("://")
-    scheme = raw_scheme.casefold()
+    scheme = raw_scheme if protocol == "amqp10" else raw_scheme.casefold()
     if not separator or scheme not in _DEFAULT_PORT_BY_SCHEME:
         return None
 
@@ -175,8 +179,10 @@ def _parse_base_uri(uri: str) -> tuple[SplitResult, EndpointAuthority] | None:
         raw_authority_is_valid = _has_valid_raw_authority(parsed.netloc)
         parsed_port = parsed.port
         port = parsed_port if parsed_port is not None else _DEFAULT_PORT_BY_SCHEME[scheme]
-        raw_host = parsed.hostname
-        host = unquote(raw_host, errors="strict").casefold() if raw_host is not None else None
+        host = parsed.hostname
+        # The AMQP 1.0 client passes the parsed host directly to its socket.
+        if host is not None and protocol != "amqp10":
+            host = unquote(host, errors="strict")
     except (UnicodeDecodeError, ValueError):
         return None
 
@@ -205,27 +211,49 @@ def _amqp091_vhost(path: str) -> str | None:
         return None
 
 
+def _form_decimal_character(match: re.Match[str]) -> str:
+    """Decode one decimal reference as Erlang's form decoder does."""
+    digits = match[1]
+    if digits is None:
+        raise ValueError("Invalid decimal reference in AMQP 1.0 URI query")
+    character = chr(int(digits.lstrip("0") or "0"))
+    character.encode("utf-8")  # Reject surrogate code points.
+    return character
+
+
+def _decode_form_component(component: str) -> str:
+    """Decode URL form escapes and then decimal character references once."""
+    return _FORM_DECIMAL_REFERENCE.sub(_form_decimal_character, unquote_plus(component, errors="strict"))
+
+
 def _amqp10_vhost(query: str) -> tuple[bool, str | None]:
     """Resolve RabbitMQ's AMQP 1.0 hostname convention from one query."""
+    if any(character not in _URI_QUERY_CHARACTERS for character in query):
+        return False, None
+
     hostnames: list[str] = []
     try:
         for pair in query.split("&") if query else ():
             raw_key, _separator, raw_value = pair.partition("=")
-            if unquote(raw_key, errors="strict") == "hostname":
-                hostnames.append(unquote(raw_value, errors="strict"))
-    except UnicodeDecodeError:
+            key = _decode_form_component(raw_key)
+            value = _decode_form_component(raw_value)
+            if key == "hostname":
+                hostnames.append(value)
+        if len(hostnames) != 1:
+            return True, None
+        # RabbitMQ passes the decoded hostname code points to list_to_binary.
+        # Resolve a vhost only when those wire bytes identify valid UTF-8.
+        hostname = hostnames[0].encode("latin-1").decode("utf-8")
+    except (OverflowError, ValueError):
         return False, None
 
-    if len(hostnames) != 1:
-        return True, None
-    hostname = hostnames[0]
     prefix = "vhost:"
     return True, hostname[len(prefix) :] if hostname.startswith(prefix) else None
 
 
 def _parse_uri_candidate(uri: str, protocol: str) -> _UriCandidate | None:
     """Parse one protocol-aware URI without retaining credentials."""
-    parsed_base = _parse_base_uri(uri)
+    parsed_base = _parse_base_uri(uri, protocol)
     if parsed_base is None:
         return None
     parsed, authority = parsed_base
@@ -265,10 +293,21 @@ def vhost_from_amqp10_uri(uri: str) -> str | None:
 
     RabbitMQ encodes the vhost as ``hostname=vhost:<name>`` in the query.
     ``None`` means the URI is invalid, omits that evidence, or contains an
-    ambiguous hostname parameter. Literal plus signs are preserved.
+    ambiguous hostname parameter. A raw plus in the query decodes to a space;
+    use ``%2B`` for a literal plus.
     """
     candidate = _parse_uri_candidate(uri, "amqp10")
     return candidate.vhost if candidate is not None else None
+
+
+def _is_direct_uri(candidate: _UriCandidate, protocol: str) -> bool:
+    """Check the hostless URI form used by RabbitMQ's direct AMQP client."""
+    return (
+        protocol in ("amqp091", "local")
+        and candidate.authority.host is None
+        and candidate.authority.scheme == "amqp"
+        and not candidate.has_explicit_port
+    )
 
 
 def _candidate_transport(candidate: _UriCandidate | None, protocol: str, *, supported_broker: bool) -> ShovelTransport:
@@ -277,14 +316,7 @@ def _candidate_transport(candidate: _UriCandidate | None, protocol: str, *, supp
         return ShovelTransport.UNKNOWN
     authority = candidate.authority
     if authority.host is None:
-        # AMQP 1.0 goes through a socket client. The 0-9-1 URI parser
-        # produces a direct record only for hostless amqp without a port.
-        if (
-            protocol != "amqp10"
-            and authority.scheme == "amqp"
-            and not candidate.has_explicit_port
-            and (supported_broker or protocol == "local")
-        ):
+        if _is_direct_uri(candidate, protocol) and (supported_broker or protocol == "local"):
             return ShovelTransport.LOCAL
         return ShovelTransport.UNKNOWN
     if protocol == "local":
@@ -292,8 +324,10 @@ def _candidate_transport(candidate: _UriCandidate | None, protocol: str, *, supp
     return ShovelTransport.NETWORK_AMQPS if authority.scheme == "amqps" else ShovelTransport.NETWORK_AMQP
 
 
-def _protocol_uri_evidence(uri: object, protocol: str | None, *, supported_broker: bool) -> _UriEvidence:
-    """Parse vhost and authority evidence once for every failover candidate.
+def _protocol_uri_evidence(
+    uri: object, protocol: str | None, *, in_cluster_amqp_hosts: frozenset[str], supported_broker: bool
+) -> _UriEvidence:
+    """Parse candidate vhost and authority evidence and confirm locality.
 
     A network endpoint has ``authorities=None`` when any candidate is invalid;
     otherwise its non-empty tuple preserves candidate order and duplicates.
@@ -321,7 +355,45 @@ def _protocol_uri_evidence(uri: object, protocol: str | None, *, supported_broke
         else None
     )
     authorities = () if protocol == "local" else tuple(candidate.authority for candidate in parsed_candidates)
-    return _UriEvidence(vhost, authorities, transport)
+    is_confirmed_local = vhost is not None and all(
+        _is_direct_uri(candidate, protocol)
+        if candidate.authority.host is None
+        else protocol == "local" or candidate.authority.host in in_cluster_amqp_hosts
+        for candidate in parsed_candidates
+    )
+    return _UriEvidence(vhost, authorities, transport, is_confirmed_local)
+
+
+def _amqp10_address_v2(address: str, side: Literal["src", "dest"]) -> tuple[str, NodeKind, str | None] | None:
+    """Decode the captured v2 components without accepting malformed escapes."""
+    if not _has_valid_percent_encoding(address):
+        return None
+    try:
+        match address.split("/"):
+            case ["", "queues", name] if name:
+                return unquote(name, errors="strict"), NodeKind.QUEUE, None
+            case ["", "exchanges", name] if name and side == "dest":
+                return unquote(name, errors="strict"), NodeKind.EXCHANGE, ""
+            case ["", "exchanges", name, key] if name and side == "dest":
+                return unquote(name, errors="strict"), NodeKind.EXCHANGE, unquote(key, errors="strict")
+    except UnicodeDecodeError:
+        return None
+    return None
+
+
+def _amqp10_address_v1(address: str, side: Literal["src", "dest"]) -> tuple[str, NodeKind, str | None] | None:
+    """Decode legacy address components after splitting on raw slashes."""
+    match address.split("/"):
+        case [name] | ["", "queue", name] | ["", "amq", "queue", name] if name:
+            return name.replace("%2F", "/"), NodeKind.QUEUE, None
+        case ["", "exchange", name] if name:
+            return name.replace("%2F", "/"), NodeKind.EXCHANGE, None
+        case ["", "exchange", name, routing_key] if name:
+            key = None if side == "dest" and not routing_key else routing_key.replace("%2F", "/")
+            return name.replace("%2F", "/"), NodeKind.EXCHANGE, key
+        case ["", "topic", routing_key] if routing_key:
+            return "amq.topic", NodeKind.EXCHANGE, routing_key.replace("%2F", "/")
+    return None
 
 
 def parse_amqp10_address(address: object, *, side: Literal["src", "dest"]) -> tuple[str, NodeKind, str | None] | None:
@@ -343,35 +415,19 @@ def parse_amqp10_address(address: object, *, side: Literal["src", "dest"]) -> tu
     omitted. A v2 exchange source is unsupported and remains unresolved. On a
     singular v1 target, both an omitted key and an empty trailing segment mean
     that message metadata supplies the routing key. Deprecated v1 addresses
-    require the broker to permit the ``amqp_address_v1`` feature.
+    decode only uppercase ``%2F`` and require the broker to permit the
+    ``amqp_address_v1`` feature.
 
     Returns:
         The resource name, kind, and optional routing key, or ``None`` when
         the address does not identify one fixed resource. For example, the
         AMQP null dynamic-addressing target does not name a resource.
     """
-    parsed: tuple[str, NodeKind, str | None] | None = None
-    if isinstance(address, str) and address:
-        if not address.startswith("/"):
-            parsed = (unquote(address), NodeKind.QUEUE, None)
-        else:
-            match address[1:].split("/"):
-                case [kind, name] if kind in ("queue", "queues") and name:
-                    parsed = (unquote(name), NodeKind.QUEUE, None)
-                case ["amq", "queue", name] if name:
-                    parsed = (unquote(name), NodeKind.QUEUE, None)
-                case ["exchanges", exchange] if exchange and side == "dest":
-                    parsed = (unquote(exchange), NodeKind.EXCHANGE, "")
-                case ["exchanges", exchange, routing_key] if exchange and side == "dest":
-                    parsed = (unquote(exchange), NodeKind.EXCHANGE, unquote(routing_key))
-                case ["exchange", exchange] if exchange:
-                    parsed = (unquote(exchange), NodeKind.EXCHANGE, None)
-                case ["exchange", exchange, routing_key] if exchange:
-                    key = unquote(routing_key)
-                    parsed = (unquote(exchange), NodeKind.EXCHANGE, None if side == "dest" and key == "" else key)
-                case ["topic", routing_key]:
-                    parsed = ("amq.topic", NodeKind.EXCHANGE, unquote(routing_key))
-    return parsed
+    if not isinstance(address, str) or not address:
+        return None
+    if address.startswith(("/queues/", "/exchanges/")):
+        return _amqp10_address_v2(address, side)
+    return _amqp10_address_v1(address, side)
 
 
 def shovel_side_resource(
@@ -403,23 +459,6 @@ def shovel_side_resource(
     return None
 
 
-def _endpoint_is_confirmed_local(
-    *,
-    protocol: str | None,
-    vhost: str | None,
-    authorities: tuple[EndpointAuthority, ...] | None,
-    in_cluster_amqp_hosts: frozenset[str],
-) -> bool:
-    """Return whether positive evidence admits an endpoint to this cluster graph."""
-    if vhost is None:
-        return False
-    if protocol == "local":
-        return True
-    if authorities is None:
-        return False
-    return all(authority.host is None or authority.host in in_cluster_amqp_hosts for authority in authorities)
-
-
 def parse_shovel_endpoint(
     value: Mapping[str, object],
     side: Literal["src", "dest"],
@@ -429,14 +468,18 @@ def parse_shovel_endpoint(
 ) -> ResourceEndpoint:
     """Normalize all retained evidence for one shovel endpoint.
 
-    ``is_confirmed_local`` is conservative: it is true only for a resolved
-    local-protocol endpoint or a resolved AMQP failover set in which every URI
-    either has no host component or names a host in the supplied in-cluster
-    set. False means unconfirmed, not necessarily remote.
+    A confirmed endpoint requires a shared vhost and local evidence for each
+    candidate. Hostless candidates require the direct AMQP URI form. Hosted
+    network candidates require the operator's in-cluster host mapping.
     """
     protocol_value = value.get(f"{side}-protocol", "amqp091")
     protocol = protocol_value if isinstance(protocol_value, str) else None
-    uri_evidence = _protocol_uri_evidence(value.get(f"{side}-uri"), protocol, supported_broker=supported_broker)
+    uri_evidence = _protocol_uri_evidence(
+        value.get(f"{side}-uri"),
+        protocol,
+        in_cluster_amqp_hosts=in_cluster_amqp_hosts,
+        supported_broker=supported_broker,
+    )
     resource = shovel_side_resource(value, side, protocol)
     name, kind, routing_key = (None, None, None) if resource is None else resource
 
@@ -447,11 +490,6 @@ def parse_shovel_endpoint(
         resource_name=name,
         resource_kind=kind,
         routing_key=routing_key,
-        is_confirmed_local=_endpoint_is_confirmed_local(
-            protocol=protocol,
-            vhost=uri_evidence.vhost,
-            authorities=uri_evidence.authorities,
-            in_cluster_amqp_hosts=in_cluster_amqp_hosts,
-        ),
+        is_confirmed_local=uri_evidence.is_confirmed_local,
         transport=uri_evidence.transport,
     )

@@ -6,14 +6,20 @@ import pickle
 from typing import TYPE_CHECKING
 
 import pytest
-from tests.shared.parser_fixtures import _exchange, _observed_queue, _policy, _queue, _response
+from tests.shared.parser_fixtures import _binding, _exchange, _observed_queue, _policy, _queue, _response, _vhost
 
 from rabbitmq_management_sdk import ClusterAuditor
+from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
 from rabbitmq_management_sdk.topology import (
     ClusterTopology,
+    ConfigurationEvidence,
     ConfigurationSource,
     ConfigurationStatus,
     ConfigurationUncertainty,
+    DeadLetterCoverageStatus,
+    DeadLetterRoutingIssue,
+    DeadLetterUncertainty,
+    EdgeKind,
     NodeId,
     NodeKind,
     QueueNode,
@@ -31,7 +37,7 @@ def _auditor(
     regular: dict[str, object] | None = None,
     operator: dict[str, object] | None = None,
     *,
-    version: str | None = "4.3.6",
+    version: str | None = "4.3.8",
     observations: bool = True,
     observed_fields: dict[str, object] | None = None,
 ) -> ClusterAuditor:
@@ -65,7 +71,8 @@ def _auditor(
 
 def _config(auditor: ClusterAuditor) -> QuorumDeliveryConfiguration:
     (result,) = auditor.quorum_delivery_configuration()
-    assert next(iter(auditor.topology.queues)).quorum_delivery == result.configuration
+    queue = next(queue for queue in auditor.topology.queues if queue.id == result.queue)
+    assert queue.quorum_delivery == result.configuration
     assert auditor.audit().quorum_delivery_configuration == (result,)
     return result.configuration
 
@@ -85,6 +92,138 @@ def test_fixed_defaults_are_distinct_from_uncaptured_global_timeouts() -> None:
     assert auditor.quorum_delivery_configuration()[0].issues == (
         QuorumConfigurationIssue.FINITE_DELIVERY_LIMIT_WITHOUT_DLX,
     )
+
+
+def test_queue_observation_supplies_arguments_when_the_definitions_map_is_omitted() -> None:
+    queue = _queue("q", "v")
+    del queue["arguments"]
+    definitions = _response(rabbit_version="4.3.8", vhosts=[_vhost("v", "quorum")], queues=[queue])
+    observed = _observed_queue(
+        "q",
+        "v",
+        policy=None,
+        operator_policy=None,
+        arguments={
+            "x-queue-type": "quorum",
+            "x-delivery-limit": -1,
+            "x-delayed-retry-type": "all",
+            "x-delayed-retry-min": 1000,
+            "x-overflow": "reject-publish",
+            "x-consumer-timeout": None,
+        },
+    )
+    auditor = ClusterAuditor(definitions, queues=[observed], exchanges=[])
+    config = _config(auditor)
+    assert config.delivery_limit.value == -1
+    assert config.delivery_limit.evidence == (
+        ConfigurationEvidence(ConfigurationSource.OBSERVED_QUEUE_ARGUMENT, "x-delivery-limit", -1),
+    )
+    assert config.delayed_retry_type.value == "all"
+    assert config.delayed_retry_max.value == config.delayed_retry_min.value == 1000
+    assert config.overflow.value == "reject-publish"
+    assert config.consumer_timeout.uncertainties == (ConfigurationUncertainty.CAPTURED_NULL,)
+    assert config.consumer_timeout.evidence == (
+        ConfigurationEvidence(ConfigurationSource.OBSERVED_QUEUE_ARGUMENT, "x-consumer-timeout", None),
+    )
+    assert not auditor.quorum_delivery_configuration()[0].issues
+
+
+def test_missing_quorum_argument_map_cannot_establish_defaults() -> None:
+    queue = _queue("q", "v")
+    del queue["arguments"]
+    auditor = ClusterAuditor(_response(rabbit_version="4.3.8", vhosts=[_vhost("v", "quorum")], queues=[queue]))
+    config = _config(auditor)
+    for setting in (config.delivery_limit, config.delayed_retry_type, config.effective_dead_letter_strategy):
+        assert setting.status == ConfigurationStatus.UNKNOWN
+        assert setting.uncertainties == (ConfigurationUncertainty.ARGUMENTS_NOT_CAPTURED,)
+    assert not auditor.quorum_delivery_configuration()[0].issues
+    (coverage,) = auditor.dead_letter_coverage()
+    assert coverage.status == DeadLetterCoverageStatus.UNDETERMINED
+    assert coverage.dead_letter_exchange is None
+    assert coverage.issues == (DeadLetterRoutingIssue(coverage.queue.id, DeadLetterUncertainty.DLX_ROUTE_NOT_CAPTURED),)
+
+
+@pytest.mark.parametrize(
+    ("source", "exchange_name"),
+    [
+        (ConfigurationSource.OBSERVED_QUEUE_ARGUMENT, "dlx"),
+        (ConfigurationSource.OBSERVED_QUEUE_ARGUMENT, ""),
+        (ConfigurationSource.EFFECTIVE_POLICY, "dlx"),
+    ],
+)
+def test_quorum_dlx_coverage_preserves_captured_evidence(source: ConfigurationSource, exchange_name: str) -> None:
+    queue = _queue("q", "v", **{"x-queue-type": "quorum"})
+    policies = []
+    if source == ConfigurationSource.OBSERVED_QUEUE_ARGUMENT:
+        del queue["arguments"]
+        key = "x-dead-letter-exchange"
+        arguments = {"x-queue-type": "quorum", key: exchange_name, "x-dead-letter-routing-key": "parking"}
+        observed = _observed_queue("q", "v", policy=None, arguments=arguments)
+    else:
+        key = "dead-letter-exchange"
+        policy_settings: dict[str, object] = {key: exchange_name}
+        policies = [_policy("regular", "^q$", "quorum_queues", 1, vhost="v", definition=policy_settings)]
+        observed = _observed_queue("q", "v", effective_policy_definition=policy_settings)
+
+    definitions = _response(
+        rabbit_version="4.3.8",
+        vhosts=[_vhost("v", "quorum")],
+        queues=[queue, _queue("parking", "v", **{"x-queue-type": "classic"})],
+        exchanges=[_exchange(exchange_name, "v", "fanout" if exchange_name else "direct")],
+        bindings=[_binding(exchange_name, "parking")] if exchange_name else [],
+        policies=policies,
+    )
+    auditor = ClusterAuditor(definitions, queues=[observed], exchanges=[])
+    config = _config(auditor).dead_letter_exchange
+    assert config.status == ConfigurationStatus.KNOWN
+    assert config.value == exchange_name
+    assert config.evidence == (ConfigurationEvidence(source, key, exchange_name),)
+    coverages = auditor.dead_letter_coverage()
+    coverage = next(row for row in coverages if row.queue.id.name == "q")
+    assert coverage.dead_letter_exchange == NodeId("v", exchange_name, NodeKind.EXCHANGE)
+    dlx_edges = [edge for edge in auditor.topology.edges if edge.kind == EdgeKind.DEAD_LETTER]
+    if source == ConfigurationSource.OBSERVED_QUEUE_ARGUMENT:
+        (edge,) = dlx_edges
+        assert edge.target == coverage.dead_letter_exchange
+        assert edge.routing_key == coverage.routing_key == "parking"
+        assert coverage.status == DeadLetterCoverageStatus.DESTINATION_POSSIBLE
+        assert coverage.destinations == (NodeId("v", "parking", NodeKind.QUEUE),)
+        assert not coverage.issues
+    else:
+        assert not dlx_edges
+        assert coverage.status == DeadLetterCoverageStatus.UNDETERMINED
+        assert not coverage.destinations
+        assert coverage.issues == (
+            DeadLetterRoutingIssue(coverage.queue.id, DeadLetterUncertainty.DLX_ROUTE_NOT_CAPTURED),
+        )
+    assert coverage in auditor.audit().dead_letter_coverage
+    assert next(row for row in auditor.queue_limits() if row.queue.name == "q").dead_letter_coverage == coverage
+    restored = ClusterAuditor.from_topology(pickle.loads(pickle.dumps(auditor.topology)))
+    assert restored.dead_letter_coverage() == coverages
+
+
+@pytest.mark.parametrize(
+    ("captured_section", "reason"),
+    [
+        ("policies", ConfigurationUncertainty.OPERATOR_POLICY_DEFINITIONS_NOT_CAPTURED),
+        ("parameters", ConfigurationUncertainty.POLICY_DEFINITIONS_NOT_CAPTURED),
+    ],
+)
+def test_omitted_policy_section_cannot_establish_quorum_defaults(
+    captured_section: str, reason: ConfigurationUncertainty
+) -> None:
+    definitions = ClusterDefinitionsResponse.model_validate(
+        {"rabbitmq_version": "4.3.8", "queues": [_queue("q", "v", **{"x-queue-type": "quorum"})], captured_section: []}
+    )
+    config = _config(ClusterAuditor(definitions))
+    for setting in (config.delivery_limit, config.delayed_retry_type):
+        assert setting.status == ConfigurationStatus.UNKNOWN
+        assert setting.uncertainties == (reason,)
+
+    observed = _observed_queue("q", "v", effective_policy_definition={"delivery-limit": 7})
+    recovered = _config(ClusterAuditor(definitions, queues=[observed], exchanges=[]))
+    assert recovered.delivery_limit.value == 7
+    assert recovered.delayed_retry_type.value == "disabled"
 
 
 def test_regular_operator_and_argument_resolution_retains_each_source() -> None:
@@ -269,7 +408,7 @@ def test_nonpositive_captured_bounds_with_unknown_policy_do_not_block_audit(key:
 def test_non_quorum_and_dangling_resources_do_not_create_quorum_entries() -> None:
     auditor = ClusterAuditor(
         _response(
-            rabbit_version="4.3.6",
+            rabbit_version="4.3.8",
             queues=[_queue("classic", "v", **{"x-queue-type": "classic"})],
         )
     )
@@ -285,8 +424,8 @@ def test_configuration_isolated_from_source_mutation_and_canonically_ordered() -
     assert before[0].configuration.consumer_timeout.value == 1000
 
     queues = [_queue("z", "b", **{"x-queue-type": "quorum"}), _queue("a", "a", **{"x-queue-type": "quorum"})]
-    first = ClusterAuditor(_response(rabbit_version="4.3.6", queues=queues))
-    second = ClusterAuditor(_response(rabbit_version="4.3.6", queues=queues[::-1]))
+    first = ClusterAuditor(_response(rabbit_version="4.3.8", queues=queues))
+    second = ClusterAuditor(_response(rabbit_version="4.3.8", queues=queues[::-1]))
     assert first.quorum_delivery_configuration() == second.quorum_delivery_configuration()
     assert [(result.queue.vhost, result.queue.name) for result in first.quorum_delivery_configuration()] == [
         ("a", "a"),

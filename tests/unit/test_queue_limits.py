@@ -26,7 +26,7 @@ def _audit(
     regular: dict[str, object] | None = None,
     operator: dict[str, object] | None = None,
     observed_fields: dict[str, object] | None = None,
-    version: str | None = "4.3.6",
+    version: str | None = "4.3.8",
 ) -> ClusterAuditor:
     scope = {"classic": "classic_queues", "quorum": "quorum_queues", "stream": "streams"}[queue_type]
     definitions = _response(
@@ -57,7 +57,7 @@ def _one(auditor: ClusterAuditor) -> QueueLimits:
     return result
 
 
-@pytest.mark.parametrize("version", ["4.2.8", "4.3.6"])
+@pytest.mark.parametrize("version", ["4.2.9", "4.3.8"])
 def test_classic_policy_minimum_and_argument_overflow(version: str) -> None:
     auditor = _audit(
         "classic",
@@ -146,7 +146,7 @@ def test_merged_policy_observation_can_fill_gaps_and_expose_conflict() -> None:
 
 def test_omitted_sections_and_arguments_remain_distinct_from_empty_sections() -> None:
     minimal = {
-        "rabbitmq_version": "4.2.8",
+        "rabbitmq_version": "4.2.9",
         "vhosts": [_vhost("v")],
         "queues": [{"name": "q", "vhost": "v", "durable": True, "auto_delete": False}],
     }
@@ -225,7 +225,7 @@ def test_unknown_version_keeps_argument_evidence(version: str | None, reason: Co
 def test_plugin_queue_has_unknown_semantics_and_retains_argument_evidence() -> None:
     vhost = _vhost("v", default_queue_type="x-plugin")
     auditor = ClusterAuditor(
-        _response(rabbitmq_version="4.3.6", vhosts=[vhost], queues=[_queue("work", "v", **{"x-max-length": 10})])
+        _response(rabbitmq_version="4.3.8", vhosts=[vhost], queues=[_queue("work", "v", **{"x-max-length": 10})])
     )
     result = _one(auditor)
     assert result.queue_type == "x-plugin"

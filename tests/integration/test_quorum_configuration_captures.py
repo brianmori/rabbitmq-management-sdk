@@ -14,7 +14,15 @@ from rabbitmq_management_sdk.resources.v4.admin.services import AdminManager
 from rabbitmq_management_sdk.resources.v4.policies.services import PolicyManager
 from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QuorumQueueResponse
 from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
-from rabbitmq_management_sdk.topology import DeadLetterCoverageStatus, NodeId, NodeKind, PolicyId, PolicyKind
+from rabbitmq_management_sdk.topology import (
+    ConfigurationEvidence,
+    ConfigurationSource,
+    DeadLetterCoverageStatus,
+    NodeId,
+    NodeKind,
+    PolicyId,
+    PolicyKind,
+)
 
 pytestmark = pytest.mark.integration
 _CAPTURE = Path(__file__).parent / "rmq-4.3" / "quorum-configuration" / "configuration.json"
@@ -135,6 +143,31 @@ def test_captured_policy_observations_resolve_quorum_delivery_audit(tmp_path: Pa
     assert not auditor.structural_cycles().cycles
     assert not auditor.message_loop_candidates().cycles
     assert auditor.audit().quorum_delivery_configuration == auditor.quorum_delivery_configuration()
+
+
+def test_quorum_audit_uses_captured_observations_after_argument_projection(tmp_path: Path) -> None:
+    capture = json.loads((_CAPTURE.parent / "operator-configuration.json").read_text(encoding="utf-8"))
+    definitions = capture["definitions"]
+    # Supply a vhost default so the projected declaration still establishes
+    # the queue type. The argument values come from the saved observation.
+    definitions["vhosts"] = [{"name": "captured", "metadata": {"default_queue_type": "quorum"}}]
+    for queue in definitions["queues"]:
+        del queue["arguments"]
+    for section in ("definitions", "queues", "exchanges"):
+        (tmp_path / f"{section}.json").write_text(json.dumps(capture[section]), encoding="utf-8")
+    auditor = ClusterAuditor.from_files(
+        tmp_path / "definitions.json",
+        queues_path=tmp_path / "queues.json",
+        exchanges_path=tmp_path / "exchanges.json",
+    )
+
+    (result,) = auditor.quorum_delivery_configuration()
+    assert result.configuration.delayed_retry_min.value == 1000
+    assert result.configuration.delivery_limit.value == 25
+    assert (
+        ConfigurationEvidence(ConfigurationSource.OBSERVED_QUEUE_ARGUMENT, "x-delivery-limit", -1)
+        in result.configuration.delivery_limit.evidence
+    )
 
 
 def test_rabbitmq_42_operator_parameters_are_inventory_declarations(tmp_path: Path) -> None:

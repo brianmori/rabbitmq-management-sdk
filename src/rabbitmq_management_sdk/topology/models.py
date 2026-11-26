@@ -266,12 +266,18 @@ class ExchangeNode:
         internal: Whether publishers are prohibited from publishing directly
             to the exchange.
         durable: Whether the exchange survives broker restarts.
+        alternate_exchange_policy_unknown: Whether missing policy evidence
+            leaves a possible policy-derived alternate exchange unresolved.
+        alternate_exchange_arguments_unknown: Whether an omitted argument map
+            could hide a directly configured alternate exchange.
     """
 
     id: NodeId
     exchange_type: str
     internal: bool
     durable: bool
+    alternate_exchange_policy_unknown: bool = False
+    alternate_exchange_arguments_unknown: bool = False
 
     def __post_init__(self) -> None:
         """Validate exchange attributes and node kind."""
@@ -279,6 +285,12 @@ class ExchangeNode:
         _require_instance(self.exchange_type, str, "ExchangeNode.exchange_type")
         _require_instance(self.internal, bool, "ExchangeNode.internal")
         _require_instance(self.durable, bool, "ExchangeNode.durable")
+        _require_instance(
+            self.alternate_exchange_policy_unknown, bool, "ExchangeNode.alternate_exchange_policy_unknown"
+        )
+        _require_instance(
+            self.alternate_exchange_arguments_unknown, bool, "ExchangeNode.alternate_exchange_arguments_unknown"
+        )
         if self.id.kind != NodeKind.EXCHANGE:
             raise TopologyValidationError(f"ExchangeNode.id.kind must be NodeKind.EXCHANGE, got {self.id.kind!r}")
 
@@ -317,6 +329,7 @@ class ConfigurationSource(StrEnum):
     """Origins retained by quorum configuration resolution."""
 
     QUEUE_ARGUMENT = "queue_argument"
+    OBSERVED_QUEUE_ARGUMENT = "observed_queue_argument"
     REGULAR_POLICY = "regular_policy"
     OPERATOR_POLICY = "operator_policy"
     EFFECTIVE_POLICY = "effective_policy"
@@ -558,6 +571,10 @@ class QueueNode:
         queue_limits: Frozen limits and retention evidence, if captured.
         exclusive: Observed queue exclusivity. ``None`` means it was not
             established by a compatible queue observation.
+        dead_letter_route_unknown: Whether missing capture evidence prevents
+            resolving a dead-letter route.
+        unresolved_dead_letter_exchange: Exchange name retained when the
+            route is unknown, if captured.
     """
 
     id: NodeId
@@ -568,6 +585,8 @@ class QueueNode:
     quorum_placement: QuorumPlacement | None = None
     queue_limits: QueueLimitsConfiguration | None = None
     exclusive: bool | None = None
+    dead_letter_route_unknown: bool = False
+    unresolved_dead_letter_exchange: str | None = None
 
     def __post_init__(self) -> None:
         """Validate queue attributes and node kind."""
@@ -575,6 +594,7 @@ class QueueNode:
         _require_instance(self.queue_type, str, "QueueNode.queue_type")
         _require_instance(self.durable, bool, "QueueNode.durable")
         _require_optional_instance(self.exclusive, bool, "QueueNode.exclusive")
+        self._validate_dead_letter_route()
         _require_optional_instance(self.quorum_delivery, QuorumDeliveryConfiguration, "QueueNode.quorum_delivery")
         if self.quorum_delivery is not None and self.queue_type != "quorum":
             raise TopologyValidationError("QueueNode.quorum_delivery requires a quorum queue")
@@ -601,6 +621,15 @@ class QueueNode:
                     reported_members.add(self.quorum_placement.leader)
                 if len(reported_members) > self.replication_factor:
                     raise TopologyValidationError("QueueNode.replication_factor cannot be below reported membership")
+
+    def _validate_dead_letter_route(self) -> None:
+        """Validate the evidence retained for unresolved dead-letter routes."""
+        _require_instance(self.dead_letter_route_unknown, bool, "QueueNode.dead_letter_route_unknown")
+        _require_optional_instance(
+            self.unresolved_dead_letter_exchange, str, "QueueNode.unresolved_dead_letter_exchange"
+        )
+        if self.unresolved_dead_letter_exchange is not None and not self.dead_letter_route_unknown:
+            raise TopologyValidationError("QueueNode.unresolved_dead_letter_exchange requires an unknown route")
 
     def _validate_limits(self) -> None:
         """Keep the quorum overflow evidence consistent on manually built nodes."""

@@ -2,7 +2,9 @@
 
 import pytest
 from tests.shared.parser_fixtures import (
+    _binding,
     _exchange,
+    _observed_queue,
     _policy,
     _policy_selections,
     _queue,
@@ -11,9 +13,10 @@ from tests.shared.parser_fixtures import (
     _vhost,
 )
 
-from rabbitmq_management_sdk import TopologyParseError
+from rabbitmq_management_sdk import ClusterAuditor, TopologyParseError
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
 from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
+from rabbitmq_management_sdk.topology import DeadLetterCoverageStatus
 from rabbitmq_management_sdk.topology.models import EdgeKind, NodeId, NodeKind
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 
@@ -348,6 +351,79 @@ class TestDeadLetterEdges:
         ).edges
         assert edge.target.name == "partial.dlx"  # argument wins
         assert edge.routing_key == "policy-rk"  # policy fills the gap
+
+    @pytest.mark.parametrize(
+        ("arguments_captured", "observed_arguments", "expected_dlx", "expected_key", "expected_sink"),
+        [
+            (False, {"x-dead-letter-exchange": "direct-dlx"}, "direct-dlx", "policy-rk", "direct-sink"),
+            (
+                False,
+                {"x-dead-letter-exchange": "policy-dlx", "x-dead-letter-routing-key": ""},
+                "policy-dlx",
+                "",
+                "direct-sink",
+            ),
+            (True, {"x-dead-letter-exchange": "direct-dlx"}, "policy-dlx", "policy-rk", "policy-sink"),
+        ],
+        ids=["observed-exchange", "observed-empty-key", "captured-empty-arguments"],
+    )
+    def test_dlx_direct_observation_fills_omitted_definition_arguments(
+        self,
+        arguments_captured: bool,
+        observed_arguments: dict[str, str],
+        expected_dlx: str,
+        expected_key: str,
+        expected_sink: str,
+    ) -> None:
+        work = _queue("work", "t")
+        if not arguments_captured:
+            del work["arguments"]
+        response = _response(
+            rabbit_version="4.3.8",
+            vhosts=[_vhost("t", "quorum")],
+            queues=[
+                work,
+                _queue("direct-sink", "t", **{"x-queue-type": "classic"}),
+                _queue("policy-sink", "t", **{"x-queue-type": "classic"}),
+            ],
+            exchanges=[_exchange("direct-dlx", "t"), _exchange("policy-dlx", "t")],
+            bindings=[
+                _binding("direct-dlx", "direct-sink", "policy-rk", vhost="t"),
+                _binding("policy-dlx", "direct-sink", "", vhost="t"),
+                _binding("policy-dlx", "policy-sink", "policy-rk", vhost="t"),
+            ],
+            policies=[
+                _policy(
+                    "reroute",
+                    "^work$",
+                    "quorum_queues",
+                    0,
+                    definition={"dead-letter-exchange": "policy-dlx", "dead-letter-routing-key": "policy-rk"},
+                )
+            ],
+        )
+        observed = _observed_queue(
+            "work", "t", policy="reroute", arguments={"x-queue-type": "quorum", **observed_arguments}
+        )
+
+        topology = parse_cluster_topology(
+            response,
+            observed_queues=[observed],
+            user_policy_selections=_policy_selections(
+                vhost="t", name="work", kind=NodeKind.QUEUE, policy_name="reroute"
+            ),
+        )
+
+        (edge,) = (edge for edge in topology.edges if edge.kind == EdgeKind.DEAD_LETTER)
+        assert edge.target == NodeId("t", expected_dlx, NodeKind.EXCHANGE)
+        assert edge.routing_key == expected_key
+
+        auditor = ClusterAuditor.from_topology(topology)
+        coverage = next(item for item in auditor.dead_letter_coverage() if item.queue.id.name == "work")
+        assert coverage.status == DeadLetterCoverageStatus.DESTINATION_POSSIBLE
+        assert coverage.dead_letter_exchange == edge.target
+        assert coverage.routing_key == expected_key
+        assert coverage.destinations == (NodeId("t", expected_sink, NodeKind.QUEUE),)
 
     def test_catch_all_policy_without_dlx_key_does_not_leak_an_edge(self) -> None:
         response = _response(

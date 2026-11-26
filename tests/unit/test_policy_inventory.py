@@ -23,7 +23,7 @@ from rabbitmq_management_sdk.topology import (
 pytestmark = pytest.mark.unit
 
 
-@pytest.mark.parametrize("version", ["4.2.9", "4.3.6"])
+@pytest.mark.parametrize("version", ["4.2.9", "4.3.8"])
 def test_named_null_and_omitted_selection_are_distinct(version: str) -> None:
     sentinel = "POLICY_PAYLOAD_MUST_NOT_BE_RETAINED"
     definition = _response(
@@ -111,7 +111,7 @@ def test_same_names_and_both_policy_fields_stay_independent_and_ordered() -> Non
         step = -1 if reverse else 1
         return ClusterAuditor(
             _response(
-                rabbitmq_version="4.3.6",
+                rabbitmq_version="4.3.8",
                 vhosts=[_vhost("v1", "quorum"), _vhost("v2", "quorum")],
                 policies=policies[::step],
                 parameters=parameters[::step],

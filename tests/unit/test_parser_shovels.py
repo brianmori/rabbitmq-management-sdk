@@ -1,6 +1,7 @@
 """Tests for shovel topology parsing."""
 
 from typing import Literal
+from urllib.parse import quote
 
 import pytest
 from tests.shared.parser_fixtures import _queue, _response, _shovel_param, _vhost
@@ -291,6 +292,183 @@ class TestShovels:
         (shovel,) = topology.shovels
         assert shovel.source.vhost == "a"
         assert len(topology.edges) == 2
+
+    @pytest.mark.parametrize(
+        ("protocol", "uri", "confirmed_local"),
+        [
+            pytest.param("amqp091", "amqp://:5672/v", False, id="hostless-explicit-port"),
+            pytest.param("amqp091", "amqps:///v", False, id="hostless-tls"),
+            pytest.param("amqp10", "amqp://?hostname=vhost:v", False, id="hostless-amqp10"),
+            pytest.param("local", "amqp://:5672/v", False, id="local-hostless-explicit-port"),
+            pytest.param("amqp091", ["amqp://broker/v", "amqp://:5672/v"], False, id="invalid-failover-candidate"),
+            pytest.param("amqp091", "amqp:///v", True, id="direct"),
+            pytest.param("amqp091", ["amqp://broker/v", "amqp:///v"], True, id="valid-failover-candidates"),
+        ],
+    )
+    def test_hostless_shovel_uri_must_support_direct_transport_to_create_loop(
+        self, protocol: str, uri: str | list[str], confirmed_local: bool
+    ) -> None:
+        source_resource = {"src-address": "/queues/q"} if protocol == "amqp10" else {"src-queue": "q"}
+        response = _response(
+            rabbitmq_version="4.3.8",
+            vhosts=[_vhost("v")],
+            queues=[_queue("q", "v")],
+            parameters=[
+                _shovel_param(
+                    "relay",
+                    "v",
+                    **{
+                        "src-protocol": protocol,
+                        "src-uri": uri,
+                        "dest-uri": "amqp:///v",
+                        "dest-queue": "q",
+                        **source_resource,
+                    },
+                )
+            ],
+        )
+
+        auditor = ClusterAuditor(response, in_cluster_amqp_hosts={"broker"})
+        (shovel,) = auditor.topology.shovels
+        assert shovel.source.is_confirmed_local is confirmed_local
+        assert shovel.destination.is_confirmed_local
+        assert shovel.source.resource_name == "q"
+        assert shovel.source.vhost == "v"
+        assert len(auditor.topology.edges) == (2 if confirmed_local else 1)
+        assert bool(auditor.message_loop_candidates().cycles) is confirmed_local
+        assert auditor.shovels_with_unconfirmed_endpoints() == (() if confirmed_local else (shovel,))
+
+    @pytest.mark.parametrize(
+        ("address", "return_queue", "resource_name", "forms_loop"),
+        [
+            ("/queue/q%20name", "q name", "q%20name", False),
+            ("/queues/q%ZZ", "q%ZZ", None, False),
+            ("/queues/q%25ZZ", "q%ZZ", "q%ZZ", True),
+        ],
+    )
+    def test_amqp10_address_cannot_create_loop_through_the_wrong_queue(
+        self, address: str, return_queue: str, resource_name: str | None, forms_loop: bool
+    ) -> None:
+        queues = [_queue(return_queue, "v")]
+        if resource_name is not None and resource_name != return_queue:
+            queues.append(_queue(resource_name, "v"))
+        auditor = ClusterAuditor(
+            _response(
+                vhosts=[_vhost("v")],
+                queues=queues,
+                parameters=[
+                    _shovel_param(
+                        "relay",
+                        "v",
+                        **{
+                            "src-protocol": "amqp10",
+                            "src-uri": "amqp://broker?hostname=vhost:v",
+                            "src-address": address,
+                            "dest-uri": "amqp:///v",
+                            "dest-queue": return_queue,
+                        },
+                    )
+                ],
+            ),
+            in_cluster_amqp_hosts={"broker"},
+        )
+
+        (shovel,) = auditor.topology.shovels
+        assert shovel.source.is_confirmed_local
+        assert shovel.source.resource_name == resource_name
+        assert {edge.source.name for edge in auditor.topology.edges if edge.target == shovel.id} == (
+            set() if resource_name is None else {resource_name}
+        )
+        assert bool(auditor.message_loop_candidates().cycles) is forms_loop
+
+    @pytest.mark.parametrize(
+        ("query_vhost", "source_vhost", "destination_vhost", "forms_loop"),
+        [
+            pytest.param("team+jobs", "team jobs", "team+jobs", False, id="space"),
+            pytest.param("team%2Bjobs", "team+jobs", "team+jobs", True, id="literal-plus"),
+            pytest.param("queue%26%2332%3Bspace", "queue space", "queue&#32;space", False, id="decimal-reference"),
+        ],
+    )
+    def test_amqp10_query_decoding_cannot_create_loop_in_the_wrong_vhost(
+        self, query_vhost: str, source_vhost: str, destination_vhost: str, forms_loop: bool
+    ) -> None:
+        vhosts = sorted({source_vhost, destination_vhost})
+        auditor = ClusterAuditor(
+            _response(
+                vhosts=[_vhost(vhost) for vhost in vhosts],
+                queues=[_queue("q", vhost) for vhost in vhosts],
+                parameters=[
+                    _shovel_param(
+                        "relay",
+                        destination_vhost,
+                        **{
+                            "src-protocol": "amqp10",
+                            "src-uri": f"amqp://broker?hostname=vhost:{query_vhost}",
+                            "src-address": "/queues/q",
+                            "dest-uri": f"amqp:///{quote(destination_vhost, safe='')}",
+                            "dest-queue": "q",
+                        },
+                    )
+                ],
+            ),
+            in_cluster_amqp_hosts={"broker"},
+        )
+
+        (shovel,) = auditor.topology.shovels
+        (source_edge,) = (edge for edge in auditor.topology.edges if edge.target == shovel.id)
+        assert shovel.source.vhost == source_edge.source.vhost == source_vhost
+        assert shovel.destination.vhost == destination_vhost
+        assert bool(auditor.message_loop_candidates().cycles) is forms_loop
+
+    @pytest.mark.parametrize(
+        ("source_uri", "destination_vhost", "source_vhost", "source_authorities"),
+        [
+            pytest.param(
+                "amqp://brok%65r?hostname=vhost:work",
+                "work",
+                "work",
+                (EndpointAuthority("amqp", "brok%65r", 5672),),
+                id="escaped-socket-address",
+            ),
+            pytest.param("amqp://broker?hostname=vhost:%E2%82%AC", "€", None, None, id="invalid-wire-hostname"),
+        ],
+    )
+    def test_amqp10_uri_cannot_create_loop_without_locality_evidence(
+        self,
+        source_uri: str,
+        destination_vhost: str,
+        source_vhost: str | None,
+        source_authorities: tuple[EndpointAuthority, ...] | None,
+    ) -> None:
+        auditor = ClusterAuditor(
+            _response(
+                vhosts=[_vhost(destination_vhost)],
+                queues=[_queue("q", destination_vhost)],
+                parameters=[
+                    _shovel_param(
+                        "relay",
+                        destination_vhost,
+                        **{
+                            "src-protocol": "amqp10",
+                            "src-uri": source_uri,
+                            "src-address": "/queues/q",
+                            "dest-uri": f"amqp:///{quote(destination_vhost, safe='')}",
+                            "dest-queue": "q",
+                        },
+                    )
+                ],
+            ),
+            in_cluster_amqp_hosts={"broker"},
+        )
+
+        (shovel,) = auditor.topology.shovels
+        assert shovel.source.authorities == source_authorities
+        assert shovel.source.vhost == source_vhost
+        assert not shovel.source.is_confirmed_local
+        (destination_edge,) = auditor.topology.edges
+        assert destination_edge.source == shovel.id
+        assert destination_edge.target.vhost == destination_vhost
+        assert not auditor.message_loop_candidates().cycles
 
     def test_unconfirmed_endpoints_are_reported_without_merging_with_local_resources(self) -> None:
         """The URI host is required to prove an AMQP endpoint is local.

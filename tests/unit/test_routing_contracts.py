@@ -5,10 +5,15 @@ from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
-from tests.shared.parser_fixtures import _binding, _exchange, _queue, _response, _vhost
+from tests.shared.parser_fixtures import _binding, _exchange, _observed_queue, _policy, _queue, _response, _vhost
 
-from rabbitmq_management_sdk import ClusterAuditor, TopologyAnalysisError
+from rabbitmq_management_sdk import ClusterAuditor, ExchangeResponse, TopologyAnalysisError
+from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
 from rabbitmq_management_sdk.topology import (
+    DeadLetterCoverageStatus,
+    DeadLetterRoutingIssue,
+    DeadLetterUncertainty,
+    EdgeKind,
     NodeId,
     NodeKind,
     RoutingCondition,
@@ -16,6 +21,7 @@ from rabbitmq_management_sdk.topology import (
     RoutingContractResult,
     RoutingIssue,
     RoutingOriginStatus,
+    RoutingStatus,
     RoutingUncertainty,
     RoutingVerdict,
 )
@@ -233,6 +239,238 @@ def test_alternate_activation_empty_key_and_established_no_destinations() -> Non
     assert unspecified.conditions[0].verdict == RoutingVerdict.UNDETERMINED
     assert unspecified.conditions[2].verdict == RoutingVerdict.UNDETERMINED
     assert unspecified.conditions[4].verdict == RoutingVerdict.SATISFIED
+
+
+def test_uncaptured_alternate_policy_affects_contract_and_coverage() -> None:
+    entry = _exchange("entry", "v")
+    fallback = _exchange("fallback", "v", "fanout")
+    definitions = _response(
+        vhosts=[_vhost("v")],
+        queues=[
+            _queue("billing", "v"),
+            _queue(
+                "unmatched-work", "v", **{"x-dead-letter-exchange": "entry", "x-dead-letter-routing-key": "invoice"}
+            ),
+            _queue("matched-work", "v", **{"x-dead-letter-exchange": "entry", "x-dead-letter-routing-key": "mapped"}),
+        ],
+        exchanges=[entry, fallback],
+        policies=[
+            _policy("reroute", "^entry$", "exchanges", 0, vhost="v", definition={"alternate-exchange": "fallback"})
+        ],
+        bindings=[_binding("entry", "billing", "mapped"), _binding("fallback", "billing")],
+    )
+    queues = [
+        _observed_queue(name, "v", type="classic", policy=None, arguments={"x-queue-type": "classic"})
+        for name in ("billing", "unmatched-work", "matched-work")
+    ]
+    fallback_observation = ExchangeResponse.model_validate({**fallback, "policy": None})
+    contract = _contract(RoutingCondition.exactly(set()))
+
+    omitted = ClusterAuditor(
+        definitions,
+        queues=queues,
+        exchanges=[ExchangeResponse.model_validate(entry), fallback_observation],
+    )
+    uncertain = _evaluate(omitted, contract)
+    assert uncertain.verdict == RoutingVerdict.UNDETERMINED
+    assert uncertain.open_branch
+    assert uncertain.issues == (RoutingIssue(_ENTRY, RoutingUncertainty.POLICY_SELECTION_NOT_CAPTURED),)
+    report = omitted.audit(routing_contracts=[contract])
+    assert report.routing_contracts == (uncertain,)
+    exchange_coverage = omitted.exchange_routing_coverage(routing_key="invoice")
+    exchange = next(row for row in exchange_coverage if row.exchange.id == _ENTRY)
+    assert exchange.status == RoutingStatus.UNDETERMINED
+    assert exchange.issues == uncertain.issues
+    dead_letters = {row.queue.id.name: row for row in omitted.dead_letter_coverage()}
+    unmatched_dlx = dead_letters["unmatched-work"]
+    assert unmatched_dlx.status == DeadLetterCoverageStatus.UNDETERMINED
+    dlx_issue = DeadLetterRoutingIssue(_ENTRY, DeadLetterUncertainty.POLICY_SELECTION_NOT_CAPTURED)
+    assert unmatched_dlx.issues == (dlx_issue,)
+    assert unmatched_dlx in report.dead_letter_coverage
+
+    restored = ClusterAuditor.from_topology(pickle.loads(pickle.dumps(omitted.topology)))
+    assert _evaluate(restored, contract) == uncertain
+
+    matched = _evaluate(omitted, _contract(RoutingCondition.exactly({_BILLING}), key="mapped"))
+    assert matched.verdict == RoutingVerdict.SATISFIED
+    assert not matched.issues
+    matched_dlx = dead_letters["matched-work"]
+    assert matched_dlx.status == DeadLetterCoverageStatus.DESTINATION_POSSIBLE
+    assert matched_dlx.destinations == (_BILLING,)
+    assert not matched_dlx.issues
+
+    no_selection = ClusterAuditor(
+        definitions,
+        queues=queues,
+        exchanges=[ExchangeResponse.model_validate({**entry, "policy": None}), fallback_observation],
+    )
+    assert _evaluate(no_selection, contract).verdict == RoutingVerdict.SATISFIED
+    no_selection_dlx = next(row for row in no_selection.dead_letter_coverage() if row.queue.id.name == "unmatched-work")
+    assert no_selection_dlx.status == DeadLetterCoverageStatus.NO_DESTINATION
+    assert not no_selection_dlx.issues
+
+    selected = ClusterAuditor(
+        definitions,
+        queues=queues,
+        exchanges=[ExchangeResponse.model_validate({**entry, "policy": "reroute"}), fallback_observation],
+    )
+    result = _evaluate(selected, contract)
+    assert result.verdict == RoutingVerdict.VIOLATED
+    assert result.established_destinations == (_BILLING,)
+
+
+@pytest.mark.parametrize(
+    ("policy_section", "policy_observation", "expected"),
+    [
+        pytest.param({}, None, RoutingVerdict.UNDETERMINED, id="no-policy-section-or-exchange-observation"),
+        pytest.param({}, {}, RoutingVerdict.UNDETERMINED, id="no-policy-section-or-selector"),
+        pytest.param({}, {"policy": None}, RoutingVerdict.SATISFIED, id="explicit-null-selector"),
+        pytest.param({"policies": []}, None, RoutingVerdict.SATISFIED, id="explicit-empty-section"),
+        pytest.param({"policies": []}, {}, RoutingVerdict.SATISFIED, id="explicit-empty-section-with-observation"),
+    ],
+)
+def test_omitted_policy_section_does_not_establish_discard(
+    policy_section: dict[str, object], policy_observation: dict[str, object] | None, expected: RoutingVerdict
+) -> None:
+    entry = _exchange("entry", "v")
+    definitions = ClusterDefinitionsResponse.model_validate(
+        {
+            "vhosts": [_vhost("v")],
+            "queues": [_queue("billing", "v")],
+            "exchanges": [entry],
+            **policy_section,
+        }
+    )
+    if policy_observation is None:
+        auditor = ClusterAuditor(definitions)
+    else:
+        billing = _observed_queue("billing", "v", type="classic", arguments={"x-queue-type": "classic"})
+        auditor = ClusterAuditor(
+            definitions, queues=[billing], exchanges=[ExchangeResponse.model_validate({**entry, **policy_observation})]
+        )
+
+    result = _evaluate(auditor, _contract(RoutingCondition.exactly(set())))
+    assert result.verdict == expected
+    assert result.issues == (
+        (RoutingIssue(_ENTRY, RoutingUncertainty.POLICY_SELECTION_NOT_CAPTURED),)
+        if expected == RoutingVerdict.UNDETERMINED
+        else ()
+    )
+
+
+@pytest.mark.parametrize(
+    ("observation", "expected"),
+    [
+        pytest.param(None, RoutingVerdict.UNDETERMINED, id="no-observation"),
+        pytest.param({"policy": None}, RoutingVerdict.UNDETERMINED, id="omitted-observed-arguments"),
+        pytest.param({"policy": "reroute"}, RoutingVerdict.UNDETERMINED, id="named-policy-without-arguments"),
+        pytest.param({"policy": None, "arguments": {}}, RoutingVerdict.SATISFIED, id="empty-observed-arguments"),
+    ],
+)
+def test_omitted_exchange_arguments_do_not_establish_discard(
+    observation: dict[str, object] | None, expected: RoutingVerdict
+) -> None:
+    entry = _exchange("entry", "v")
+    del entry["arguments"]
+    discard = _exchange("discard", "v", "fanout")
+    policies = []
+    if observation is not None and observation.get("policy") == "reroute":
+        policies.append(
+            _policy("reroute", "^entry$", "exchanges", 0, vhost="v", definition={"alternate-exchange": "discard"})
+        )
+    definitions = _response(
+        vhosts=[_vhost("v")],
+        queues=[_queue("billing", "v")],
+        exchanges=[entry, discard],
+        bindings=[_binding("entry", "billing", "mapped")],
+        policies=policies,
+    )
+    if observation is None:
+        auditor = ClusterAuditor(definitions)
+    else:
+        billing = _observed_queue("billing", "v", type="classic", arguments={"x-queue-type": "classic"})
+        auditor = ClusterAuditor(
+            definitions,
+            queues=[billing],
+            exchanges=[
+                ExchangeResponse.model_validate({**entry, **observation}),
+                ExchangeResponse.model_validate({**discard, "policy": None}),
+            ],
+        )
+
+    contract = _contract(RoutingCondition.exactly(set()))
+    result = _evaluate(auditor, contract)
+    assert result.verdict == expected
+    assert result.open_branch is (expected == RoutingVerdict.UNDETERMINED)
+    assert result.established_destinations == result.conditional_destinations == ()
+    assert result.issues == (
+        (RoutingIssue(_ENTRY, RoutingUncertainty.EXCHANGE_ARGUMENTS_NOT_CAPTURED),)
+        if expected == RoutingVerdict.UNDETERMINED
+        else ()
+    )
+    assert all(edge.kind != EdgeKind.ALTERNATE_EXCHANGE for edge in auditor.topology.edges)
+    coverage = next(
+        row for row in auditor.exchange_routing_coverage(routing_key="invoice") if row.exchange.id == _ENTRY
+    )
+    assert coverage.status == (
+        RoutingStatus.UNDETERMINED if expected == RoutingVerdict.UNDETERMINED else RoutingStatus.NO_DESTINATION
+    )
+    assert coverage.issues == result.issues
+    restored = ClusterAuditor.from_topology(pickle.loads(pickle.dumps(auditor.topology)))
+    assert _evaluate(restored, contract) == result
+
+    matched = _evaluate(auditor, _contract(RoutingCondition.exactly({_BILLING}), key="mapped"))
+    assert matched.verdict == RoutingVerdict.SATISFIED
+    assert matched.established_destinations == (_BILLING,)
+    assert not matched.open_branch
+    assert not matched.issues
+
+
+@pytest.mark.parametrize(
+    ("arguments_captured", "expected_target", "expected"),
+    [
+        pytest.param(False, "fallback", RoutingVerdict.VIOLATED, id="observed-direct-alternate"),
+        pytest.param(True, "discard", RoutingVerdict.SATISFIED, id="empty-definition-arguments"),
+    ],
+)
+def test_observed_exchange_arguments_fill_omitted_definition_map(
+    arguments_captured: bool, expected_target: str, expected: RoutingVerdict
+) -> None:
+    entry = _exchange("entry", "v")
+    fallback = _exchange("fallback", "v", "fanout")
+    discard = _exchange("discard", "v", "fanout")
+    if not arguments_captured:
+        del entry["arguments"]
+    definitions = _response(
+        vhosts=[_vhost("v")],
+        queues=[_queue("billing", "v")],
+        exchanges=[entry, fallback, discard],
+        bindings=[_binding("fallback", "billing")],
+        policies=[
+            _policy("reroute", "^entry$", "exchanges", 0, vhost="v", definition={"alternate-exchange": "discard"})
+        ],
+    )
+    billing = _observed_queue("billing", "v", type="classic", arguments={"x-queue-type": "classic"})
+    observation = ExchangeResponse.model_validate(
+        {**entry, "policy": "reroute", "arguments": {"alternate-exchange": "fallback"}}
+    )
+    auditor = ClusterAuditor(
+        definitions,
+        queues=[billing],
+        exchanges=[
+            observation,
+            ExchangeResponse.model_validate({**fallback, "policy": None}),
+            ExchangeResponse.model_validate({**discard, "policy": None}),
+        ],
+    )
+
+    result = _evaluate(auditor, _contract(RoutingCondition.exactly(set())))
+    assert result.verdict == expected
+    assert result.established_destinations == (() if arguments_captured else (_BILLING,))
+    assert not result.issues
+    (alternate,) = (edge for edge in auditor.topology.edges if edge.kind == EdgeKind.ALTERNATE_EXCHANGE)
+    assert alternate.source == _ENTRY
+    assert alternate.target == replace(_ENTRY, name=expected_target)
 
 
 def test_scope_duplicate_paths_and_missing_and_internal_origins() -> None:

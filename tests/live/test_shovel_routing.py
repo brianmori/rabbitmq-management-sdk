@@ -372,3 +372,52 @@ def test_amqp10_target_address_controls_actual_delivery(
             "delivered_key": message["routing_key"],
         },
     )
+
+
+def test_amqp10_legacy_queue_address_routes_to_the_literal_percent_name(broker: _Broker) -> None:
+    literal = "out%20queue"
+    decoded = "out queue"
+    broker.queue("input")
+    broker.queue(quote(literal, safe=""))
+    broker.queue(quote(decoded, safe=""))
+    broker.start(
+        {
+            "src-protocol": "amqp10",
+            "src-uri": broker.uri10,
+            "src-address": "/queues/input",
+            "dest-protocol": "amqp10",
+            "dest-uri": broker.uri10,
+            "dest-address": f"/amq/queue/{literal}",
+        }
+    )
+    broker.running()
+    broker.publish_native_subject()
+
+    assert broker.http.delivered(broker.vhost, literal, "delivery-proof")["routing_key"] == literal
+    assert broker.messages(decoded) == []
+    shovel = broker.assert_endpoint("dest", NodeKind.QUEUE, None)
+    assert shovel.destination.resource_name == literal
+
+
+def test_amqp10_shovel_uses_decimal_reference_in_source_vhost(broker: _Broker) -> None:
+    broker.queue("input")
+    broker.queue("sink")
+    first_character = quote(f"&#{ord(broker.vhost[0])};", safe="")
+    source_uri = broker.uri10.replace(
+        f"hostname=vhost:{broker.vhost}", f"hostname=vhost:{first_character}{broker.vhost[1:]}"
+    )
+    broker.start(
+        {
+            "src-protocol": "amqp10",
+            "src-uri": source_uri,
+            "src-address": "/queues/input",
+            "dest-uri": broker.uri091,
+            "dest-queue": "sink",
+        }
+    )
+    broker.running()
+    broker.publish_native_subject()
+
+    broker.http.delivered(broker.vhost, "sink", "delivery-proof")
+    shovel = broker.assert_endpoint("src", NodeKind.QUEUE, None)
+    assert shovel.source.resource_name == "input"

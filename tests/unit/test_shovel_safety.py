@@ -18,7 +18,7 @@ pytestmark = pytest.mark.unit
 
 
 def _auditor(
-    overrides: dict[str, object] | None = None, *, version: str | None = "4.3.6", hosts: tuple[str, ...] = ()
+    overrides: dict[str, object] | None = None, *, version: str | None = "4.3.8", hosts: tuple[str, ...] = ()
 ) -> ClusterAuditor:
     value = {
         "src-uri": "amqp:///v",
@@ -54,7 +54,7 @@ def test_explicit_ack_mode_identifies_source_acknowledgement_timing(
     assert (ack.mode, ack.source, ack.timing) == (mode, ShovelAckSource.EXPLICIT, timing)
 
 
-@pytest.mark.parametrize("version", ["4.2.9", "4.3.6"])
+@pytest.mark.parametrize("version", ["4.2.9", "4.3.8"])
 @pytest.mark.parametrize("protocol", ["amqp091", "amqp10", "local"])
 def test_omitted_ack_mode_uses_the_verified_dynamic_default(version: str, protocol: str) -> None:
     ack = _fact(_auditor({"src-protocol": protocol}, version=version)).acknowledgement
@@ -71,14 +71,14 @@ def test_invalid_ack_mode_never_gets_the_omitted_default(value: object) -> None:
     assert ack.timing == ShovelAckTiming.UNKNOWN
 
 
-@pytest.mark.parametrize("version,protocol", [(None, "amqp091"), ("4.4.0", "amqp091"), ("4.3.6", "x-unsupported")])
+@pytest.mark.parametrize("version,protocol", [(None, "amqp091"), ("4.4.0", "amqp091"), ("4.3.8", "x-unsupported")])
 def test_omitted_ack_mode_needs_supported_version_and_protocol(version: str | None, protocol: str) -> None:
     ack = _fact(_auditor({"src-protocol": protocol}, version=version)).acknowledgement
     assert ack.mode == ShovelAckMode.UNKNOWN
     assert ack.source == ShovelAckSource.UNKNOWN
 
 
-@pytest.mark.parametrize("version", ["4.2.9", "4.3.6"])
+@pytest.mark.parametrize("version", ["4.2.9", "4.3.8"])
 @pytest.mark.parametrize(
     "protocol,uri,expected",
     [
