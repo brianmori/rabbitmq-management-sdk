@@ -163,7 +163,12 @@ class RabbitMQClient:
     @property
     def queues(self) -> QueueManager:
         if self._version.major == RabbitMQMajorVersion.V4:
-            return QueueManager(http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict)
+            return QueueManager(
+                http_client=self._ha,
+                vhost=self._config.virtual_host_safe,
+                strict=self._config.strict,
+                broker_version=self._version,
+            )
         raise NotImplementedError(f"Version {self._version} not supported")
 
     @property
@@ -191,14 +196,24 @@ class RabbitMQClient:
     @property
     def shovels(self) -> ShovelManager:
         if self._version.major == RabbitMQMajorVersion.V4:
-            return ShovelManager(http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict)
+            return ShovelManager(
+                http_client=self._ha,
+                vhost=self._config.virtual_host_safe,
+                strict=self._config.strict,
+                broker_version=self._version,
+            )
         raise NotImplementedError(f"Version {self._version} not supported")
 
     @property
     def policies(self) -> PolicyManager:
         """Regular policies scoped to the configured virtual host."""
         if self._version.major == RabbitMQMajorVersion.V4:
-            return PolicyManager(http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict)
+            return PolicyManager(
+                http_client=self._ha,
+                vhost=self._config.virtual_host_safe,
+                strict=self._config.strict,
+                broker_version=self._version,
+            )
         raise NotImplementedError(f"Version {self._version} not supported")
 
     @property
@@ -206,6 +221,9 @@ class RabbitMQClient:
         """Operator policies scoped to the configured virtual host."""
         if self._version.major == RabbitMQMajorVersion.V4:
             return OperatorPolicyManager(
-                http_client=self._ha, vhost=self._config.virtual_host_safe, strict=self._config.strict
+                http_client=self._ha,
+                vhost=self._config.virtual_host_safe,
+                strict=self._config.strict,
+                broker_version=self._version,
             )
         raise NotImplementedError(f"Version {self._version} not supported")

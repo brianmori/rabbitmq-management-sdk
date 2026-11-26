@@ -2,12 +2,7 @@
 
 ## Supported Versions
 
-This project is in alpha (0.x). Security fixes are applied to the latest released version only.
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
-| < 0.1   | :x:                |
+This project is in beta (0.x). Security fixes are applied to the latest released version only.
 
 ## Reporting a Vulnerability
 

@@ -8,6 +8,16 @@ class RabbitMQError(Exception):
     """Base class for every error raised by the SDK."""
 
 
+class UnsupportedBrokerFeatureError(RabbitMQError):
+    """A request setting requires a newer RabbitMQ version."""
+
+    def __init__(self, *, feature: str, broker_version: str, minimum_version: str) -> None:
+        self.feature = feature
+        self.broker_version = broker_version
+        self.minimum_version = minimum_version
+        super().__init__(f"{feature} requires RabbitMQ {minimum_version} or later. Broker version is {broker_version}.")
+
+
 class TransportError(RabbitMQError):
     """Network or transport-level failure with no HTTP response."""
 

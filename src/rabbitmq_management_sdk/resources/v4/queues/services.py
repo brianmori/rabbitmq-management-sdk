@@ -5,18 +5,23 @@ from typing import TYPE_CHECKING, Any
 
 from rabbitmq_management_sdk._paths import quote_path_segment
 from rabbitmq_management_sdk.resources.base import Page, parse_one, parse_page
+from rabbitmq_management_sdk.resources.v4._write_version import QUORUM_QUEUE_WRITE_VERSIONS, validate_write_version
 from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QueueResponse
 
 if TYPE_CHECKING:
+    from rabbitmq_management_sdk.client.config import RabbitMQVersion
     from rabbitmq_management_sdk.http_adapter import HttpAdapter
     from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_request import QueueRequest
 
 
 class QueueManager:
-    def __init__(self, http_client: HttpAdapter, vhost: str, strict: bool) -> None:
+    def __init__(
+        self, http_client: HttpAdapter, vhost: str, strict: bool, *, broker_version: RabbitMQVersion | None = None
+    ) -> None:
         self._ha = http_client
         self._vhost = vhost
         self._strict = strict
+        self._broker_version = broker_version
 
     def get(self, name: str, *, disable_stats: bool = False) -> QueueResponse:
         """Return one queue by name.
@@ -131,10 +136,12 @@ class QueueManager:
         )
 
     def create(self, name: str, request: QueueRequest) -> None:
+        payload = self._to_http_payload(request)
+        validate_write_version(payload["arguments"], self._broker_version, QUORUM_QUEUE_WRITE_VERSIONS)
         self._ha.request(
             method=HTTPMethod.PUT,
             path=f"/api/queues/{self._vhost}/{quote_path_segment(name)}",
-            json=self._to_http_payload(request),
+            json=payload,
         )
 
     def delete(self, name: str) -> None:

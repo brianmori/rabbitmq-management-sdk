@@ -5,12 +5,14 @@ from typing import TYPE_CHECKING
 
 from rabbitmq_management_sdk._paths import quote_path_segment
 from rabbitmq_management_sdk.resources.base import parse_list, parse_one
+from rabbitmq_management_sdk.resources.v4._write_version import QUORUM_POLICY_WRITE_VERSIONS, validate_write_version
 from rabbitmq_management_sdk.resources.v4.policies.schemas.policy_response import (
     OperatorPolicyResponse,
     PolicyResponse,
 )
 
 if TYPE_CHECKING:
+    from rabbitmq_management_sdk.client.config import RabbitMQVersion
     from rabbitmq_management_sdk.http_adapter import HttpAdapter
     from rabbitmq_management_sdk.resources.v4.policies.schemas.policy_request import (
         OperatorPolicyRequest,
@@ -22,13 +24,24 @@ def _policy_path(resource: str, vhost: str, name: str) -> str:
     return f"/api/{resource}/{vhost}/{quote_path_segment(name)}"
 
 
+def _policy_payload(
+    request: PolicyRequest | OperatorPolicyRequest, *, strict: bool, broker_version: RabbitMQVersion | None
+) -> dict[str, object]:
+    payload = request.model_dump(by_alias=True, exclude_none=True, exclude_defaults=not strict)
+    validate_write_version(payload["definition"], broker_version, QUORUM_POLICY_WRITE_VERSIONS)
+    return payload
+
+
 class PolicyManager:
     """Manage regular RabbitMQ policies."""
 
-    def __init__(self, http_client: HttpAdapter, vhost: str, strict: bool) -> None:
+    def __init__(
+        self, http_client: HttpAdapter, vhost: str, strict: bool, *, broker_version: RabbitMQVersion | None = None
+    ) -> None:
         self._ha = http_client
         self._vhost = vhost
         self._strict = strict
+        self._broker_version = broker_version
 
     def get(self, name: str) -> PolicyResponse:
         """Return one policy by name in the configured virtual host."""
@@ -56,11 +69,7 @@ class PolicyManager:
         self._ha.request(
             method=HTTPMethod.PUT,
             path=_policy_path("policies", self._vhost, name),
-            json=request.model_dump(
-                by_alias=True,
-                exclude_none=True,
-                exclude_defaults=not self._strict,
-            ),
+            json=_policy_payload(request, strict=self._strict, broker_version=self._broker_version),
         )
 
     def delete(self, name: str) -> None:
@@ -71,10 +80,13 @@ class PolicyManager:
 class OperatorPolicyManager:
     """Manage RabbitMQ operator policies."""
 
-    def __init__(self, http_client: HttpAdapter, vhost: str, strict: bool) -> None:
+    def __init__(
+        self, http_client: HttpAdapter, vhost: str, strict: bool, *, broker_version: RabbitMQVersion | None = None
+    ) -> None:
         self._ha = http_client
         self._vhost = vhost
         self._strict = strict
+        self._broker_version = broker_version
 
     def get(self, name: str) -> OperatorPolicyResponse:
         """Return one operator policy by name in the configured virtual host."""
@@ -105,11 +117,7 @@ class OperatorPolicyManager:
         self._ha.request(
             method=HTTPMethod.PUT,
             path=_policy_path("operator-policies", self._vhost, name),
-            json=request.model_dump(
-                by_alias=True,
-                exclude_none=True,
-                exclude_defaults=not self._strict,
-            ),
+            json=_policy_payload(request, strict=self._strict, broker_version=self._broker_version),
         )
 
     def delete(self, name: str) -> None:

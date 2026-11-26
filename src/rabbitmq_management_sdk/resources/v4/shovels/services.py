@@ -5,12 +5,14 @@ from typing import TYPE_CHECKING
 
 from rabbitmq_management_sdk._paths import quote_path_segment
 from rabbitmq_management_sdk.resources.base import parse_list, parse_one
+from rabbitmq_management_sdk.resources.v4._write_version import SHOVEL_WRITE_VERSIONS, validate_write_version
 from rabbitmq_management_sdk.resources.v4.shovels.schemas.shovel_response import (
     ShovelParameterResponse,
     ShovelStatusResponse,
 )
 
 if TYPE_CHECKING:
+    from rabbitmq_management_sdk.client.config import RabbitMQVersion
     from rabbitmq_management_sdk.http_adapter import HttpAdapter
     from rabbitmq_management_sdk.resources.v4.shovels.schemas.shovel_request import (
         ShovelRequest,
@@ -18,10 +20,13 @@ if TYPE_CHECKING:
 
 
 class ShovelManager:
-    def __init__(self, http_client: HttpAdapter, vhost: str, strict: bool) -> None:
+    def __init__(
+        self, http_client: HttpAdapter, vhost: str, strict: bool, *, broker_version: RabbitMQVersion | None = None
+    ) -> None:
         self._ha = http_client
         self._vhost = vhost
         self._strict = strict
+        self._broker_version = broker_version
 
     def get(self, name: str) -> ShovelParameterResponse:
         return parse_one(
@@ -32,10 +37,12 @@ class ShovelManager:
         )
 
     def create(self, name: str, request: ShovelRequest) -> None:
+        value = request.to_api_value()
+        validate_write_version(value, self._broker_version, SHOVEL_WRITE_VERSIONS)
         self._ha.request(
             method=HTTPMethod.PUT,
             path=f"/api/parameters/shovel/{self._vhost}/{quote_path_segment(name)}",
-            json={"value": request.to_api_value()},
+            json={"value": value},
         )
 
     def delete(self, name: str) -> None:

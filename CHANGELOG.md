@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Queue, policy, operator-policy, and shovel writes reject known RabbitMQ
+  4.3-only settings on older brokers before sending a request. The SDK uses
+  the detected broker version or the configured version override.
 - Routing contracts, exchange coverage, and dead-letter coverage preserve
   uncertainty when incomplete policy evidence or missing exchange arguments
   could hide an alternate route. Matching observations can recover an
