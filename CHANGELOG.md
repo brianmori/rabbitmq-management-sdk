@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-26
+
 ### Added
 
 - RabbitMQ 4.3 quorum retry and timeout settings in queue and policy requests,
@@ -20,19 +22,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AMQP 1.0 shovel source consumer names on RabbitMQ 4.3.
 - Binding durability and queue declaration compatibility audits for RabbitMQ
   4.3 upgrades, plus inventories of vhost permissions, limits, and policies.
-- A [RabbitMQ 4.3.8 extreme topology capture and benchmark](tests/integration/rmq-4.3/extreme-topology/README.md)
+- A [RabbitMQ 4.3.8 extreme topology capture and benchmark](tests/integration/rmq-4.3/extreme-topology/benchmark.py)
   with 5,000 resource nodes, 4,986 edges, and expected audit results.
 
 ### Changed
 
-- Pinned the live test brokers to RabbitMQ 4.2.9 and 4.3.8. Synthetic test
-  inputs use those patch versions and saved captures retain their provenance.
+- Moved the SDK's development status from Alpha to Beta.
+- Documented RabbitMQ 4.2 and 4.3 as the supported broker series and pinned
+  live tests to RabbitMQ 4.2.9 and 4.3.8. Saved captures retain their provenance.
 
 ### Fixed
 
 - Queue, policy, operator-policy, and shovel writes reject known RabbitMQ
-  4.3-only settings on older brokers before sending a request. The SDK uses
-  the detected broker version or the configured version override.
+  4.3-only settings on older brokers with `UnsupportedBrokerFeatureError`
+  before sending a request. The SDK uses the detected broker version or the
+  configured version override.
 - Routing contracts, exchange coverage, and dead-letter coverage preserve
   uncertainty when incomplete policy evidence or missing exchange arguments
   could hide an alternate route. Matching observations can recover an
@@ -242,7 +246,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   broker-version detection, Basic-Auth and mTLS support, an exponential-backoff
   retry transport, and a `RabbitMQError` exception hierarchy.
 
-[Unreleased]: https://github.com/brianmori/rabbitmq-management-sdk/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/brianmori/rabbitmq-management-sdk/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/brianmori/rabbitmq-management-sdk/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/brianmori/rabbitmq-management-sdk/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/brianmori/rabbitmq-management-sdk/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/brianmori/rabbitmq-management-sdk/compare/v0.2.0...v0.3.0
