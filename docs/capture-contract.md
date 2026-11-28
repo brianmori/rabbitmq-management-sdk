@@ -72,6 +72,7 @@ temporary queues. [Declaration compatibility](declaration-compatibility.md).
 | `exclusive` is omitted or null | Exclusivity is unknown. An explicit `false` establishes a non-exclusive queue when the observation agrees with the declaration. |
 | Broker version is omitted or unsupported by the resolver | Quorum effective configuration remains unknown; a client version override does not fill capture metadata. |
 | Queue argument map or policy sections are omitted | The limits audit leaves affected settings unknown unless other captured evidence resolves them. |
+| A current stream policy reports `stream-max-segment-size-bytes` | The stream retention audit preserves the policy value as evidence. The applied setting requires creation-time or runtime configuration evidence. |
 | Dynamic shovel `ack-mode` is omitted versus explicitly null | Omission can use the documented default for a captured 4.2 or 4.3 version and supported protocols. Explicit null is invalid evidence. |
 
 These are field-specific meanings, not a universal null convention. Inspect the

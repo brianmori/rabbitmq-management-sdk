@@ -329,7 +329,9 @@ Graph algorithms read `ClusterTopology.all_node_ids` and map back through
 Quorum delivery settings are frozen metadata on `QueueNode.quorum_delivery`.
 Limits and retention are frozen metadata on `QueueNode.queue_limits`. Both
 use captured policy evidence, and quorum overflow is shared between them.
-See the [queue limits guide](queue-limits.md) for per-type rules.
+Stream metadata retains resolved age and byte retention, and declaration or
+policy evidence for segment size. See the [queue limits guide](queue-limits.md)
+for per-type rules.
 The parser resolves captured 4.2/4.3 arguments and observed policy evidence,
 retaining sources, nulls, and uncertainty. Missing global timeout defaults
 stay unknown. This metadata changes resource attributes without changing
@@ -962,7 +964,8 @@ Read the construction path in this order:
    for the versioned configuration attached during queue construction, then
    [`quorum.py`](../src/rabbitmq_management_sdk/topology/quorum.py) for advisory
    facts. [`queue_limits.py`](../src/rabbitmq_management_sdk/topology/queue_limits.py)
-   resolves queue limits and stream retention. These settings add metadata.
+   resolves queue limits and stream retention. The stream audit classifies the
+   retained age and byte settings and includes the segment size evidence.
 
 Focused coverage lives in:
 
