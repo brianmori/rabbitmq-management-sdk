@@ -56,7 +56,7 @@ can be mixed. The comparison reads the evidence already held by the inputs.
 
 | Result field | Evidence and order |
 | --- | --- |
-| `vhosts`, `queues`, `exchanges`, `shovels`, `regular_policies`, `operator_policies` | Added and removed identities from captured definitions. The `attributes` rows name changed or unavailable fields for identities present on both sides. Queue and exchange shapes use captured declaration arguments and flags. Vhosts compare their default queue type, regular policies compare their selector and definition fields, and operator policies and shovels compare their captured configuration. A shovel URI comparison uses its credential-free capture form. |
+| `vhosts`, `queues`, `exchanges`, `shovels`, `regular_policies`, `operator_policies` | Added and removed identities from captured definitions. The `attributes` rows name changed or unavailable fields for identities present on both sides. Queue and exchange shapes use captured declaration arguments and flags. Vhosts compare their default queue type, regular policies compare their selector and definition fields, and operator policies compare their captured configuration. Shovels report endpoint and acknowledgement changes under `value` and name the supported transfer settings that changed. A shovel URI comparison uses its credential-free capture form. |
 | `bindings` | Added and removed binding edges in canonical edge order. Endpoints, destination kind, routing key, and the complete argument map form the identity. Parallel bindings stay distinct. An argument change removes one binding identity and adds another. |
 | `policy_selections` | Observed regular and operator selection changes for queues and exchanges represented in both inventories. Explicit null records no selection. A missing selector goes into `unavailable`. |
 | `routing_contracts` | Before and after outcomes in the order you supplied the contracts. Each evaluated outcome contains the usual routing result with condition verdicts, destinations, and routing issues. An outcome blocked by capture evidence reports `undetermined` with its `gaps`. |
@@ -88,11 +88,12 @@ matching decision uncertain. Default-exchange contracts use implicit queue route
 
 Reported declaration attributes describe the retained wire fields. An
 explicit null differs from a missing field, and capture-local redaction
-tokens cannot establish equality across captures. Supplemented exchanges
-and runtime statistics provide other audit evidence and do not count as
-declarations. A topology-only auditor can still supply retained policy
-observations. Its definition-based categories and capture-backed routing
-outcomes are indeterminate because it lacks the original section presence.
+tokens cannot establish equality across captures. A redacted shovel transfer
+setting is indeterminate. Supplemented exchanges and runtime statistics provide
+other audit evidence and do not count as declarations. A topology-only auditor
+can still supply retained policy observations. Its definition-based categories
+and capture-backed routing outcomes are indeterminate because it lacks the
+original section presence.
 
 The comparison cannot establish cluster visibility or atomicity for
 sequential reads. Record account visibility, collection scope, and timing

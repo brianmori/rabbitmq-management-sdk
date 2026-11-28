@@ -29,10 +29,27 @@ _ROUTE_KEYS = {
     "x-dead-letter-exchange",
     "x-dead-letter-routing-key",
 }
-_SHOVEL_KEYS = {"ack-mode"} | {
-    f"{side}-{field}"
-    for side in ("src", "dest")
-    for field in ("address", "exchange", "exchange-key", "protocol", "queue", "uri")
+_SHOVEL_RESOURCE_KEYS = {
+    f"{side}-{field}" for side in ("src", "dest") for field in ("address", "exchange", "exchange-key", "queue")
+}
+_SHOVEL_KEYS = _SHOVEL_RESOURCE_KEYS | {"ack-mode", "src-protocol", "dest-protocol", "src-uri", "dest-uri"}
+_SHOVEL_SETTING_TYPES: dict[str, tuple[type[object], ...]] = {
+    "dest-add-forward-headers": (bool,),
+    "dest-add-timestamp-header": (bool,),
+    "dest-application-properties": (dict,),
+    "dest-message-annotations": (dict,),
+    "dest-predeclared": (bool,),
+    "dest-properties": (dict,),
+    "dest-publish-properties": (dict,),
+    "dest-queue-args": (dict,),
+    "reconnect-delay": (int, float),
+    "src-consumer-args": (dict,),
+    "src-consumer-name": (str,),
+    "src-delete-after": (int, str),
+    "src-delete-after-duration": (int,),
+    "src-predeclared": (bool,),
+    "src-prefetch-count": (int,),
+    "src-queue-args": (dict,),
 }
 _QUEUE_STATS = {
     "consumers",
@@ -110,11 +127,15 @@ class CaptureSanitizer:
         """Identify credentials and redactions that cannot be compared across captures."""
         return _contains_redaction(value) or self._opaque(value) != value
 
-    def _shovel(self, value: JsonValue) -> JsonValue:
+    def shovel(self, value: JsonValue) -> JsonObject | None:
+        """Preserve topology and transfer settings with credentials removed."""
         if not isinstance(value, dict):
             # Preserve invalid non-object evidence without storing its contents.
             return None
         result = {key: item for key, item in value.items() if key in _SHOVEL_KEYS}
+        for key in _SHOVEL_RESOURCE_KEYS & result.keys():
+            if not isinstance(result[key], str):
+                result[key] = None
         for side in ("src", "dest"):
             key = f"{side}-uri"
             if key not in result:
@@ -131,11 +152,15 @@ class CaptureSanitizer:
         for key in ("ack-mode", "src-protocol", "dest-protocol"):
             if key in result:
                 result[key] = self._opaque(result[key])
+        for key, types in _SHOVEL_SETTING_TYPES.items():
+            if key in value:
+                item = value[key]
+                result[key] = self._opaque(item) if type(item) in types else None
         return result
 
     def _parameter_value(self, component: str, value: JsonValue) -> JsonValue:
         if component == "shovel":
-            return self._shovel(value)
+            return self.shovel(value)
         if component == "operator_policy":
             if not isinstance(value, dict):
                 return None

@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Discard malformed shovel resource values when collecting or loading audit
+  captures. Compare captured shovel transfer settings by field.
 - Validate stream retention ages using RabbitMQ's case-sensitive units in
   declaration and policy requests. Use `7D` for seven days.
 
