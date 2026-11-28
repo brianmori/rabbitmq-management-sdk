@@ -9,9 +9,27 @@ from rabbitmq_management_sdk import (
     ClassicQueueRequest,
     DelayedRetryType,
     OverflowBehaviour,
+    PolicyDefinition,
     QuorumQueueOverflow,
     QuorumQueueRequest,
+    StreamQueueRequest,
 )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("age", ["1Y", "1M", "7D", "01h", "30m", "1s"])
+def test_stream_max_age_accepts_broker_units(age: str) -> None:
+    assert StreamQueueRequest(max_age=age).model_dump(by_alias=True)["x-max-age"] == age
+    assert PolicyDefinition(max_age=age).model_dump(by_alias=True)["max-age"] == age
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("age", ["7d", "0D", "7D\n", "\uff17D", "1D2h"])
+def test_stream_max_age_rejects_invalid_durations(age: str) -> None:
+    with pytest.raises(ValidationError):
+        StreamQueueRequest.model_validate({"x-max-age": age})
+    with pytest.raises(ValidationError):
+        PolicyDefinition.model_validate({"max-age": age})
 
 
 @pytest.mark.unit

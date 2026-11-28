@@ -152,6 +152,11 @@ RabbitMQ checks the enabled conditions in one request. A refusal raises an SDK
 `APIError`. [RabbitMQ 4.2.9](https://github.com/rabbitmq/rabbitmq-server/blob/v4.2.9/deps/rabbitmq_management/src/rabbit_mgmt_wm_queue.erl#L74-L85)
 · [RabbitMQ 4.3.8](https://github.com/rabbitmq/rabbitmq-server/blob/v4.3.8/deps/rabbitmq_management/src/rabbit_mgmt_wm_queue.erl#L79-L90)
 
+Use `client.queues.list_streams()` to list streams across all pages of the
+configured virtual host. The [stream lifecycle example](docs/stream-lifecycle.md)
+declares a durable stream and verifies retention changes made by a dedicated
+regular policy.
+
 ### Exchanges
 
 ```python

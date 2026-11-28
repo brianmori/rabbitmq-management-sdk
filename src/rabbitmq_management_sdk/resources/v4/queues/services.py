@@ -115,6 +115,19 @@ class QueueManager:
             disable_stats=disable_stats,
         )
 
+    def list_streams(self, *, page_size: int = 100, disable_stats: bool = False) -> list[QueueResponse]:
+        """Return stream queues across all pages of the configured virtual host.
+
+        Args:
+            page_size: Maximum number of queues RabbitMQ returns per request.
+            disable_stats: Exclude runtime statistics from the response.
+        """
+        return [
+            queue
+            for queue in self.list_by_vhost(page_size=page_size, disable_stats=disable_stats)
+            if queue.type == "stream"
+        ]
+
     def list_all(
         self,
         *,

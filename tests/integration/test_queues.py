@@ -153,7 +153,7 @@ def test_queue_manager_sends_quorum_retry_and_timeout_configuration(strict: bool
     [
         (ClassicQueueRequest(message_ttl=60_000), "x-message-ttl", 60_000),
         (QuorumQueueRequest(delivery_limit=5), "x-delivery-limit", 5),
-        (StreamQueueRequest(max_age="7d"), "x-max-age", "7d"),
+        (StreamQueueRequest(max_age="7D"), "x-max-age", "7D"),
     ],
     ids=["classic", "quorum", "stream"],
 )
@@ -243,3 +243,45 @@ def test_queue_response_parses_type_specific_initial_replication_size(queue_type
     assert queue.arguments.queue_type == queue_type
     assert queue.arguments.initial_cluster_size == 5
     assert queue.arguments.model_dump(by_alias=True, exclude_none=True)[wire_key] == 5
+
+
+@pytest.mark.integration
+def test_list_streams_walks_all_vhost_pages_before_filtering() -> None:
+    sent: list[str] = []
+    queues = (("first", "stream"), ("classic", "classic"), ("quorum", "quorum"), ("last", "stream"))
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        page = request.url.params["page"]
+        sent.append(page)
+        assert request.method == "GET"
+        assert request.url.raw_path.partition(b"?")[0] == b"/api/queues/team%2Feu"
+        assert dict(request.url.params) == {"page": page, "page_size": "1", "disable_stats": "true"}
+        name, queue_type = queues[int(page) - 1]
+        return httpx2.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "name": name,
+                        "vhost": "team/eu",
+                        "type": queue_type,
+                        "durable": True,
+                        "auto_delete": False,
+                        "node": "rabbit@node",
+                        "state": "running",
+                        "arguments": {"x-queue-type": queue_type},
+                    }
+                ],
+                "page": int(page),
+                "page_count": 4,
+                "page_size": 1,
+                "total_count": 4,
+                "filtered_count": 4,
+                "item_count": 1,
+            },
+        )
+
+    with Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
+        streams = QueueManager(adapter, "team%2Feu", False).list_streams(page_size=1, disable_stats=True)
+    assert [stream.name for stream in streams] == ["first", "last"]
+    assert sent == ["1", "2", "3", "4"]
