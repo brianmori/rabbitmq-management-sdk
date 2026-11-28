@@ -15,6 +15,7 @@ from rabbitmq_management_sdk.client.audit_capture import (
     AuditCapturePage,
     AuditCaptureRead,
 )
+from rabbitmq_management_sdk.client.capture_comparison import compare_captures
 from rabbitmq_management_sdk.client.cluster_auditor import ClusterAuditor, TopologyAuditReport
 from rabbitmq_management_sdk.client.config import Config, RabbitMQVersion, SSLConfig
 from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
@@ -193,4 +194,5 @@ __all__ = [
     "VhostLimitValues",
     "VhostRequest",
     "VhostResponse",
+    "compare_captures",
 ]

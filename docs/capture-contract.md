@@ -273,3 +273,7 @@ The stored graph cannot recreate omitted definitions, credentials, statistics,
 or provenance. `from_topology()` preserves retained graph evidence but does not
 establish its origin or completeness. Pickles are for trusted compatible-version
 process transfer, not untrusted input or a durable capture format.
+
+When you have two saved inputs from the same broker, use
+[`compare_captures()`](capture-comparison.md) to review declaration and binding
+changes, observed policy selections, and routing contract outcomes.

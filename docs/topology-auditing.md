@@ -243,8 +243,9 @@ definitions export.
 
 ### Implemented capabilities and evidence
 
-The table below describes current APIs, not proposed audit features. Every
-analysis operates on the normalized graph, including through `from_topology()`.
+The table below describes current APIs, not proposed audit features.
+Single-capture analyses operate on the normalized graph, including through
+`from_topology()`. Capture comparisons also use retained source evidence.
 The evidence column explains what must have been captured during construction
 to obtain the corresponding facts. Queue and exchange observations, when used,
 must be supplied as a complete pair. The [capture contract](capture-contract.md)
@@ -273,6 +274,7 @@ pagination, publication, sanitization, and audit replay with saved evidence.
 | `dead_letter_coverage` | Resolved DLX edges, exchange types/bindings, and fixed key if configured | Streams inapplicable; terminal queues retained; selectors, missing resources, or plugin semantics can be uncertain | [DLX analysis](../src/rabbitmq_management_sdk/topology/dead_letter.py), [shared routing/selector tests](../tests/unit/test_dead_letter.py), [captures](../tests/integration/test_dead_letter_captures.py), [live tests](../tests/live/test_dead_letter_coverage.py) |
 | `exchange_routing_coverage` | Contained exchanges and bindings; optional caller routing key for the individual method | Aggregate key is unknown; empty key is concrete; headers/plugins may remain unknown | [Exchange analysis](../src/rabbitmq_management_sdk/topology/exchange_routing.py), [unit tests](../tests/unit/test_exchange_routing.py), [captures](../tests/integration/test_exchange_routing_captures.py), [live tests](../tests/live/test_exchange_routing_coverage.py) |
 | `evaluate_routing_contracts(contracts)`, `routing_contracts` | Same routing evidence, with caller-supplied origins, keys, and destination conditions | Direct client publication with one key; unknown selectors and open branches can leave a verdict undetermined | [Routing contracts](exchange-routing-coverage.md#caller-defined-routing-contracts), [unit tests](../tests/unit/test_routing_contracts.py), [4.2 and 4.3 captures](../tests/integration/test_routing_contract_captures.py) |
+| `compare_captures(before, after)`, `before.compare(after)` | Same-cluster ID or explicit mapping, captured definitions sections, optional paired observations and routing contracts | Deltas use the shared vhost scope. Omitted sections, binding arguments, and observed selectors can make categories indeterminate. | [Comparison example](capture-comparison.md), [implementation](../src/rabbitmq_management_sdk/client/capture_comparison.py), [unit tests](../tests/unit/test_capture_comparison.py), [saved bundle replay](../tests/integration/test_audit_capture.py) |
 | `quorum_delivery_configuration` | Declared quorum queues; captured 4.2/4.3 version, arguments, and selected/effective policy evidence | Known/unset/unknown/inapplicable differ; missing global defaults stay unknown; retry/timeouts inapplicable on 4.2 | [Resolver](../src/rabbitmq_management_sdk/topology/quorum_configuration.py), [advisories](../src/rabbitmq_management_sdk/topology/quorum.py), [unit tests](../tests/unit/test_quorum_configuration.py), [captures](../tests/integration/test_quorum_configuration_captures.py), [live audit](../tests/live/test_quorum_audit.py), [live configuration](../tests/live/test_quorum_configuration.py) |
 | `quorum_resilience` | Declared quorum queues, captured member/leader/online identities, and optional caller domain assignments and failure scenarios | Missing placement or domain data can leave conclusions unknown; reported online majority describes the capture | [Resilience analysis](../src/rabbitmq_management_sdk/topology/quorum_resilience.py), [unit tests](../tests/unit/test_quorum_resilience.py), [captures](../tests/integration/test_quorum_resilience_captures.py) |
 

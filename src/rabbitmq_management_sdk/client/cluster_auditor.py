@@ -12,6 +12,7 @@ from rabbitmq_management_sdk.exceptions import (
     TopologyAnalysisError,
     TopologyDefinitionsError,
     TopologyLoadError,
+    TopologyParseError,
     TopologyResourceSnapshotError,
 )
 from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
@@ -58,6 +59,8 @@ if TYPE_CHECKING:
     from collections.abc import Collection, Mapping, Sequence
     from pathlib import Path
 
+    from rabbitmq_management_sdk.client.audit_capture import AuditCapture
+    from rabbitmq_management_sdk.topology.comparison import CaptureComparison
     from rabbitmq_management_sdk.topology.cycles import StronglyConnectedComponent
     from rabbitmq_management_sdk.topology.dead_letter import DeadLetterCoverage
     from rabbitmq_management_sdk.topology.declaration_compatibility import (
@@ -157,8 +160,17 @@ class ClusterAuditor:
         if (queues is None) != (exchanges is None):
             raise TopologyAnalysisError("queues and exchanges must be supplied together or both omitted")
         self._definitions: ClusterDefinitionsResponse | None = definitions
+        # Keep the comparison evidence aligned with the immutable graph even
+        # if callers later mutate lists or argument maps on the wire model.
+        try:
+            retained_definitions = definitions.model_copy(deep=True)
+        except (AttributeError, TypeError, ValueError, RecursionError) as exc:
+            raise TopologyParseError("Could not retain definitions for topology analysis") from exc
+        self._comparison_definitions: ClusterDefinitionsResponse | None = retained_definitions
+        self._observations_supplied = queues is not None
+        self._observations_scope_limited = False
         self._topology = parse_cluster_topology(
-            definitions,
+            retained_definitions,
             in_cluster_amqp_hosts=in_cluster_amqp_hosts,
             cluster_label=cluster_label,
             observed_exchanges=exchanges if exchanges is not None else (),
@@ -167,7 +179,7 @@ class ClusterAuditor:
                 build_user_policy_selections(
                     queues=queues,
                     exchanges=exchanges,
-                    cluster_id=definitions.internal_cluster_id,
+                    cluster_id=retained_definitions.internal_cluster_id,
                 )
                 if queues is not None and exchanges is not None
                 else None
@@ -198,6 +210,9 @@ class ClusterAuditor:
 
         auditor = cls.__new__(cls)
         auditor._definitions = None
+        auditor._comparison_definitions = None
+        auditor._observations_supplied = False
+        auditor._observations_scope_limited = False
         auditor._topology = topology
         return auditor
 
@@ -387,6 +402,31 @@ class ClusterAuditor:
         undetermined when no immediate binding is known to match.
         """
         return evaluate_routing_contracts(self._topology, contracts)
+
+    def compare(
+        self,
+        after: ClusterAuditor | AuditCapture,
+        *,
+        cluster_id: str | None = None,
+        before_vhosts: Collection[str] | None = None,
+        after_vhosts: Collection[str] | None = None,
+        routing_contracts: Sequence[RoutingContract] = (),
+    ) -> CaptureComparison:
+        """Compare this baseline with another same-cluster capture.
+
+        See :func:`rabbitmq_management_sdk.compare_captures` for the identity
+        mapping, capture scope, and routing contract inputs.
+        """
+        from rabbitmq_management_sdk.client.capture_comparison import compare_captures  # noqa: PLC0415
+
+        return compare_captures(
+            self,
+            after,
+            cluster_id=cluster_id,
+            before_vhosts=before_vhosts,
+            after_vhosts=after_vhosts,
+            routing_contracts=routing_contracts,
+        )
 
     def unreachable_internal_exchanges(self) -> tuple[ExchangeNode, ...]:
         """Return internal exchanges with no captured incoming route."""

@@ -106,6 +106,10 @@ class CaptureSanitizer:
             return self._redact(value)
         return self._opaque(value)
 
+    def has_opaque_values(self, value: JsonValue) -> bool:
+        """Identify credentials and redactions that cannot be compared across captures."""
+        return _contains_redaction(value) or self._opaque(value) != value
+
     def _shovel(self, value: JsonValue) -> JsonValue:
         if not isinstance(value, dict):
             # Preserve invalid non-object evidence without storing its contents.
@@ -191,3 +195,13 @@ class CaptureSanitizer:
         if "arguments" in data:
             data["arguments"] = self._opaque(data["arguments"], keep_routes=True)
         return data
+
+
+def _contains_redaction(value: JsonValue) -> bool:
+    if isinstance(value, str):
+        return _REDACTED.fullmatch(value) is not None
+    if isinstance(value, dict):
+        return any(_contains_redaction(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_contains_redaction(item) for item in value)
+    return False

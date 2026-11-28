@@ -15,7 +15,7 @@ from rabbitmq_management_sdk.topology.routing import RoutingIssue, RoutingUncert
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from rabbitmq_management_sdk.topology.models import ClusterTopology
+    from rabbitmq_management_sdk.topology.models import ClusterTopology, TopologyEdge
 
 
 class RoutingConditionKind(StrEnum):
@@ -224,17 +224,25 @@ def _evaluate_contract(router: _ExchangeRouter, contract: RoutingContract) -> Ro
     )
 
 
-def evaluate_routing_contracts(
-    topology: ClusterTopology, contracts: Sequence[RoutingContract]
-) -> tuple[RoutingContractResult, ...]:
-    """Evaluate one batch, sharing graph indexes and cached origin/key traces."""
+def _validate_contracts(contracts: Sequence[RoutingContract]) -> None:
+    """Validate the batch before any routing is evaluated."""
     if (
         not isinstance(contracts, Sequence)
         or isinstance(contracts, (str, bytes))
         or any(not isinstance(contract, RoutingContract) for contract in contracts)
     ):
         raise TopologyAnalysisError("contracts must be a sequence of RoutingContract values")
+
+
+def evaluate_routing_contracts(
+    topology: ClusterTopology,
+    contracts: Sequence[RoutingContract],
+    *,
+    incomplete_binding_arguments: frozenset[TopologyEdge] = frozenset(),
+) -> tuple[RoutingContractResult, ...]:
+    """Evaluate one batch, sharing graph indexes and cached origin/key traces."""
+    _validate_contracts(contracts)
     if not contracts:
         return ()
-    router = _ExchangeRouter(topology)
+    router = _ExchangeRouter(topology, incomplete_binding_arguments=incomplete_binding_arguments)
     return tuple(_evaluate_contract(router, contract) for contract in contracts)

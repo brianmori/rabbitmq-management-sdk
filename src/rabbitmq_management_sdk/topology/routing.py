@@ -74,8 +74,11 @@ class _RoutingEvidence:
 class _ExchangeRouter:
     """Index one immutable graph and evaluate exchange routing contexts."""
 
-    def __init__(self, topology: ClusterTopology) -> None:
+    def __init__(
+        self, topology: ClusterTopology, *, incomplete_binding_arguments: frozenset[TopologyEdge] = frozenset()
+    ) -> None:
         self.topology = topology
+        self.incomplete_binding_arguments = incomplete_binding_arguments
         self.bindings: dict[NodeId, list[TopologyEdge]] = {}
         self.alternates: dict[NodeId, list[TopologyEdge]] = {}
         for edge in sorted(topology.edges, key=edge_sort_key):
@@ -138,7 +141,15 @@ class _ExchangeRouter:
             evidence.issues.add(RoutingIssue(node, RoutingUncertainty.UNSUPPORTED_ROUTING_SEMANTICS))
             evidence.open_branch = True
             return [(alternate.target, False) for alternate in self.alternates.get(node, ())]
-        matches = [(edge, *_binding_matches(exchange_type, edge, routing_key)) for edge in self.bindings.get(node, ())]
+        matches = [
+            (
+                edge,
+                *_binding_matches(
+                    exchange_type, edge, routing_key, arguments_available=edge not in self.incomplete_binding_arguments
+                ),
+            )
+            for edge in self.bindings.get(node, ())
+        ]
         routes = []
         for edge, matches_binding, reason in matches:
             if reason is not None:
@@ -173,12 +184,12 @@ class _ExchangeRouter:
 
 
 def _binding_matches(
-    exchange_type: str, edge: TopologyEdge, routing_key: str | None
+    exchange_type: str, edge: TopologyEdge, routing_key: str | None, *, arguments_available: bool = True
 ) -> tuple[bool | None, RoutingUncertainty | None]:
     if exchange_type == "fanout":
         return True, None
     if exchange_type == "headers":
-        return _headers_match(edge.arguments)
+        return _headers_match(edge.arguments) if arguments_available else (None, RoutingUncertainty.INCOMPLETE_BINDING)
     if edge.routing_key is None:
         return None, RoutingUncertainty.INCOMPLETE_BINDING
     if routing_key is None:
