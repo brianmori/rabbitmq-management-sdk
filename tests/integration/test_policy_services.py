@@ -9,6 +9,7 @@ from typing import Any
 import httpx2
 import pytest
 
+from rabbitmq_management_sdk import NotFoundError, RabbitMQError
 from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
 from rabbitmq_management_sdk.resources.v4.common import DelayedRetryType
 from rabbitmq_management_sdk.resources.v4.policies.schemas import (
@@ -245,6 +246,85 @@ def test_stream_retention_put_preserves_literal_policy_definition_keys(strict: b
         ("GET", b"/api/policies/team%2Feu/retention%25eu"),
         ("PUT", b"/api/policies/team%2Feu/retention%25eu"),
     ]
+
+
+@pytest.mark.integration
+def test_stream_retention_rejects_invalid_age_before_requesting_anything() -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        pytest.fail(f"Unexpected {request.method} request to {request.url.path}")
+
+    with (
+        _adapter(httpx2.MockTransport(handler)) as adapter,
+        pytest.raises(RabbitMQError, match="Invalid stream retention settings"),
+    ):
+        PolicyManager(adapter, "%2F", False).set_stream_retention(
+            "retention", stream_name="history", max_age="7d", max_length_bytes=2_000_000, priority=20
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "queue_type,policy_overrides,error,match",
+    [
+        pytest.param(None, None, NotFoundError, "queue not found", id="missing-stream"),
+        pytest.param("classic", None, RabbitMQError, "has type 'classic'", id="classic-queue"),
+        pytest.param("quorum", None, RabbitMQError, "has type 'quorum'", id="quorum-queue"),
+        pytest.param(
+            "stream", {"apply-to": "queues"}, RabbitMQError, "different pattern, scope, or priority", id="scope"
+        ),
+        pytest.param("stream", {"priority": 10}, RabbitMQError, "different pattern, scope, or priority", id="priority"),
+    ],
+)
+def test_stream_retention_rejects_incompatible_queue_or_policy_without_put(
+    queue_type: str | None, policy_overrides: dict[str, object] | None, error: type[RabbitMQError], match: str
+) -> None:
+    queue_path = b"/api/queues/%2F/history?disable_stats=true"
+    policy_path = b"/api/policies/%2F/retention"
+    queue_response = (
+        httpx2.Response(404, json={"error": "not_found", "reason": "queue not found"})
+        if queue_type is None
+        else httpx2.Response(
+            200,
+            json={
+                "name": "history",
+                "vhost": "/",
+                "type": queue_type,
+                "durable": True,
+                "auto_delete": False,
+                "node": "rabbit@node",
+                "state": "running",
+                "arguments": {"x-queue-type": queue_type},
+            },
+        )
+    )
+    responses = {("GET", queue_path): queue_response}
+    if policy_overrides is not None:
+        responses["GET", policy_path] = httpx2.Response(
+            200,
+            json={
+                "vhost": "/",
+                "name": "retention",
+                "pattern": r"\Ahistory\z",
+                "apply-to": "streams",
+                "priority": 20,
+                "definition": {"max-age": "1D"},
+                **policy_overrides,
+            },
+        )
+    calls: list[tuple[str, bytes]] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        call = (request.method, request.url.raw_path)
+        assert call in responses
+        calls.append(call)
+        return responses[call]
+
+    with _adapter(httpx2.MockTransport(handler)) as adapter, pytest.raises(error, match=match):
+        PolicyManager(adapter, "%2F", False).set_stream_retention(
+            "retention", stream_name="history", max_age="7D", max_length_bytes=2_000_000, priority=20
+        )
+
+    assert calls == list(responses)
 
 
 @pytest.mark.integration

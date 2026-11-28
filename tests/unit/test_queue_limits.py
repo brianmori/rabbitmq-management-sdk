@@ -206,6 +206,34 @@ def test_stream_policy_replaces_argument_and_keeps_broker_age_units(age: str, mi
         assert setting.status == ConfigurationStatus.NOT_APPLICABLE
 
 
+@pytest.mark.parametrize("version", ["4.2.9", "4.3.8"])
+def test_stream_retention_keeps_known_age_when_policy_byte_limits_conflict(version: str) -> None:
+    auditor = _audit(
+        "stream",
+        arguments={"x-max-length-bytes": 1_000_000},
+        regular={"max-age": "7D", "max-length-bytes": 2_000_000},
+        observed_fields={
+            "policy": "regular",
+            "operator_policy": None,
+            "effective_policy_definition": {"max-age": "7D", "max-length-bytes": 3_000_000},
+        },
+        version=version,
+    )
+    (retention,) = auditor.stream_retention()
+    assert retention.status == StreamRetentionStatus.CONFIGURED
+    assert retention.stream_max_age_ms.status == ConfigurationStatus.KNOWN
+    assert retention.stream_max_age_ms.value == 604_800_000
+    size = retention.stream_max_length_bytes
+    assert size.status == ConfigurationStatus.UNKNOWN
+    assert size.value is None
+    assert size.uncertainties == (ConfigurationUncertainty.CONFLICTING_EVIDENCE,)
+    assert set(size.evidence) == {
+        ConfigurationEvidence(ConfigurationSource.QUEUE_ARGUMENT, "x-max-length-bytes", 1_000_000),
+        ConfigurationEvidence(ConfigurationSource.REGULAR_POLICY, "max-length-bytes", 2_000_000, "regular"),
+        ConfigurationEvidence(ConfigurationSource.EFFECTIVE_POLICY, "max-length-bytes", 3_000_000),
+    }
+
+
 @pytest.mark.parametrize("age", ["0h", "7d", "1ms", "4"])
 def test_invalid_stream_age_is_unknown(age: str) -> None:
     config = _one(_audit("stream", arguments={"x-max-age": age})).configuration
