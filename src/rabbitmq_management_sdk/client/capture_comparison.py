@@ -7,7 +7,7 @@ from collections.abc import Collection
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
-from rabbitmq_management_sdk.client._capture_sanitization import CaptureSanitizer
+from rabbitmq_management_sdk.client._capture_sanitization import _SHOVEL_SETTING_TYPES, CaptureSanitizer
 from rabbitmq_management_sdk.client.audit_capture import AuditCapture
 from rabbitmq_management_sdk.client.cluster_auditor import ClusterAuditor
 from rabbitmq_management_sdk.exceptions import TopologyAnalysisError
@@ -153,6 +153,23 @@ def _attribute_values(
         )
         for name in fields
     )
+
+
+def _shovel_attributes(value: JsonValue, sanitizer: CaptureSanitizer) -> _Attributes:
+    sanitized = sanitizer.shovel(value)
+    if sanitized is None:
+        return (("value", None), *((name, None) for name in _SHOVEL_SETTING_TYPES))
+
+    endpoints = {key: item for key, item in sanitized.items() if key not in _SHOVEL_SETTING_TYPES}
+    settings: list[tuple[str, str | None]] = []
+    for name in _SHOVEL_SETTING_TYPES:
+        if name not in sanitized:
+            settings.append((name, "{}"))
+        elif sanitizer.has_opaque_values(sanitized[name]):
+            settings.append((name, None))
+        else:
+            settings.append((name, json.dumps({name: sanitized[name]}, sort_keys=True)))
+    return (("value", json.dumps(endpoints, sort_keys=True)), *settings)
 
 
 def _indexed[T](rows: Iterable[tuple[T, _Attributes]]) -> dict[T, set[_Attributes]]:
@@ -399,7 +416,7 @@ def _compare(
         if kind is NodeKind.SHOVEL:
             for parameter in definitions.parameters:
                 if parameter.component == "shovel" and _in_scope(parameter.vhost, scope):
-                    attributes = (("value", json.dumps(sanitizer._shovel(parameter.value), sort_keys=True)),)
+                    attributes = _shovel_attributes(parameter.value, sanitizer)
                     yield NodeId(parameter.vhost, parameter.name, kind, cluster_id), attributes
             return
         rows = definitions.queues if kind is NodeKind.QUEUE else definitions.exchanges

@@ -418,6 +418,92 @@ def test_sanitization_keeps_presence_and_raw_join_keys(
     assert copy.read_bytes() == path.read_bytes()
 
 
+def test_malformed_shovel_resource_fields_are_sanitized_on_collect_and_load(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    marker = "synthetic-shovel-secret"
+    malformed_fields = {
+        "src-queue": {"password": marker},
+        "src-exchange-key": [marker],
+        "dest-address": {"url": marker},
+    }
+    value = {"src-uri": "amqp://", "dest-uri": "amqp://", "dest-queue": "amqp://literal-queue", **malformed_fields}
+    definitions = {
+        "vhosts": [_vhost("/")],
+        "parameters": [{"component": "shovel", "vhost": "/", "name": "forward", "value": value}],
+    }
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path == "/api/definitions":
+            return httpx2.Response(200, json=definitions)
+        return httpx2.Response(200, json=_page(request, []))
+
+    collected = tmp_path / "collected.json"
+    with _client(monkeypatch, handler) as client:
+        client.collect_audit_capture().save(collected)
+
+    sanitized = collected.read_text()
+    assert marker not in sanitized
+    bundle = json.loads(sanitized)
+    retained = bundle["definitions"]["parameters"][0]["value"]
+    assert all(retained[key] is None for key in malformed_fields)
+    assert retained["dest-queue"] == value["dest-queue"]
+
+    # Loading an edited bundle also reapplies sanitization.
+    retained.update(malformed_fields)
+    previous = tmp_path / "previous.json"
+    previous.write_text(json.dumps(bundle))
+    replay = AuditCapture.load(previous)
+    (shovel,) = replay.to_auditor().topology.shovels
+    assert shovel.source.resource_name is None
+    assert shovel.destination.resource_name == value["dest-queue"]
+    re_saved = tmp_path / "re-saved.json"
+    replay.save(re_saved)
+    assert marker not in re_saved.read_text()
+
+
+def test_compare_saved_shovel_settings_with_redacted_evidence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    value = {
+        "src-uri": "amqp://",
+        "src-queue": "source",
+        "dest-uri": "amqp://",
+        "dest-queue": "target",
+        "src-prefetch-count": 1000,
+        "src-predeclared": False,
+        "src-consumer-args": {"x-stream-offset": "first", "token": "synthetic-option-secret"},
+    }
+    definitions = {
+        "global_parameters": [{"name": "internal_cluster_id", "value": "rabbitmq-cluster-id-shovel"}],
+        "vhosts": [_vhost("/")],
+        "parameters": [{"component": "shovel", "vhost": "/", "name": "forward", "value": value}],
+    }
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path == "/api/definitions":
+            return httpx2.Response(200, json=definitions)
+        return httpx2.Response(200, json=_page(request, []))
+
+    before_path, after_path = tmp_path / "before.json", tmp_path / "after.json"
+    with _client(monkeypatch, handler) as client:
+        client.collect_audit_capture().save(before_path)
+        value["src-prefetch-count"] = 50
+        value["dest-queue"] = "new-target"
+        client.collect_audit_capture().save(after_path)
+
+    assert "synthetic-option-secret" not in before_path.read_text()
+    before_json = json.loads(before_path.read_text())
+    retained = before_json["definitions"]["parameters"][0]["value"]
+    assert retained["src-prefetch-count"] == 1000
+    assert retained["src-predeclared"] is False
+    assert retained["src-consumer-args"]["x-stream-offset"] == "first"
+
+    after = AuditCapture.load(after_path)
+    comparison = compare_captures(AuditCapture.load(before_path), after).shovels
+    (change,) = comparison.attributes
+    assert change.changed_fields == ("value", "src-prefetch-count")
+    assert change.indeterminate_fields == ("src-consumer-args",)
+
+
 @pytest.mark.parametrize("detect_version", [True, False])
 def test_empty_resources_and_version_provenance(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, detect_version: bool
@@ -468,6 +554,12 @@ def test_interrupted_save_and_refusal_to_overwrite(tmp_path: Path, monkeypatch: 
         capture.save(path)
     assert path.read_bytes() == original
     assert list(tmp_path.iterdir()) == [path]
+
+    data = json.loads(original)
+    data["manifest"]["schema_version"] = 2
+    path.write_text(json.dumps(data))
+    with pytest.raises(AuditCaptureError, match="expected a version 1 bundle"):
+        AuditCapture.load(path)
 
     data = json.loads(original)
     data.pop("exchanges")

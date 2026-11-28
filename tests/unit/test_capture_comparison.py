@@ -176,6 +176,48 @@ def test_missing_section_and_selectors_are_indeterminate() -> None:
     assert routing.after.gaps == (ComparisonGap.BINDINGS_NOT_CAPTURED,)
 
 
+def test_shovel_transfer_settings_change_independently_of_uri_credentials() -> None:
+    value = {
+        "src-uri": "amqp://test:before@worker",
+        "src-queue": "source",
+        "dest-uri": "amqp://archive",
+        "dest-queue": "target",
+        "src-prefetch-count": 1000,
+        "src-consumer-args": {"x-stream-offset": "first"},
+        "dest-add-forward-headers": False,
+    }
+    row = {"component": "shovel", "vhost": _VHOST, "name": "archive", "value": value}
+    before = ClusterAuditor(_capture(parameters=[row]))
+    after = ClusterAuditor(
+        _capture(
+            parameters=[
+                dict(
+                    row,
+                    value={
+                        **value,
+                        "src-uri": "amqp://test:after@worker",
+                        "src-prefetch-count": 50,
+                        "src-consumer-args": {"x-stream-offset": "next"},
+                        "dest-add-forward-headers": True,
+                        "reconnect-delay": 0.5,
+                    },
+                )
+            ]
+        )
+    )
+
+    comparison = before.compare(after).shovels
+    (change,) = comparison.attributes
+    assert change.identity == NodeId(_VHOST, "archive", NodeKind.SHOVEL, _CLUSTER)
+    assert change.changed_fields == (
+        "dest-add-forward-headers",
+        "reconnect-delay",
+        "src-consumer-args",
+        "src-prefetch-count",
+    )
+    assert not comparison.indeterminate
+
+
 def test_absent_arguments_suppress_only_the_ambiguous_binding_group() -> None:
     unknown = _binding("events", "worker", vhost=_VHOST)
     del unknown["arguments"]

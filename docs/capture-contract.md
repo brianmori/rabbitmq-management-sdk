@@ -73,13 +73,14 @@ provides no atomic snapshot or verification of total cluster visibility.
 ### Bundle format and publication
 
 The JSON file contains `manifest`, `definitions`, `queues`, and
-`exchanges`. The version 1 manifest records the cluster-wide request paths,
-the UTC start and finish of each endpoint read, the broker's cluster ID and
-name when available, and the broker version and its source. The manifest
-prefers the version in definitions and can fall back to version discovery
-from the client's earlier overview request. A version override supplies
-neither overview evidence nor a captured broker version. Offline audit
-semantics continue to use the version present in the definitions.
+`exchanges`. The current bundle format uses `manifest.schema_version` set to
+`1`. The manifest records the cluster-wide request paths, the UTC start and
+finish of each endpoint read, the broker's cluster ID and name when available,
+and the broker version and its source. The manifest prefers the version in
+definitions and can fall back to the client's earlier overview request.
+A version override supplies neither overview evidence nor a captured broker
+version. Offline audit semantics continue to use the version present in the
+definitions.
 
 Each listing's manifest records the requested page size and the broker's
 reported page number, page count, page size, total count, filtered count,
@@ -91,7 +92,8 @@ The collector returns only after all reads and sanitization succeed.
 `save()` writes to a private temporary file next to the destination and
 publishes it as a single complete file. The destination must support hard
 links and must be new. An interrupted process can leave a temporary file.
-`load()` checks the bundle schema and paired page evidence before replay.
+`load()` validates the bundle format version and paired page evidence, then
+reapplies sanitization before replay.
 Capture failures raise `AuditCaptureError`. Failed HTTP reads identify the path
 and, when applicable, page and status without including broker response bodies.
 
@@ -107,9 +109,13 @@ the audit. Grants and their patterns are retained for the permissions audit.
 Shovel URIs keep the authority, vhost, and failover sequence needed by the
 topology parser. Userinfo, unrelated query options, and malformed URI text
 are removed. AMQP 1.0 retains the vhost from the `hostname` query option when
-it resolves. Recognized credential values in extensible arguments and policy
-settings are masked, with distinct replacements for distinct masked binding
-values. See [sanitization code](../src/rabbitmq_management_sdk/client/_capture_sanitization.py)
+it resolves. Captured shovel addresses, queue names, exchange names, and
+routing keys keep their literal strings. Malformed values in those fields are
+saved as `null`. The bundle also retains supported shovel transfer settings,
+including prefetch, reconnect delay, and consumer arguments. Recognized
+credential values in extensible arguments, policy settings, and shovel
+transfer settings are masked, with distinct replacements for distinct masked
+binding values. See [sanitization code](../src/rabbitmq_management_sdk/client/_capture_sanitization.py)
 for the retained components and recognized credential fields.
 
 Treat the sanitized bundle as internal evidence. Deployment names, grants,
