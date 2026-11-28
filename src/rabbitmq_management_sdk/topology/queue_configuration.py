@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from rabbitmq_management_sdk.exceptions import TopologyParseError
 from rabbitmq_management_sdk.resources.v4.common import DeadLetterStrategy, OverflowBehaviour
-from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QuorumQueueResponse
+from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QuorumQueueResponse, StreamQueueResponse
 from rabbitmq_management_sdk.topology.models import (
     ConfigurationEvidence,
     ConfigurationSource,
@@ -256,6 +256,11 @@ class _Resolver:
     def _argument(self, key: str, *, minimum: int | None) -> _Value:
         if "arguments" in self.queue.model_fields_set:
             return _entry(self.queue.arguments.root, key, ConfigurationSource.QUEUE_ARGUMENT, minimum=minimum)
+        if key == "x-stream-max-segment-size-bytes" and self.observed is not None:
+            arguments = self.observed.arguments
+            if isinstance(arguments, StreamQueueResponse):
+                observed_stream = arguments.model_dump(by_alias=True, exclude_unset=True)
+                return _entry(observed_stream, key, ConfigurationSource.OBSERVED_QUEUE_ARGUMENT, minimum=minimum)
         observed = self._observed_quorum_arguments
         if observed is None or key not in _OBSERVED_QUORUM_ARGUMENT_KEYS:
             return _unknown(ConfigurationUncertainty.ARGUMENTS_NOT_CAPTURED)

@@ -151,6 +151,7 @@ def test_audit_returns_all_findings_from_the_public_facade() -> None:
     assert report.queue_type_inventory.queue_count == 2
     assert report.dead_letter_coverage == auditor.dead_letter_coverage()
     assert report.queue_limits == auditor.queue_limits()
+    assert report.stream_retention == auditor.stream_retention() == ()
     assert report.exchange_routing_coverage == auditor.exchange_routing_coverage()
     assert report.quorum_delivery_configuration == auditor.quorum_delivery_configuration() == ()
     assert report.direct_dependency_inventory == auditor.direct_dependency_inventory()
@@ -175,6 +176,7 @@ def test_topology_finding_types_are_exported_and_old_report_arguments_still_work
 
     assert report.direct_dependency_inventory == DirectDependencyInventory()
     assert report.queue_limits == ()
+    assert report.stream_retention == ()
     assert report.binding_durability == ()
     assert report.queue_declaration_compatibility == ()
     assert report.vhost_permissions_inventory == topology.VhostPermissionsInventory()
@@ -188,6 +190,8 @@ def test_topology_finding_types_are_exported_and_old_report_arguments_still_work
         "BindingDurabilityKind",
         "QueueDeclarationCompatibility",
         "QueueDeclarationStatus",
+        "StreamRetention",
+        "StreamRetentionStatus",
         "VhostPermissionsInventory",
         "VhostPermissions",
         "VhostPermission",

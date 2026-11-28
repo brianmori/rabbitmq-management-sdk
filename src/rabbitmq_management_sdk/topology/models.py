@@ -302,7 +302,7 @@ class ExchangeNode:
 
 @dataclass(frozen=True, slots=True)
 class ConfigurationEvidence:
-    """One captured or derived input to a quorum configuration setting.
+    """One captured or derived input to a queue configuration setting.
 
     Attributes:
         source: Origin of the value; no credentials or arbitrary JSON are stored.
@@ -326,7 +326,7 @@ class ConfigurationEvidence:
 
 
 class ConfigurationSource(StrEnum):
-    """Origins retained by quorum configuration resolution."""
+    """Origins retained by queue configuration resolution."""
 
     QUEUE_ARGUMENT = "queue_argument"
     OBSERVED_QUEUE_ARGUMENT = "observed_queue_argument"
@@ -355,6 +355,7 @@ class ConfigurationUncertainty(StrEnum):
     POLICY_SELECTION_NOT_CAPTURED = "policy_selection_not_captured"
     OPERATOR_POLICY_SELECTION_NOT_CAPTURED = "operator_policy_selection_not_captured"
     BROKER_DEFAULT_NOT_CAPTURED = "broker_default_not_captured"
+    STREAM_CREATION_CONFIGURATION_NOT_CAPTURED = "stream_creation_configuration_not_captured"
     CAPTURED_NULL = "captured_null"
     INVALID_VALUE = "invalid_value"
     CONFLICTING_EVIDENCE = "conflicting_evidence"
@@ -522,7 +523,8 @@ class QueueLimitsConfiguration:
     """Captured queue limits and stream retention, with separate units.
 
     The length limit counts messages. Size limits are in bytes, and time
-    values are in milliseconds. Stream settings describe log retention.
+    values are in milliseconds. Stream settings describe log retention and
+    preserve segment size inputs as evidence for the creation-time setting.
     """
 
     broker_version: str | None = None
@@ -533,6 +535,7 @@ class QueueLimitsConfiguration:
     queue_expiry_ms: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
     stream_max_age_ms: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
     stream_max_length_bytes: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
+    stream_max_segment_size_bytes: ConfigurationValue[int] = field(default_factory=ConfigurationValue)
 
     def __post_init__(self) -> None:
         """Check the scalar type of each frozen configuration value."""
@@ -545,6 +548,7 @@ class QueueLimitsConfiguration:
             "queue_expiry_ms",
             "stream_max_age_ms",
             "stream_max_length_bytes",
+            "stream_max_segment_size_bytes",
         ):
             setting = getattr(self, name)
             _require_instance(setting, ConfigurationValue, f"QueueLimitsConfiguration.{name}")

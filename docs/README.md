@@ -24,7 +24,7 @@ or [build a four-resource example graph](topology-graph-construction.md#a-small-
 - [Construct requests and parse responses](resource-models.md).
 - [Create, list, configure, and delete streams over management HTTP](stream-lifecycle.md).
 - [Configure quorum queues on RabbitMQ 4.3](quorum-queue-configuration.md).
-- [Inspect queue limits and stream retention](queue-limits.md).
+- [Inspect queue limits](queue-limits.md) and [classify stream retention](queue-limits.md#classify-stream-retention).
 - [Inventory captured vhost permissions and limits](vhost-permissions.md).
 - [Find resources that selected a policy](policy-inventory.md).
 - [Review binding durability and RabbitMQ 4.3 declaration compatibility](declaration-compatibility.md).
