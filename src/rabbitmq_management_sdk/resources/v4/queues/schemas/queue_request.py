@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-import re
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, model_validator
 
 from rabbitmq_management_sdk.resources.base import RabbitMQRequest
-from rabbitmq_management_sdk.resources.v4.common import DeadLetterStrategy, DelayedRetryType, OverflowBehaviour
+from rabbitmq_management_sdk.resources.v4.common import (
+    DeadLetterStrategy,
+    DelayedRetryType,
+    OverflowBehaviour,
+    StreamMaxAge,
+)
 
 # ---------------------------------------------------------------------------
 # Arguments — per queue type (request side)
@@ -114,7 +118,7 @@ class StreamQueueRequest(RabbitMQRequest):
     Attributes:
         queue_type: Fixed at "stream" for append-only log storage.
         max_length_bytes: Maximum total size of the stream on disk.
-        max_age: Maximum age of data (e.g., "7d", "24h", "30m").
+        max_age: Maximum age of data (e.g., "7D", "24h", "30m").
             Older data is truncated.
         stream_max_segment_size: Size in bytes for individual segment files on disk.
         initial_cluster_size: Number of cluster nodes used for replication (must be odd).
@@ -122,23 +126,9 @@ class StreamQueueRequest(RabbitMQRequest):
 
     queue_type: Literal["stream"] = Field("stream", alias="x-queue-type", frozen=True)
     max_length_bytes: int | None = Field(None, alias="x-max-length-bytes")
-    max_age: str | None = Field(None, alias="x-max-age")
+    max_age: StreamMaxAge | None = Field(None, alias="x-max-age")
     stream_max_segment_size: int | None = Field(None, alias="x-stream-max-segment-size-bytes")
     initial_cluster_size: int | None = Field(None, alias="x-initial-cluster-size")
-
-    @field_validator("max_age")
-    @classmethod
-    def validate_max_age_format(cls, v: str | None) -> str | None:
-        """Validates that max_age follows the RabbitMQ time-unit format."""
-        if v is None:
-            return v
-
-        # Pattern: one or more digits followed by exactly one unit (Y, M, D, d, h, m, s)
-        if not re.match(r"^\d+[YMDdhms]$", v):
-            raise ValueError(
-                f"Invalid max_age format: '{v}'. Must be a number followed by a unit (e.g., '7d', '24h', '30m')."
-            )
-        return v
 
 
 type QueueRequestArguments = Annotated[

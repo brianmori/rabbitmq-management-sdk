@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
+
+from pydantic import Field
+
+# RabbitMQ accepts a positive integer and one case-sensitive stream duration unit.
+type StreamMaxAge = Annotated[str, Field(pattern=r"\A0*[1-9][0-9]*[YMDhms]\z")]
 
 
 class DelayedRetryType(StrEnum):

@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `ClusterAuditor.trace_topology()` follows captured edges upstream or
   downstream from a resource and reports path ends and depth cutoffs.
+- List streams across virtual-host queue pages and update age and byte
+  retention through a dedicated regular policy. See the
+  [management HTTP example](docs/stream-lifecycle.md).
+
+### Fixed
+
+- Validate stream retention ages using RabbitMQ's case-sensitive units in
+  declaration and policy requests. Use `7D` for seven days.
 
 ## [0.6.0] - 2026-11-26
 
