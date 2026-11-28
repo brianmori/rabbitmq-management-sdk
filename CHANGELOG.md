@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ClusterAuditor.trace_topology()` follows captured edges upstream or
+  downstream from a resource and reports path ends and depth cutoffs.
+
 ## [0.6.0] - 2026-11-26
 
 ### Added

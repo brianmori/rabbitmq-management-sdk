@@ -51,6 +51,7 @@ from rabbitmq_management_sdk.topology.reachability import (
 )
 from rabbitmq_management_sdk.topology.routing_contracts import evaluate_routing_contracts
 from rabbitmq_management_sdk.topology.shovel_audit import competing_shovel_consumers, shovel_safety
+from rabbitmq_management_sdk.topology.trace import trace_topology
 from rabbitmq_management_sdk.topology.vhost_permissions import VhostPermissionsInventory, vhost_permissions_inventory
 
 if TYPE_CHECKING:
@@ -77,6 +78,7 @@ if TYPE_CHECKING:
     from rabbitmq_management_sdk.topology.quorum_resilience import QuorumFailureScenario
     from rabbitmq_management_sdk.topology.routing_contracts import RoutingContract, RoutingContractResult
     from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers, ShovelSafety
+    from rabbitmq_management_sdk.topology.trace import TopologyTrace, TraceDirection
 
 
 @dataclass(frozen=True, slots=True)
@@ -505,6 +507,24 @@ class ClusterAuditor:
     def direct_dependency_inventory(self) -> DirectDependencyInventory:
         """Return the ordered index of captured queue and exchange references."""
         return self._direct_dependency_inventory
+
+    def trace_topology(
+        self,
+        resource: NodeId,
+        *,
+        direction: TraceDirection,
+        max_hops: int | None = None,
+    ) -> TopologyTrace:
+        """Follow configured edges from a captured resource by full identity.
+
+        Each hop crosses one edge. Pass None for unlimited depth. A missing
+        endpoint can appear as a boundary, and only captured nodes can be
+        starting points. The result describes connectivity in the capture.
+
+        Raises:
+            TopologyAnalysisError: If the resource, direction, or depth is invalid.
+        """
+        return trace_topology(self._topology, resource, direction=direction, max_hops=max_hops)
 
     def dangling_edges(self) -> tuple[TopologyEdge, ...]:
         """Return declared routes whose source or target is absent from the export.

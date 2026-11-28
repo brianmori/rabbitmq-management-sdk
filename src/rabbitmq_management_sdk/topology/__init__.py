@@ -95,6 +95,7 @@ from rabbitmq_management_sdk.topology.routing_contracts import (
     RoutingVerdict,
 )
 from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers, ShovelSafety
+from rabbitmq_management_sdk.topology.trace import TopologyTrace, TraceDirection
 from rabbitmq_management_sdk.topology.vhost_permissions import (
     VhostLimit,
     VhostLimitStatus,
@@ -180,6 +181,8 @@ __all__ = [
     "StronglyConnectedComponent",
     "TopologyEdge",
     "TopologyNode",
+    "TopologyTrace",
+    "TraceDirection",
     "VhostLimit",
     "VhostLimitStatus",
     "VhostPermission",

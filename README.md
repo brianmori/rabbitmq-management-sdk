@@ -54,6 +54,8 @@ test, and audit:
   hierarchy; the client also provides version routing, connection pooling, and
   exponential-backoff retries.
 
+See the [SDK guides](docs/README.md) for offline examples and reference material.
+
 ## Features
 
 | Resource | Operations                                                                             |
@@ -401,6 +403,11 @@ reported online failure margin, plus known member and leader concentration by
 broker. Pass explicit failed nodes or caller-defined failure domains to
 `quorum_resilience()` or `audit()` to evaluate captured placement under those
 losses. See the [RabbitMQ 4.2 and 4.3 resilience guide](docs/quorum-resilience.md).
+
+#### Trace configured paths
+
+Use [`ClusterAuditor.trace_topology()`](docs/topology-tracing.md) to inspect a
+queue, exchange, or shovel's captured upstream and downstream paths.
 
 #### Topology serialization
 

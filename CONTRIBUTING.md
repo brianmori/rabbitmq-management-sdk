@@ -1,7 +1,7 @@
 # Contributing to rabbitmq-management-sdk
 
 Start with [AGENTS.md](AGENTS.md) for implementation and review contracts and
-[the documentation task map](docs/README.md#contributor-task-map) for the guide
+[the SDK documentation index](docs/README.md) for the guide
 relevant to your change. Documentation records intended behavior; inspect the
 current source and tests when reviewing it.
 
@@ -110,9 +110,8 @@ target branch after its prerequisites merge.
 ## Designing a new audit
 
 For a substantial feature, write a focused design note with status **Proposed**
-before implementation. An issue or a note under `docs/design/` can hold it;
-there is no special loader or required proposal filename. Link the note from
-its task or PR so the scope is discoverable. Record:
+before implementation. Use an issue or pull request to share the proposed scope
+with reviewers. Include the following details.
 
 - the operational question, a concrete example, and explicit non-goals;
 - required inputs, capture scope, identity, and evidence retained or discarded;
