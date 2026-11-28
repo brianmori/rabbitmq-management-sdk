@@ -5,6 +5,7 @@ from contextlib import suppress
 from http import HTTPMethod
 from typing import TYPE_CHECKING
 
+from rabbitmq_management_sdk.client.audit_capture import AuditCapture
 from rabbitmq_management_sdk.client.config import RabbitMQMajorVersion, RabbitMQVersion
 from rabbitmq_management_sdk.client.utils import create_ssl_context
 from rabbitmq_management_sdk.exceptions import MalformedResponseError, RabbitMQError, TransportError
@@ -44,6 +45,8 @@ class RabbitMQClient:
         self._closed = False
         self._ha: HttpAdapter
         self._basic_auth: BasicAuthentication
+        self._overview_version: str | None = None
+        self._overview_cluster_name: str | None = None
 
         default_headers: dict[str, str] = {}
         ssl_context: ssl.SSLContext | None = None
@@ -120,7 +123,7 @@ class RabbitMQClient:
             )
 
         try:
-            return RabbitMQVersion.parse(rabbitmq_version)
+            version = RabbitMQVersion.parse(rabbitmq_version)
         except ValueError as e:
             logger.error(
                 "RabbitMQ version string could not be parsed.",
@@ -135,6 +138,10 @@ class RabbitMQClient:
                 f"Could not parse rabbitmq_version {rabbitmq_version!r}. "
                 f"Set version_override in Config to bypass detection."
             ) from e
+        self._overview_version = rabbitmq_version
+        cluster_name = data.get("cluster_name")
+        self._overview_cluster_name = cluster_name if isinstance(cluster_name, str) else None
+        return version
 
     def close(self) -> None:
         """Release the owned HTTP adapter; repeated calls are harmless."""
@@ -159,6 +166,28 @@ class RabbitMQClient:
     def version(self) -> RabbitMQVersion:
         """The RabbitMQ server version detected at construction (or the configured override)."""
         return self._version
+
+    def collect_audit_capture(self, *, page_size: int = 100) -> AuditCapture:
+        """Read cluster definitions and every accessible queue and exchange page.
+
+        Requests use this client's configured Management API connection.
+        Reads are sequential and their visibility depends on the account's
+        permissions. The returned capture has been sanitized for offline audit.
+
+        Args:
+            page_size: Maximum number of resources per page, from 1 to 500.
+
+        Raises:
+            AuditCaptureError: If a read fails or page evidence is inconsistent.
+        """
+        return AuditCapture._collect(
+            self.admin,
+            self.queues,
+            self.exchanges,
+            page_size=page_size,
+            overview_version=self._overview_version,
+            overview_cluster_name=self._overview_cluster_name,
+        )
 
     @property
     def queues(self) -> QueueManager:

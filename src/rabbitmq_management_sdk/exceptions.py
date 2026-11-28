@@ -114,6 +114,10 @@ class TopologyError(RabbitMQError):
     """Base class for errors raised while loading or analysing topology."""
 
 
+class AuditCaptureError(TopologyError):
+    """Capture acquisition, sanitization, publication, or replay failed."""
+
+
 class TopologyLoadError(TopologyError):
     """A definitions export could not be read, decoded, or parsed as JSON."""
 

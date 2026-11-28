@@ -8,11 +8,19 @@ from the package root, e.g.::
 
 from __future__ import annotations
 
+from rabbitmq_management_sdk.client.audit_capture import (
+    AuditCapture,
+    AuditCaptureListing,
+    AuditCaptureManifest,
+    AuditCapturePage,
+    AuditCaptureRead,
+)
 from rabbitmq_management_sdk.client.cluster_auditor import ClusterAuditor, TopologyAuditReport
 from rabbitmq_management_sdk.client.config import Config, RabbitMQVersion, SSLConfig
 from rabbitmq_management_sdk.client.rabbitmq_client import RabbitMQClient
 from rabbitmq_management_sdk.exceptions import (
     APIError,
+    AuditCaptureError,
     BadRequestError,
     ConflictError,
     ConnectionError,
@@ -108,6 +116,12 @@ __all__ = [
     "Amqp091ShovelSource",
     "Amqp10ShovelDestination",
     "Amqp10ShovelSource",
+    "AuditCapture",
+    "AuditCaptureError",
+    "AuditCaptureListing",
+    "AuditCaptureManifest",
+    "AuditCapturePage",
+    "AuditCaptureRead",
     "BadRequestError",
     "BindingDestinationType",
     "BindingRequest",
