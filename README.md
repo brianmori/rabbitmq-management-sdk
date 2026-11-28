@@ -54,6 +54,8 @@ test, and audit:
   hierarchy; the client also provides version routing, connection pooling, and
   exponential-backoff retries.
 
+See the [SDK guides](docs/README.md) for offline examples and reference material.
+
 ## Features
 
 | Resource | Operations                                                                             |
