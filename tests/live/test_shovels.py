@@ -1,4 +1,4 @@
-"""Shovel managers must configure a running worker and deliver a message."""
+"""Verify saved shovel configuration and message delivery against a broker."""
 
 from __future__ import annotations
 
@@ -27,6 +27,40 @@ if TYPE_CHECKING:
     from tests.shared.live_broker import ManagementAPI
 
     from rabbitmq_management_sdk import VhostRequest
+
+
+@pytest.mark.live
+def test_list_shovel_definitions_isolates_vhosts(
+    rabbit_config: RabbitSettings,
+    vhost_factory: Callable[[VhostRequest | None], str],
+) -> None:
+    first_vhost, second_vhost = vhost_factory(None), vhost_factory(None)
+    # Use a loopback endpoint without an AMQP listener for this configuration-only test.
+    uri = "amqp://127.0.0.1:1"
+    with (
+        RabbitMQClient(rabbit_config.client_config(virtual_host=first_vhost)) as first_client,
+        RabbitMQClient(rabbit_config.client_config(virtual_host=second_vhost)) as second_client,
+    ):
+        for client, dest_queue in ((first_client, "first-archive"), (second_client, "second-archive")):
+            client.shovels.create(
+                "archive",
+                ShovelRequest(
+                    src_uri=uri,
+                    dest_uri=uri,
+                    src_arguments=Amqp091ShovelSource(src_queue="source", src_predeclared=True),
+                    dest_arguments=Amqp091ShovelDestination(dest_queue=dest_queue, dest_predeclared=True),
+                ),
+            )
+
+        for client, vhost, dest_queue in (
+            (first_client, first_vhost, "first-archive"),
+            (second_client, second_vhost, "second-archive"),
+        ):
+            (configured,) = client.shovels.list_by_vhost()
+            assert (configured.vhost, configured.name) == (vhost, "archive")
+            destination = configured.value.dest_arguments
+            assert destination.dest_protocol == "amqp091"
+            assert destination.dest_queue == dest_queue
 
 
 @pytest.mark.live

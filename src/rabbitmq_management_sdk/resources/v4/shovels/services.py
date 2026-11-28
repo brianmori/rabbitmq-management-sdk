@@ -36,6 +36,13 @@ class ShovelManager:
             ShovelParameterResponse,
         )
 
+    def list_by_vhost(self) -> list[ShovelParameterResponse]:
+        """Return all configured dynamic shovels in the virtual host, including those without runtime status."""
+        return parse_list(
+            self._ha.request(method=HTTPMethod.GET, path=f"/api/parameters/shovel/{self._vhost}"),
+            ShovelParameterResponse,
+        )
+
     def create(self, name: str, request: ShovelRequest) -> None:
         value = request.to_api_value()
         validate_write_version(value, self._broker_version, SHOVEL_WRITE_VERSIONS)

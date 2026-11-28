@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- List configured dynamic shovels in the client's virtual host with
+  `client.shovels.list_by_vhost()`, including shovels without runtime status.
 - Collect cluster-wide definitions and paired queue and exchange observations
   with `RabbitMQClient.collect_audit_capture()`. Save and replay a sanitized
   bundle with a versioned acquisition manifest.

@@ -9,6 +9,8 @@ import pytest
 from rabbitmq_management_sdk import (
     Amqp10ShovelDestination,
     Amqp10ShovelSource,
+    MalformedResponseError,
+    NotFoundError,
     ShovelParameterResponse,
     ShovelRequest,
 )
@@ -18,6 +20,65 @@ from rabbitmq_management_sdk.resources.v4.shovels.services import ShovelManager
 pytestmark = pytest.mark.integration
 
 _FIXTURE_DIRECTORY = Path(__file__).parent / "rmq-4.2"
+
+
+@pytest.mark.parametrize(
+    "vhost,encoded_vhost",
+    [("/", "%2F"), ("orders/eu?#%2F", "orders%2Feu%3F%23%252F")],
+    ids=["default", "reserved-characters"],
+)
+def test_list_shovel_definitions_by_vhost(vhost: str, encoded_vhost: str) -> None:
+    rows = [
+        {**json.loads((_FIXTURE_DIRECTORY / capture).read_bytes()), "vhost": vhost}
+        for capture in ("shovel-get.json", "shovel-get-detail-amqp10.json")
+    ]
+    calls: list[tuple[str, bytes]] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        calls.append((request.method, request.url.raw_path))
+        return httpx2.Response(200, json=rows)
+
+    with Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
+        responses = ShovelManager(adapter, encoded_vhost, False).list_by_vhost()
+
+    assert calls == [("GET", f"/api/parameters/shovel/{encoded_vhost}".encode())]
+    assert responses == [ShovelParameterResponse.model_validate(row) for row in rows]
+    assert [(shovel.vhost, shovel.name) for shovel in responses] == [(vhost, "test"), (vhost, "test-amqp10")]
+
+
+def test_list_shovel_definitions_accepts_empty_array() -> None:
+    transport = httpx2.MockTransport(lambda request: httpx2.Response(200, json=[]))
+
+    with Httpx2Adapter(host="localhost", port=15672, transport=transport) as adapter:
+        assert ShovelManager(adapter, "%2F", False).list_by_vhost() == []
+
+
+@pytest.mark.parametrize(
+    "body,match",
+    [
+        pytest.param({"items": []}, "Expected a JSON array", id="malformed-container"),
+        pytest.param(
+            [{"component": "shovel", "vhost": "/", "name": "archive", "value": []}],
+            "Response body did not match",
+            id="invalid-row",
+        ),
+    ],
+)
+def test_list_shovel_definitions_rejects_malformed_response(body: object, match: str) -> None:
+    transport = httpx2.MockTransport(lambda request: httpx2.Response(200, json=body))
+
+    with (
+        Httpx2Adapter(host="localhost", port=15672, transport=transport) as adapter,
+        pytest.raises(MalformedResponseError, match=match),
+    ):
+        ShovelManager(adapter, "%2F", False).list_by_vhost()
+
+
+def test_list_shovel_definitions_preserves_broker_error() -> None:
+    transport = httpx2.MockTransport(lambda request: httpx2.Response(404, json={"error": "not_found"}))
+
+    with Httpx2Adapter(host="localhost", port=15672, transport=transport) as adapter, pytest.raises(NotFoundError):
+        ShovelManager(adapter, "%2F", False).list_by_vhost()
 
 
 @pytest.mark.parametrize("strict", [False, True], ids=["compatibility", "strict"])
