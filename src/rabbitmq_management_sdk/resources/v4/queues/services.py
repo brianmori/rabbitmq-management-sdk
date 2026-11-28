@@ -11,7 +11,7 @@ from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import Q
 if TYPE_CHECKING:
     from rabbitmq_management_sdk.client.config import RabbitMQVersion
     from rabbitmq_management_sdk.http_adapter import HttpAdapter
-    from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_request import QueueRequest
+    from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_request import QueueDeleteOptions, QueueRequest
 
 
 class QueueManager:
@@ -144,8 +144,21 @@ class QueueManager:
             json=payload,
         )
 
-    def delete(self, name: str) -> None:
-        self._ha.request(method=HTTPMethod.DELETE, path=f"/api/queues/{self._vhost}/{quote_path_segment(name)}")
+    def delete(self, name: str, *, options: QueueDeleteOptions | None = None) -> None:
+        """Delete a queue, subject to any conditions enabled in ``options``.
+
+        Args:
+            name: The raw queue name.
+            options: Require an empty queue, no consumers, or both.
+
+        Raises:
+            APIError: If RabbitMQ refuses the deletion.
+        """
+        self._ha.request(
+            method=HTTPMethod.DELETE,
+            path=f"/api/queues/{self._vhost}/{quote_path_segment(name)}",
+            params=options.to_query_params() if options is not None else None,
+        )
 
     def _list_all_pages(
         self,
