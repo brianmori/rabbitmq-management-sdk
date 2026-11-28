@@ -285,6 +285,8 @@ def _capture_shovel_uri(uri: str, protocol: str) -> str:
     if protocol == "amqp10" and candidate.vhost is not None:
         # The parser interprets hostname form characters as bytes before UTF-8 decoding.
         hostname = f"vhost:{candidate.vhost}".encode().decode("latin-1")
+        # Protect literal ampersands from the decimal-reference pass after URL decoding.
+        hostname = hostname.replace("&", "&#38;")
         result += f"?hostname={quote(hostname, safe=':')}"
     return result
 

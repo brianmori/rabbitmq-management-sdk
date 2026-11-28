@@ -182,11 +182,21 @@ def test_reject_later_page_without_publishing(tmp_path: Path, monkeypatch: pytes
     assert list(tmp_path.iterdir()) == []
 
 
-def test_sanitization_keeps_presence_and_raw_join_keys(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    vhost = "v/h%🦊"
+@pytest.mark.parametrize(
+    ("vhost_suffix", "hostname_suffix", "second_header"),
+    [
+        pytest.param("", "", "second-header-secret", id="unicode"),
+        pytest.param("&#65;", "%26%2338%3B%2365%3B", "second-header-secret", id="literal-decimal-reference"),
+        pytest.param("", "", "[redacted 1]", id="existing-redaction"),
+    ],
+)
+def test_sanitization_keeps_presence_and_raw_join_keys(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, vhost_suffix: str, hostname_suffix: str, second_header: str
+) -> None:
+    vhost = f"v/h%🦊{vhost_suffix}"
     queue = "q/%2f🔥"
     exchange = "amq://route-segment"
-    hostname = quote(f"vhost:{vhost}".encode().decode("latin-1"), safe=":")
+    hostname = quote("vhost:v/h%🦊".encode().decode("latin-1"), safe=":") + hostname_suffix
     definitions: dict[str, Any] = {
         "vhosts": [{"name": vhost, "metadata": {"default_queue_type": "quorum"}, "description": "vhost-secret"}],
         "queues": [{"name": queue, "vhost": vhost, "durable": True, "auto_delete": False}],
@@ -202,7 +212,7 @@ def test_sanitization_keeps_presence_and_raw_join_keys(tmp_path: Path, monkeypat
                 "routing_key": "",
                 "arguments": {"x-match": "all", "authorization": token},
             }
-            for token in ("first-header-secret", "second-header-secret")
+            for token in ("first-header-secret", second_header)
         ],
         "rabbitmq_version": "4.3.8",
         "users": [
@@ -217,7 +227,7 @@ def test_sanitization_keeps_presence_and_raw_join_keys(tmp_path: Path, monkeypat
                 "vhost": vhost,
                 "value": {
                     "src-uri": [
-                        "amqp://user:uri-userinfo-secret@local/%76%2Fh%25%F0%9F%A6%8A?token=query-secret",
+                        f"amqp://user:uri-userinfo-secret@local/{quote(vhost, safe='')}?token=query-secret",
                         "amqp://malformed-secret@@",
                     ],
                     "src-queue": queue,
@@ -295,6 +305,7 @@ def test_sanitization_keeps_presence_and_raw_join_keys(tmp_path: Path, monkeypat
         in_cluster_amqp_hosts={"local"},
     )
     assert {node.id for node in replay.topology.nodes} == {node.id for node in original.topology.nodes}
+    assert next(iter(replay.topology.shovels)).destination.vhost == vhost
     assert replay.shovel_safety() == original.shovel_safety()
     assert replay.quorum_delivery_configuration() == original.quorum_delivery_configuration()
     assert sum(edge.kind == EdgeKind.BINDING for edge in replay.topology.edges) == 2

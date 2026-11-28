@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import json
 import re
+from itertools import count
 from typing import TYPE_CHECKING
 
-from pydantic import JsonValue
+from pydantic import BaseModel, JsonValue
 
 from rabbitmq_management_sdk.topology.shovel import _capture_shovel_uri
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from rabbitmq_management_sdk.resources.v4.admin.schemas.export_response import ClusterDefinitionsResponse
     from rabbitmq_management_sdk.resources.v4.exchanges.schemas.exchange_response import ExchangeResponse
     from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QueueResponse
@@ -51,17 +54,40 @@ _CREDENTIAL_TEXT = re.compile(
 _REDACTED = re.compile(r"\[redacted(?: [1-9][0-9]*)?\]")
 
 
+def _existing_placeholders(value: object) -> Iterator[str]:
+    """Find placeholder strings throughout the bundle before replacing values."""
+    if isinstance(value, str) and _REDACTED.fullmatch(value):
+        yield value
+    elif isinstance(value, BaseModel):
+        for _, item in value:
+            yield from _existing_placeholders(item)
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from _existing_placeholders(item)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            yield from _existing_placeholders(item)
+
+
 class CaptureSanitizer:
     """Sanitize one bundle while preserving distinct redacted binding values."""
 
-    def __init__(self) -> None:
+    def __init__(self, source: BaseModel | None = None) -> None:
+        self._reserved_placeholders = set(_existing_placeholders(source))
+        self._redaction_numbers = count(1)
         self._redactions: dict[str, str] = {}
 
     def _redact(self, value: JsonValue) -> JsonValue:
         if value is None or (isinstance(value, str) and _REDACTED.fullmatch(value)):
             return value
         canonical = json.dumps(value, sort_keys=True)
-        return self._redactions.setdefault(canonical, f"[redacted {len(self._redactions) + 1}]")
+        placeholder = self._redactions.get(canonical)
+        if placeholder is None:
+            placeholder = f"[redacted {next(self._redaction_numbers)}]"
+            while placeholder in self._reserved_placeholders:
+                placeholder = f"[redacted {next(self._redaction_numbers)}]"
+            self._redactions[canonical] = placeholder
+        return placeholder
 
     def _opaque(self, value: JsonValue, *, keep_routes: bool = False) -> JsonValue:
         if isinstance(value, dict):

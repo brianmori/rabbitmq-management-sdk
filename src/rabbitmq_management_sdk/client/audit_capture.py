@@ -169,7 +169,7 @@ def _list_resources[T: _Resource](
 
 def _sanitize(bundle: _Bundle) -> _Bundle:
     try:
-        sanitizer = CaptureSanitizer()
+        sanitizer = CaptureSanitizer(bundle)
         return _Bundle.model_validate(
             {
                 "manifest": bundle.manifest,
