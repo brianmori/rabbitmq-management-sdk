@@ -1,11 +1,23 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 import pytest
 from tests.shared.live_broker import wait_for
 
-from rabbitmq_management_sdk import BindingRequest, ExchangeRequest, NotFoundError, RabbitMQClient, VhostRequest
+from rabbitmq_management_sdk import (
+    Amqp091ShovelDestination,
+    Amqp091ShovelSource,
+    BadRequestError,
+    BindingRequest,
+    ExchangeRequest,
+    NotFoundError,
+    QueueDeleteOptions,
+    RabbitMQClient,
+    ShovelRequest,
+    VhostRequest,
+)
 from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_request import (
     ClassicQueueRequest,
     QueueRequest,
@@ -59,6 +71,57 @@ def test_quorum_consumer_timeout_round_trips_on_both_broker_versions(live_client
     arguments = live_client.queues.get("with-timeout").arguments
     assert isinstance(arguments, QuorumQueueResponse)
     assert arguments.consumer_timeout == timeout
+
+
+@pytest.mark.live
+def test_conditional_queue_delete_preserves_messages_until_queue_is_empty(
+    live_client: RabbitMQClient, live_vhost: str, management_api: ManagementAPI
+) -> None:
+    queue_name = "orders/eu?#%"
+    queues = live_client.queues
+    queues.create(queue_name, QueueRequest(arguments=ClassicQueueRequest()))
+    assert management_api.publish(live_vhost, "amq.default", queue_name, "keep-me")
+
+    options = QueueDeleteOptions(if_empty=True, if_unused=True)
+    with pytest.raises(BadRequestError, match="not empty"):
+        queues.delete(queue_name, options=options)
+
+    management_api.delivered(live_vhost, queue_name, "keep-me")
+    queues.delete(queue_name, options=options)
+    with pytest.raises(NotFoundError):
+        queues.get(queue_name)
+
+
+@pytest.mark.live
+def test_if_unused_queue_delete_refuses_active_consumer(
+    live_client: RabbitMQClient, live_vhost: str, rabbit_config: RabbitSettings
+) -> None:
+    queues = live_client.queues
+    for name in ("source", "destination"):
+        queues.create(name, QueueRequest(arguments=ClassicQueueRequest()))
+
+    userinfo = f"{quote(rabbit_config.username, safe='')}:{quote(rabbit_config.password, safe='')}"
+    uri = f"amqp://{userinfo}@/{live_vhost}"
+    live_client.shovels.create(
+        "consumer",
+        ShovelRequest(
+            src_uri=uri,
+            dest_uri=uri,
+            src_arguments=Amqp091ShovelSource(src_queue="source", src_predeclared=True),
+            dest_arguments=Amqp091ShovelDestination(dest_queue="destination", dest_predeclared=True),
+        ),
+    )
+    wait_for(lambda: queues.get("source").consumers == 1, "source queue consumer")
+
+    options = QueueDeleteOptions(if_unused=True)
+    with pytest.raises(BadRequestError, match="in use"):
+        queues.delete("source", options=options)
+
+    live_client.shovels.delete("consumer")
+    wait_for(lambda: queues.get("source").consumers == 0, "source queue consumer to leave")
+    queues.delete("source", options=options)
+    with pytest.raises(NotFoundError):
+        queues.get("source")
 
 
 @pytest.mark.live
