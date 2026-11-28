@@ -46,4 +46,5 @@ def test_queue_limits_from_sanitized_capture(version: str, tmp_path: Path) -> No
     assert ConfigurationSource.EFFECTIVE_POLICY in {
         item.source for item in history.configuration.stream_max_length_bytes.evidence
     }
+    assert auditor.streams_without_retention_limits() == ()
     assert auditor.audit().queue_limits == (history, orders, work)

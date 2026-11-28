@@ -33,7 +33,13 @@ from rabbitmq_management_sdk.topology.declaration_compatibility import (
 from rabbitmq_management_sdk.topology.dependencies import DirectDependencyInventory, build_direct_dependency_inventory
 from rabbitmq_management_sdk.topology.exchange_routing import exchange_routing_coverage
 from rabbitmq_management_sdk.topology.fanout import fanout_exchange_bindings
-from rabbitmq_management_sdk.topology.models import ClusterTopology, NodeId, PolicyId, PolicyInventory
+from rabbitmq_management_sdk.topology.models import (
+    ClusterTopology,
+    ConfigurationStatus,
+    NodeId,
+    PolicyId,
+    PolicyInventory,
+)
 from rabbitmq_management_sdk.topology.ordering import edge_sort_key
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 from rabbitmq_management_sdk.topology.policy_inventory import policy_inventory
@@ -454,6 +460,20 @@ class ClusterAuditor:
     def queue_limits(self) -> tuple[QueueLimits, ...]:
         """Return queue limits, stream retention, and shared DLX coverage."""
         return queue_limits(self.dead_letter_coverage())
+
+    def streams_without_retention_limits(self) -> tuple[QueueLimits, ...]:
+        """Return streams whose effective age and size limits are both unset.
+
+        Incomplete or invalid settings leave the affected limit unknown.
+        Inspect ``queue_limits()`` for the evidence behind omitted streams.
+        """
+        return tuple(
+            limits
+            for limits in self.queue_limits()
+            if limits.queue_type == "stream"
+            and limits.configuration.stream_max_age_ms.status == ConfigurationStatus.UNSET
+            and limits.configuration.stream_max_length_bytes.status == ConfigurationStatus.UNSET
+        )
 
     def vhost_permissions_inventory(self) -> VhostPermissionsInventory:
         """Return captured per-vhost permission declarations and queue and connection caps."""

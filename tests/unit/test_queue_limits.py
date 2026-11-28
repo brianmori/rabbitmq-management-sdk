@@ -209,6 +209,44 @@ def test_invalid_stream_age_is_unknown(age: str) -> None:
     assert config.stream_max_age_ms.evidence[0].value == age
 
 
+@pytest.mark.parametrize("version", ["4.2.9", "4.3.8"])
+def test_streams_without_retention_limits(version: str) -> None:
+    auditor = ClusterAuditor(
+        _response(
+            rabbitmq_version=version,
+            queues=[
+                _queue("without-limits", "v", **{"x-queue-type": "stream"}),
+                _queue("age-only", "v", **{"x-queue-type": "stream", "x-max-age": "7D"}),
+                _queue("bytes-only", "v", **{"x-queue-type": "stream", "x-max-length-bytes": 100}),
+                _queue("unknown-age", "v", **{"x-queue-type": "stream", "x-max-age": "7d"}),
+                _queue("classic", "v", **{"x-queue-type": "classic"}),
+            ],
+        )
+    )
+
+    (result,) = auditor.streams_without_retention_limits()
+    assert result.queue.name == "without-limits"
+    assert result.configuration.stream_max_age_ms.status == ConfigurationStatus.UNSET
+    assert result.configuration.stream_max_length_bytes.status == ConfigurationStatus.UNSET
+    assert ClusterAuditor.from_topology(auditor.topology).streams_without_retention_limits() == (result,)
+
+
+def test_stream_with_policy_retention_is_excluded() -> None:
+    auditor = _audit(
+        "stream",
+        regular={"max-age": "7D"},
+        observed_fields={"policy": "regular", "operator_policy": None},
+    )
+    assert _one(auditor).configuration.stream_max_age_ms.status == ConfigurationStatus.KNOWN
+    assert auditor.streams_without_retention_limits() == ()
+
+
+def test_stream_with_unknown_version_is_excluded() -> None:
+    auditor = _audit("stream", version=None)
+    assert _one(auditor).configuration.stream_max_age_ms.status == ConfigurationStatus.UNKNOWN
+    assert auditor.streams_without_retention_limits() == ()
+
+
 @pytest.mark.parametrize(
     "version, reason",
     [

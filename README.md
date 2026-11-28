@@ -343,6 +343,8 @@ exchange_coverage = auditor.exchange_routing_coverage(routing_key="orders.failed
 inventory = auditor.queue_type_inventory()
 for group in inventory.queue_types:
     print(group.queue_type, group.queue_count)
+for stream in auditor.streams_without_retention_limits():
+    print("Stream without a retention limit:", stream.queue)
 for cycle in report.message_loop_candidates.cycles:
     print("Possible message loop:", cycle)
 
@@ -364,6 +366,11 @@ policy for dead-letter and alternate-exchange routes. This avoids
 reinterpreting RabbitMQ policy regular expressions locally. The exchange
 observations also resolve referenced predeclared, system, and plugin exchanges
 that RabbitMQ omits from definitions exports.
+
+`streams_without_retention_limits()` lists streams whose captured configuration
+confirms that both maximum age and maximum size are unset. Use `queue_limits()`
+to inspect individual settings and their evidence when the capture leaves a
+limit unknown.
 
 Fanout groups expose `queue_count`, `durable_queue_count`,
 `quorum_queue_count`, and other derived capacity metrics. Each target retains
