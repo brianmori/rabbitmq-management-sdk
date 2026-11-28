@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   retention through a dedicated regular policy. See the
   [management HTTP example](docs/stream-lifecycle.md).
 
+### Changed
+
+- Verify stream retention policy updates, removal, and virtual-host isolation
+  on RabbitMQ 4.2.9 and 4.3.8. Cover rejected updates and conflicting capture
+  evidence in the SDK test suite.
+
 ### Fixed
 
 - Validate stream retention ages using RabbitMQ's case-sensitive units in
