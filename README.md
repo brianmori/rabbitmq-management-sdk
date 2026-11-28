@@ -283,10 +283,19 @@ client.shovels.create(
         dest_arguments=Amqp091ShovelDestination(dest_queue="orders-archive"),
     ),
 )
-
-for status in client.shovels.get_all_shovel_statuses():
-    print(status)
 ```
+
+Use the Quickstart `client` to list every dynamic shovel saved in its virtual
+host, including shovels without a runtime status entry.
+
+```python
+for shovel in client.shovels.list_by_vhost():
+    print(shovel.vhost, shovel.name)
+```
+
+Call `client.shovels.get_shovel_statuses_by_vhost()` when you need runtime state.
+Display names and virtual hosts in inventory views because endpoint URIs can
+contain credentials.
 
 On RabbitMQ 4.3, `Amqp10ShovelSource.src_consumer_name` sets the AMQP 1.0
 source **link name**. The same `src-consumer-name` wire setting identifies the
