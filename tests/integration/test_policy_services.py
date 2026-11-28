@@ -196,6 +196,58 @@ def test_operator_policy_manager_uses_operator_endpoints() -> None:
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("strict", [False, True], ids=["compatibility", "strict"])
+def test_stream_retention_put_preserves_literal_policy_definition_keys(strict: bool) -> None:
+    definition = {
+        "max-age": "1D",
+        "max-length-bytes": 100,
+        "queue-leader-locator": "least-leaders",
+        "max_age": {"plugin-data": [None, "as captured"]},
+        "plugin-null": None,
+    }
+    scope = {"pattern": r"\Aorders\.eu\z", "apply-to": "streams", "priority": 12}
+    calls: list[tuple[str, bytes]] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        calls.append((request.method, request.url.raw_path))
+        if request.url.raw_path == b"/api/queues/team%2Feu/orders.eu?disable_stats=true":
+            return httpx2.Response(
+                200,
+                json={
+                    "name": "orders.eu",
+                    "vhost": "team/eu",
+                    "type": "stream",
+                    "durable": True,
+                    "auto_delete": False,
+                    "node": "rabbit@node",
+                    "state": "running",
+                    "arguments": {"x-queue-type": "stream"},
+                    "policy": "retention%eu",
+                },
+            )
+        if request.method == "GET":
+            return httpx2.Response(
+                200, json={"name": "retention%eu", "vhost": "team/eu", **scope, "definition": definition}
+            )
+        assert json.loads(request.content) == {
+            **scope,
+            "definition": {**definition, "max-age": "7D", "max-length-bytes": 200},
+        }
+        return httpx2.Response(204)
+
+    with _adapter(httpx2.MockTransport(handler)) as adapter:
+        PolicyManager(adapter, "team%2Feu", strict).set_stream_retention(
+            "retention%eu", stream_name="orders.eu", max_age="7D", max_length_bytes=200, priority=12
+        )
+
+    assert calls == [
+        ("GET", b"/api/queues/team%2Feu/orders.eu?disable_stats=true"),
+        ("GET", b"/api/policies/team%2Feu/retention%25eu"),
+        ("PUT", b"/api/policies/team%2Feu/retention%25eu"),
+    ]
+
+
+@pytest.mark.integration
 def test_policy_schemas_accept_captured_rabbitmq_42_definitions() -> None:
     captured = json.loads(_CAPTURE_PATH.read_text())
 

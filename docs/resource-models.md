@@ -21,6 +21,10 @@ assert body["arguments"]["x-dead-letter-exchange"] == "failures"
 
 The manager may further apply its documented strict/compatibility behavior.
 
+Stream declarations and new policy definitions share RabbitMQ's case-sensitive
+retention age format. Use `7D` for seven days. To change age and byte retention
+on a running stream, see the [management HTTP lifecycle example](stream-lifecycle.md).
+
 ## Broker version checks on writes
 
 `RabbitMQClient` selects managers by API major version. The tested v4 brokers

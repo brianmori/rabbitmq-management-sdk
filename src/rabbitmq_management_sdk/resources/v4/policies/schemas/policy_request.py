@@ -8,6 +8,7 @@ from rabbitmq_management_sdk.resources.v4.common import (
     DelayedRetryType,
     OverflowBehaviour,
     QueueLeaderLocator,
+    StreamMaxAge,
 )
 from rabbitmq_management_sdk.resources.v4.policies.schemas.common import (
     OperatorPolicyApplyTo,
@@ -39,7 +40,7 @@ class PolicyDefinition(RabbitMQRequest):
     delayed_retry_min: int | None = Field(None, alias="delayed-retry-min", gt=0, strict=True)
     delayed_retry_max: int | None = Field(None, alias="delayed-retry-max", gt=0, strict=True)
     queue_leader_locator: QueueLeaderLocator | None = Field(None, alias="queue-leader-locator")
-    max_age: str | None = Field(None, alias="max-age")
+    max_age: StreamMaxAge | None = Field(None, alias="max-age")
     stream_filter_size_bytes: int | None = Field(None, alias="stream-filter-size-bytes")
     max_in_memory_length: int | None = Field(None, alias="max-in-memory-length")
     max_in_memory_bytes: int | None = Field(None, alias="max-in-memory-bytes")
