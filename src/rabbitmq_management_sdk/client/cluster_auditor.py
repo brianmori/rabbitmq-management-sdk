@@ -38,7 +38,7 @@ from rabbitmq_management_sdk.topology.ordering import edge_sort_key
 from rabbitmq_management_sdk.topology.parser import parse_cluster_topology
 from rabbitmq_management_sdk.topology.policy_inventory import policy_inventory
 from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeInventory, queue_type_inventory
-from rabbitmq_management_sdk.topology.queue_limits import queue_limits
+from rabbitmq_management_sdk.topology.queue_limits import queue_limits, stream_retention
 from rabbitmq_management_sdk.topology.quorum import QuorumQueueConfiguration, quorum_delivery_configuration
 from rabbitmq_management_sdk.topology.quorum_resilience import QuorumResilienceReport, quorum_resilience
 from rabbitmq_management_sdk.topology.reachability import (
@@ -74,7 +74,7 @@ if TYPE_CHECKING:
         ShovelNode,
         TopologyEdge,
     )
-    from rabbitmq_management_sdk.topology.queue_limits import QueueLimits
+    from rabbitmq_management_sdk.topology.queue_limits import QueueLimits, StreamRetention
     from rabbitmq_management_sdk.topology.quorum_resilience import QuorumFailureScenario
     from rabbitmq_management_sdk.topology.routing_contracts import RoutingContract, RoutingContractResult
     from rabbitmq_management_sdk.topology.shovel_audit import CompetingShovelConsumers, ShovelSafety
@@ -116,6 +116,7 @@ class TopologyAuditReport:
     queue_declaration_compatibility: tuple[QueueDeclarationCompatibility, ...] = ()
     vhost_permissions_inventory: VhostPermissionsInventory = field(default_factory=VhostPermissionsInventory)
     policy_inventory: PolicyInventory = field(default_factory=PolicyInventory)
+    stream_retention: tuple[StreamRetention, ...] = ()
 
 
 class ClusterAuditor:
@@ -457,6 +458,10 @@ class ClusterAuditor:
         """Return queue limits, stream retention, and shared DLX coverage."""
         return queue_limits(self.dead_letter_coverage())
 
+    def stream_retention(self) -> tuple[StreamRetention, ...]:
+        """Classify retention for each declared stream and return its captured evidence."""
+        return stream_retention(self._topology)
+
     def vhost_permissions_inventory(self) -> VhostPermissionsInventory:
         """Return captured per-vhost permission declarations and queue and connection caps."""
         return vhost_permissions_inventory(self._topology)
@@ -611,4 +616,5 @@ class ClusterAuditor:
             queue_declaration_compatibility=self.queue_declaration_compatibility(),
             vhost_permissions_inventory=self.vhost_permissions_inventory(),
             policy_inventory=self.policy_inventory(),
+            stream_retention=self.stream_retention(),
         )

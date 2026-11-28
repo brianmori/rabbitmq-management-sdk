@@ -6,7 +6,13 @@ from pathlib import Path
 import pytest
 
 from rabbitmq_management_sdk import ClusterAuditor
-from rabbitmq_management_sdk.topology import ConfigurationSource, ConfigurationStatus, DeadLetterCoverageStatus
+from rabbitmq_management_sdk.topology import (
+    ConfigurationSource,
+    ConfigurationStatus,
+    ConfigurationUncertainty,
+    DeadLetterCoverageStatus,
+    StreamRetentionStatus,
+)
 
 pytestmark = pytest.mark.integration
 _CAPTURES = Path(__file__).parent / "queue-limits"
@@ -46,4 +52,15 @@ def test_queue_limits_from_sanitized_capture(version: str, tmp_path: Path) -> No
     assert ConfigurationSource.EFFECTIVE_POLICY in {
         item.source for item in history.configuration.stream_max_length_bytes.evidence
     }
-    assert auditor.audit().queue_limits == (history, orders, work)
+    (retention,) = auditor.stream_retention()
+    assert retention.queue == history.queue
+    assert retention.status == StreamRetentionStatus.CONFIGURED
+    assert retention.stream_max_age_ms == history.configuration.stream_max_age_ms
+    assert retention.stream_max_length_bytes == history.configuration.stream_max_length_bytes
+    segment_size = retention.stream_max_segment_size_bytes
+    assert segment_size.status == ConfigurationStatus.UNKNOWN
+    assert segment_size.evidence == ()
+    assert segment_size.uncertainties == (ConfigurationUncertainty.STREAM_CREATION_CONFIGURATION_NOT_CAPTURED,)
+    report = auditor.audit()
+    assert report.queue_limits == (history, orders, work)
+    assert report.stream_retention == (retention,)

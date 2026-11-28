@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import TYPE_CHECKING, cast
 
 from rabbitmq_management_sdk.topology.models import (
@@ -13,6 +14,7 @@ from rabbitmq_management_sdk.topology.models import (
     ConfigurationValue,
     QueueLimitsConfiguration,
 )
+from rabbitmq_management_sdk.topology.ordering import node_sort_key
 from rabbitmq_management_sdk.topology.queue_configuration import (
     _default,
     _derived,
@@ -26,7 +28,7 @@ if TYPE_CHECKING:
     from typing import Never
 
     from rabbitmq_management_sdk.topology.dead_letter import DeadLetterCoverage
-    from rabbitmq_management_sdk.topology.models import NodeId, QuorumDeliveryConfiguration
+    from rabbitmq_management_sdk.topology.models import ClusterTopology, NodeId, QuorumDeliveryConfiguration
     from rabbitmq_management_sdk.topology.queue_configuration import _Resolver, _Value
 
 _AGE_UNIT_MS = {
@@ -57,6 +59,21 @@ def _stream_age_ms(setting: _Value) -> ConfigurationValue[int]:
     return cast("ConfigurationValue[int]", _derived(age, "stream_max_age_ms", setting))
 
 
+def _stream_segment_size(resolver: _Resolver) -> ConfigurationValue[int]:
+    key = "stream-max-segment-size-bytes"
+    argument = resolver._argument(f"x-{key}", minimum=None)
+    policy = resolver._policy(key, minimum=None)
+    # A policy at creation can override the argument. A snapshot has no policy history.
+    return ConfigurationValue(
+        evidence=(*argument.evidence, *policy.evidence),
+        uncertainties=(
+            ConfigurationUncertainty.STREAM_CREATION_CONFIGURATION_NOT_CAPTURED,
+            *argument.uncertainties,
+            *policy.uncertainties,
+        ),
+    )
+
+
 def resolve_queue_limits(
     resolver: _Resolver, quorum_delivery: QuorumDeliveryConfiguration | None
 ) -> QueueLimitsConfiguration:
@@ -64,6 +81,7 @@ def resolve_queue_limits(
     version, minor = captured_broker_version(resolver.definitions)
     overflow: ConfigurationValue[str]
     stream_age: ConfigurationValue[int]
+    stream_segment_size: ConfigurationValue[int]
 
     def unsupported_type(key: str) -> _Value:
         argument = _entry(resolver.queue.arguments.root, f"x-{key}", ConfigurationSource.QUEUE_ARGUMENT)
@@ -80,9 +98,10 @@ def resolve_queue_limits(
     if resolver.queue_type == "stream":
         age = resolver.setting("max-age", "right")
         stream_age = _stream_age_ms(age if minor is not None else unknown_version(age, version))
+        stream_segment_size = _stream_segment_size(resolver)
         overflow = _NOT_APPLICABLE
     elif resolver.queue_type in _STANDARD_TYPES:
-        stream_age = _NOT_APPLICABLE
+        stream_age = stream_segment_size = _NOT_APPLICABLE
         if quorum_delivery is not None:
             overflow = quorum_delivery.overflow
         else:
@@ -93,6 +112,7 @@ def resolve_queue_limits(
             )
     else:
         stream_age = cast("ConfigurationValue[int]", unsupported_type("max-age"))
+        stream_segment_size = cast("ConfigurationValue[int]", unsupported_type("stream-max-segment-size-bytes"))
         overflow = cast("ConfigurationValue[str]", unsupported_type("overflow"))
 
     return QueueLimitsConfiguration(
@@ -104,6 +124,7 @@ def resolve_queue_limits(
         queue_expiry_ms=number("expires", minimum=1),
         stream_max_age_ms=stream_age,
         stream_max_length_bytes=number("max-length-bytes", stream=True),
+        stream_max_segment_size_bytes=stream_segment_size,
     )
 
 
@@ -123,6 +144,58 @@ class QueueLimits:
     def queue_type(self) -> str:
         """Return the queue type represented by the captured node."""
         return self.dead_letter_coverage.queue.queue_type
+
+
+class StreamRetentionStatus(StrEnum):
+    """Whether a stream has age or byte retention in the captured configuration."""
+
+    CONFIGURED = "configured"
+    MISSING = "missing"
+    INDETERMINATE = "indeterminate"
+
+
+@dataclass(frozen=True, slots=True)
+class StreamRetention:
+    """Retention settings and segment size evidence for one declared stream.
+
+    Age and byte settings determine ``status``. The segment size setting
+    retains declaration and policy inputs even when the applied size is unknown.
+    """
+
+    queue: NodeId
+    stream_max_age_ms: ConfigurationValue[int]
+    stream_max_length_bytes: ConfigurationValue[int]
+    stream_max_segment_size_bytes: ConfigurationValue[int]
+
+    @property
+    def status(self) -> StreamRetentionStatus:
+        """Classify the stream using the resolved age and byte limits."""
+        age_status = self.stream_max_age_ms.status
+        byte_status = self.stream_max_length_bytes.status
+        if ConfigurationStatus.KNOWN in (age_status, byte_status):
+            return StreamRetentionStatus.CONFIGURED
+        if age_status == byte_status == ConfigurationStatus.UNSET:
+            return StreamRetentionStatus.MISSING
+        return StreamRetentionStatus.INDETERMINATE
+
+
+def stream_retention(topology: ClusterTopology) -> tuple[StreamRetention, ...]:
+    """Report retained configuration for declared streams in canonical order."""
+    streams = sorted(
+        (queue for queue in topology.queues if queue.queue_type == "stream"), key=lambda queue: node_sort_key(queue.id)
+    )
+    results = []
+    for queue in streams:
+        limits = queue.queue_limits or QueueLimitsConfiguration()
+        results.append(
+            StreamRetention(
+                queue=queue.id,
+                stream_max_age_ms=limits.stream_max_age_ms,
+                stream_max_length_bytes=limits.stream_max_length_bytes,
+                stream_max_segment_size_bytes=limits.stream_max_segment_size_bytes,
+            )
+        )
+    return tuple(results)
 
 
 def queue_limits(coverage: tuple[DeadLetterCoverage, ...]) -> tuple[QueueLimits, ...]:
@@ -147,11 +220,21 @@ def queue_limits(coverage: tuple[DeadLetterCoverage, ...]) -> tuple[QueueLimits,
                     overflow=delivery.overflow if delivery is not None else ConfigurationValue(),
                     stream_max_age_ms=_NOT_APPLICABLE,
                     stream_max_length_bytes=_NOT_APPLICABLE,
+                    stream_max_segment_size_bytes=_NOT_APPLICABLE,
                 )
             else:
                 unknown: ConfigurationValue[Never] = ConfigurationValue(
                     uncertainties=(ConfigurationUncertainty.UNSUPPORTED_QUEUE_TYPE,)
                 )
-                limits = QueueLimitsConfiguration(None, unknown, unknown, unknown, unknown, unknown, unknown, unknown)
+                limits = QueueLimitsConfiguration(
+                    max_length=unknown,
+                    max_length_bytes=unknown,
+                    overflow=unknown,
+                    message_ttl_ms=unknown,
+                    queue_expiry_ms=unknown,
+                    stream_max_age_ms=unknown,
+                    stream_max_length_bytes=unknown,
+                    stream_max_segment_size_bytes=unknown,
+                )
         results.append(QueueLimits(limits, dlx))
     return tuple(results)

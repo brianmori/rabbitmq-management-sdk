@@ -13,7 +13,10 @@ from rabbitmq_management_sdk.topology import (
     ConfigurationStatus,
     ConfigurationUncertainty,
     DeadLetterCoverageStatus,
+    NodeId,
+    NodeKind,
     QueueLimits,
+    StreamRetentionStatus,
 )
 
 pytestmark = pytest.mark.unit
@@ -86,6 +89,7 @@ def test_classic_policy_minimum_and_argument_overflow(version: str) -> None:
     assert config.overflow.value == "drop-head"
     assert config.stream_max_age_ms.status == ConfigurationStatus.NOT_APPLICABLE
     assert config.stream_max_length_bytes.status == ConfigurationStatus.NOT_APPLICABLE
+    assert config.stream_max_segment_size_bytes.status == ConfigurationStatus.NOT_APPLICABLE
     assert set(config.max_length.evidence) == {
         ConfigurationEvidence(ConfigurationSource.QUEUE_ARGUMENT, "x-max-length", 10),
         ConfigurationEvidence(ConfigurationSource.REGULAR_POLICY, "max-length", 3, "regular"),
@@ -207,6 +211,129 @@ def test_invalid_stream_age_is_unknown(age: str) -> None:
     config = _one(_audit("stream", arguments={"x-max-age": age})).configuration
     assert config.stream_max_age_ms.uncertainties == (ConfigurationUncertainty.INVALID_VALUE,)
     assert config.stream_max_age_ms.evidence[0].value == age
+
+
+@pytest.mark.parametrize(
+    "arguments,age_status,bytes_status,status",
+    [
+        (
+            {"x-max-age": "7D", "x-max-length-bytes": None},
+            ConfigurationStatus.KNOWN,
+            ConfigurationStatus.UNKNOWN,
+            StreamRetentionStatus.CONFIGURED,
+        ),
+        (
+            {"x-max-length-bytes": 0},
+            ConfigurationStatus.UNSET,
+            ConfigurationStatus.KNOWN,
+            StreamRetentionStatus.CONFIGURED,
+        ),
+        ({}, ConfigurationStatus.UNSET, ConfigurationStatus.UNSET, StreamRetentionStatus.MISSING),
+        (
+            {"x-max-age": None},
+            ConfigurationStatus.UNKNOWN,
+            ConfigurationStatus.UNSET,
+            StreamRetentionStatus.INDETERMINATE,
+        ),
+    ],
+)
+def test_stream_retention_classifies_resolved_settings_without_losing_evidence(
+    arguments: dict[str, object],
+    age_status: ConfigurationStatus,
+    bytes_status: ConfigurationStatus,
+    status: StreamRetentionStatus,
+) -> None:
+    auditor = _audit("stream", arguments=arguments)
+    (result,) = auditor.stream_retention()
+    config = _one(auditor).configuration
+    assert result.status == status
+    assert result.stream_max_age_ms is config.stream_max_age_ms
+    assert result.stream_max_age_ms.status == age_status
+    assert result.stream_max_length_bytes is config.stream_max_length_bytes
+    assert result.stream_max_length_bytes.status == bytes_status
+
+
+@pytest.mark.parametrize("declared_size", [None, 100_000_000])
+def test_stream_retention_keeps_current_policy_segment_evidence_without_claiming_it_applied(
+    declared_size: int | None,
+) -> None:
+    policy = {"max-age": "7D", "stream-max-segment-size-bytes": 50_000_000}
+    auditor = _audit(
+        "stream",
+        arguments={"x-stream-max-segment-size-bytes": declared_size} if declared_size is not None else {},
+        regular=policy,
+        observed_fields={"policy": "regular", "operator_policy": None, "effective_policy_definition": policy},
+    )
+    (result,) = auditor.stream_retention()
+    assert result.status == StreamRetentionStatus.CONFIGURED
+    assert result.stream_max_age_ms.value == 604_800_000
+    assert result.stream_max_age_ms.status == ConfigurationStatus.KNOWN
+    assert result.stream_max_length_bytes.status == ConfigurationStatus.UNSET
+    segment_size = result.stream_max_segment_size_bytes
+    assert segment_size is _one(auditor).configuration.stream_max_segment_size_bytes
+    assert segment_size.status == ConfigurationStatus.UNKNOWN
+    assert segment_size.value is None
+    assert segment_size.uncertainties == (ConfigurationUncertainty.STREAM_CREATION_CONFIGURATION_NOT_CAPTURED,)
+    expected = {
+        ConfigurationEvidence(
+            ConfigurationSource.REGULAR_POLICY, "stream-max-segment-size-bytes", 50_000_000, "regular"
+        ),
+        ConfigurationEvidence(ConfigurationSource.EFFECTIVE_POLICY, "stream-max-segment-size-bytes", 50_000_000),
+    }
+    if declared_size is not None:
+        expected.add(
+            ConfigurationEvidence(ConfigurationSource.QUEUE_ARGUMENT, "x-stream-max-segment-size-bytes", declared_size)
+        )
+    assert set(segment_size.evidence) == expected
+
+
+def test_stream_retention_uses_resolved_types_and_full_identity_order_after_graph_transfer() -> None:
+    auditor = ClusterAuditor(
+        _response(
+            rabbitmq_version="4.2.9",
+            global_parameters=[{"name": "internal_cluster_id", "value": "stream-cluster"}],
+            vhosts=[_vhost("b", "stream"), _vhost("a")],
+            queues=[
+                _queue("history", "b", **{"x-stream-max-segment-size-bytes": 100_000_000}),
+                _queue("classic", "b", **{"x-queue-type": "classic"}),
+                _queue("quorum", "b", **{"x-queue-type": "quorum"}),
+                _queue("history", "a", **{"x-queue-type": "stream", "x-max-age": "7D"}),
+            ],
+        )
+    )
+    explicit, defaulted = auditor.stream_retention()
+    assert explicit.queue == NodeId("a", "history", NodeKind.QUEUE, cluster_id="stream-cluster")
+    assert defaulted.queue == NodeId("b", "history", NodeKind.QUEUE, cluster_id="stream-cluster")
+    assert explicit.status == StreamRetentionStatus.CONFIGURED
+    assert defaulted.status == StreamRetentionStatus.MISSING
+    segment_size = defaulted.stream_max_segment_size_bytes
+    assert segment_size.status == ConfigurationStatus.UNKNOWN
+    assert segment_size.evidence == (
+        ConfigurationEvidence(ConfigurationSource.QUEUE_ARGUMENT, "x-stream-max-segment-size-bytes", 100_000_000),
+    )
+    restored = ClusterAuditor.from_topology(pickle.loads(pickle.dumps(auditor.topology)))
+    assert restored.stream_retention() == auditor.audit().stream_retention == (explicit, defaulted)
+
+
+def test_stream_retention_keeps_observed_segment_argument_when_declaration_arguments_are_omitted() -> None:
+    queue = _queue("history", "v")
+    del queue["arguments"]
+    definitions = _response(rabbitmq_version="4.3.8", vhosts=[_vhost("v", "stream")], queues=[queue])
+    observed = _observed_queue(
+        "history",
+        "v",
+        type="stream",
+        arguments={"x-queue-type": "stream", "x-stream-max-segment-size-bytes": 100_000_000},
+    )
+    (result,) = ClusterAuditor(definitions, queues=[observed], exchanges=[]).stream_retention()
+    assert result.status == StreamRetentionStatus.INDETERMINATE
+    assert result.stream_max_age_ms.uncertainties == (ConfigurationUncertainty.ARGUMENTS_NOT_CAPTURED,)
+    assert result.stream_max_segment_size_bytes.status == ConfigurationStatus.UNKNOWN
+    assert result.stream_max_segment_size_bytes.evidence == (
+        ConfigurationEvidence(
+            ConfigurationSource.OBSERVED_QUEUE_ARGUMENT, "x-stream-max-segment-size-bytes", 100_000_000
+        ),
+    )
 
 
 @pytest.mark.parametrize(

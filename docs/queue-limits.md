@@ -23,6 +23,7 @@ Each row exposes `queue`, `queue_type`, `configuration`, and
 | `queue_expiry_ms` | Milliseconds | Lease for an unused classic or quorum queue. |
 | `stream_max_age_ms` | Milliseconds | Age threshold for stream segments. |
 | `stream_max_length_bytes` | Bytes | Size threshold for the stream log. |
+| `stream_max_segment_size_bytes` | Bytes | Evidence for the segment size setting at stream creation. |
 
 Classic length limits count ready messages. Quorum length limits also count
 messages pending at-least-once dead lettering. RabbitMQ 4.3 additionally
@@ -35,6 +36,41 @@ least one nonempty segment. Queue expiry, message TTL, ready-message limits,
 and overflow fields are `not_applicable` to streams. Stream fields are
 `not_applicable` to classic and quorum queues. [RabbitMQ stream retention](https://www.rabbitmq.com/docs/4.2/streams#data-retention)
 and [queue expiry](https://www.rabbitmq.com/docs/4.2/ttl#queue-ttl).
+
+## Classify stream retention
+
+`ClusterAuditor.stream_retention()` and `TopologyAuditReport.stream_retention`
+return one immutable `StreamRetention` row per declared stream in canonical
+`NodeId` order. This includes queues whose type was resolved from a captured
+vhost default. Each row exposes the queue identity and the same resolved age
+and byte settings as `queue_limits()`, with their evidence and uncertainties.
+Import `StreamRetention` and `StreamRetentionStatus` from
+`rabbitmq_management_sdk.topology`.
+
+| Status | Interpretation |
+| --- | --- |
+| `configured` | At least one retention setting is `known`, even if the other is `unknown`. |
+| `missing` | Both retention settings are explicitly `unset`. |
+| `indeterminate` | The capture establishes neither an effective limit nor the absence of both settings. |
+
+A stream declared with `x-max-age: "7D"` has a resolved age limit of
+604,800,000 milliseconds when that declaration supplies the effective value.
+
+`stream_max_segment_size_bytes.evidence` can contain the declared
+`x-stream-max-segment-size-bytes` argument, the selected regular policy's
+`stream-max-segment-size-bytes`, and the reported effective policy entry. A
+matching queue observation can supply the argument when the definitions
+argument map was omitted. Each entry preserves its wire key, value, source,
+and selected policy name where known.
+
+A creation-time policy can override the argument. Current policy selection can
+reflect a later change, including removal of a policy that applied at creation.
+The supported captures leave the applied segment size `unknown` and retain the
+available inputs. Segment size controls the granularity of retention. Only age
+and byte limits determine the classification, and sizing thresholds depend on
+the caller's workload. [RabbitMQ 4.2 stream settings](https://www.rabbitmq.com/docs/4.2/streams#declaring-a-rabbitmq-stream),
+[4.2.9 creation-time precedence](https://github.com/rabbitmq/rabbitmq-server/blob/v4.2.9/deps/rabbit/src/rabbit_stream_queue.erl#L1188-L1226),
+and [4.3.8 creation-time precedence](https://github.com/rabbitmq/rabbitmq-server/blob/v4.3.8/deps/rabbit/src/rabbit_stream_queue.erl#L1197-L1235).
 
 ## How effective settings are resolved
 
@@ -125,12 +161,15 @@ auditor = ClusterAuditor(
 )
 rows = {row.queue.name: row.configuration for row in auditor.queue_limits()}
 print(rows["orders"].max_length.value, rows["orders"].queue_expiry_ms.status)
-print(rows["history"].stream_max_age_ms.value, rows["history"].stream_max_length_bytes.value)
+(history,) = auditor.stream_retention()
+print(history.queue.name, history.status, history.stream_max_length_bytes.value)
+print(history.stream_max_segment_size_bytes.status)
 ```
 
 ```text
 2 unset
-7200000 2000000
+history configured 2000000
+unknown
 ```
 
 The [capture README](../tests/integration/queue-limits/README.md) records

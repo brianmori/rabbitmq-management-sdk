@@ -74,7 +74,7 @@ from rabbitmq_management_sdk.topology.ordering import (
     node_sort_key,
 )
 from rabbitmq_management_sdk.topology.queue_inventory import QueueTypeGroup, QueueTypeInventory, VhostQueueInventory
-from rabbitmq_management_sdk.topology.queue_limits import QueueLimits
+from rabbitmq_management_sdk.topology.queue_limits import QueueLimits, StreamRetention, StreamRetentionStatus
 from rabbitmq_management_sdk.topology.quorum import QuorumConfigurationIssue, QuorumQueueConfiguration
 from rabbitmq_management_sdk.topology.quorum_resilience import (
     QuorumBrokerConcentration,
@@ -178,6 +178,8 @@ __all__ = [
     "ShovelNode",
     "ShovelSafety",
     "ShovelTransport",
+    "StreamRetention",
+    "StreamRetentionStatus",
     "StronglyConnectedComponent",
     "TopologyEdge",
     "TopologyNode",
