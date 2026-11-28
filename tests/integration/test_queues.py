@@ -6,15 +6,66 @@ import httpx2
 import pytest
 
 from rabbitmq_management_sdk import (
+    BadRequestError,
     ClassicQueueRequest,
     DelayedRetryType,
+    QueueDeleteOptions,
     QueueRequest,
     QuorumQueueRequest,
     StreamQueueRequest,
 )
 from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
+from rabbitmq_management_sdk.http_adapter.retry import RetryTransport
 from rabbitmq_management_sdk.resources.v4.queues.schemas.queue_response import QuorumQueueResponse, StreamQueueResponse
 from rabbitmq_management_sdk.resources.v4.queues.services import QueueManager
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    ("kwargs", "query"),
+    [
+        pytest.param({}, b"", id="omitted"),
+        pytest.param({"options": QueueDeleteOptions()}, b"", id="neither"),
+        pytest.param({"options": QueueDeleteOptions(if_empty=True)}, b"?if-empty=true", id="if-empty"),
+        pytest.param({"options": QueueDeleteOptions(if_unused=True)}, b"?if-unused=true", id="if-unused"),
+        pytest.param(
+            {"options": QueueDeleteOptions(if_empty=True, if_unused=True)},
+            b"?if-empty=true&if-unused=true",
+            id="both",
+        ),
+    ],
+)
+def test_queue_delete_sends_conditions_on_one_request(kwargs: dict[str, QueueDeleteOptions], query: bytes) -> None:
+    sent: list[tuple[str, bytes, bytes]] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        sent.append((request.method, request.url.raw_path, request.content))
+        return httpx2.Response(204)
+
+    with Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler)) as adapter:
+        QueueManager(adapter, "%2F", False).delete("orders/eu?#% café", **kwargs)
+
+    assert sent == [("DELETE", b"/api/queues/%2F/orders%2Feu%3F%23%25%20caf%C3%A9" + query, b"")]
+
+
+@pytest.mark.integration
+def test_queue_delete_propagates_broker_refusal_without_retrying() -> None:
+    sent: list[tuple[str, bytes]] = []
+    reason = "406 PRECONDITION_FAILED - queue 'orders' in vhost '/' not empty"
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        sent.append((request.method, request.url.raw_path))
+        return httpx2.Response(400, json={"error": "bad_request", "reason": reason})
+
+    with (
+        RetryTransport(Httpx2Adapter(host="localhost", port=15672, transport=httpx2.MockTransport(handler))) as adapter,
+        pytest.raises(BadRequestError) as exc,
+    ):
+        QueueManager(adapter, "%2F", False).delete("orders", options=QueueDeleteOptions(if_empty=True))
+
+    assert exc.value.status_code == 400
+    assert exc.value.reason == reason
+    assert sent == [("DELETE", b"/api/queues/%2F/orders?if-empty=true")]
 
 
 @pytest.mark.integration

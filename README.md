@@ -139,6 +139,19 @@ print(queue.state)          # e.g. "running"
 client.queues.delete("orders")
 ```
 
+Use the quickstart client to delete an existing queue only when it is empty
+and has no consumers. Enable either condition on its own if needed.
+
+```python
+from rabbitmq_management_sdk import QueueDeleteOptions
+
+client.queues.delete("payments", options=QueueDeleteOptions(if_empty=True, if_unused=True))
+```
+
+RabbitMQ checks the enabled conditions in one request. A refusal raises an SDK
+`APIError`. [RabbitMQ 4.2.9](https://github.com/rabbitmq/rabbitmq-server/blob/v4.2.9/deps/rabbitmq_management/src/rabbit_mgmt_wm_queue.erl#L74-L85)
+· [RabbitMQ 4.3.8](https://github.com/rabbitmq/rabbitmq-server/blob/v4.3.8/deps/rabbitmq_management/src/rabbit_mgmt_wm_queue.erl#L79-L90)
+
 ### Exchanges
 
 ```python
