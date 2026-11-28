@@ -11,6 +11,7 @@ from urllib.parse import quote
 import httpx2
 import pytest
 from pydantic import SecretStr
+from tests.shared.parser_fixtures import _binding, _exchange, _observed_queue, _queue, _vhost
 
 from rabbitmq_management_sdk import (
     AuditCapture,
@@ -23,7 +24,18 @@ from rabbitmq_management_sdk import (
 )
 from rabbitmq_management_sdk.http_adapter import factory
 from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
-from rabbitmq_management_sdk.topology import EdgeKind
+from rabbitmq_management_sdk.topology import (
+    BindingComparison,
+    ComparisonEvidence,
+    ComparisonGap,
+    EdgeKind,
+    NodeId,
+    NodeKind,
+    RoutingCondition,
+    RoutingContract,
+    RoutingVerdict,
+    TopologyEdge,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -143,6 +155,91 @@ def test_collect_multiple_pages_and_replay_existing_audit(tmp_path: Path, monkey
     assert comparison.bindings.added == comparison.bindings.removed == ()
     assert comparison.queues.added == comparison.queues.removed == ()
     assert comparison.policy_selections.changed == ()
+
+
+@pytest.mark.parametrize("later", ["failed-page", "omitted-bindings", "empty-bindings"])
+def test_compare_saved_captures_after_binding_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, later: str
+) -> None:
+    cluster_id = "rabbitmq-cluster-id-comparison"
+    vhost = "orders"
+    origin = NodeId(vhost, "events", NodeKind.EXCHANGE, cluster_id)
+    worker = NodeId(vhost, "worker", NodeKind.QUEUE, cluster_id)
+    contract = RoutingContract("Empty key reaches worker", origin, "", (RoutingCondition.reaches_all({worker}),))
+    exchanges = [_exchange(origin.name, vhost), _exchange("spare", vhost)]
+    definitions = {
+        "global_parameters": [{"name": "internal_cluster_id", "value": cluster_id}],
+        "vhosts": [_vhost(vhost)],
+        "queues": [_queue(worker.name, vhost)],
+        "exchanges": exchanges,
+        "policies": [],
+        "parameters": [],
+        "bindings": [_binding(origin.name, worker.name, vhost=vhost)],
+    }
+    observations = {
+        "/api/queues": [
+            _observed_queue(
+                worker.name,
+                vhost,
+                type="classic",
+                arguments={"x-queue-type": "classic"},
+                policy=None,
+                operator_policy=None,
+            ).model_dump(mode="json", by_alias=True, exclude_unset=True)
+        ],
+        "/api/exchanges": [dict(exchange, policy=None, operator_policy=None) for exchange in exchanges],
+    }
+    fail_second_page = False
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        path = request.url.path
+        if path == "/api/definitions":
+            return httpx2.Response(200, json=definitions)
+        if fail_second_page and path == "/api/exchanges" and request.url.params["page"] == "2":
+            return httpx2.Response(403)
+        return httpx2.Response(200, json=_page(request, observations[path]))
+
+    before_path, after_path = tmp_path / "before.json", tmp_path / "after.json"
+    with _client(monkeypatch, handler) as client:
+        original = client.collect_audit_capture(page_size=1)
+        original.save(before_path)
+        baseline_bytes = before_path.read_bytes()
+        if later == "failed-page":
+            fail_second_page = True
+            with pytest.raises(AuditCaptureError, match=r"/api/exchanges page 2 \(HTTP 403\)"):
+                client.collect_audit_capture(page_size=1).save(after_path)
+        else:
+            if later == "omitted-bindings":
+                del definitions["bindings"]
+            else:
+                definitions["bindings"] = []
+            client.collect_audit_capture(page_size=1).save(after_path)
+
+    baseline = AuditCapture.load(before_path)
+    assert before_path.read_bytes() == baseline_bytes
+    if later == "failed-page":
+        assert not after_path.exists()
+        replay = compare_captures(baseline, original, routing_contracts=[contract])
+        assert replay.bindings == BindingComparison()
+        (routing,) = replay.routing_contracts
+        assert routing.before == routing.after
+        assert routing.before.verdict is RoutingVerdict.SATISFIED
+        return
+
+    comparison = compare_captures(baseline, AuditCapture.load(after_path), routing_contracts=[contract])
+    for category in (comparison.vhosts, comparison.queues, comparison.exchanges):
+        assert not (category.indeterminate or category.added or category.removed or category.attributes)
+    assert not (comparison.policy_selections.indeterminate or comparison.policy_selections.changed)
+
+    gaps = (ComparisonGap.BINDINGS_NOT_CAPTURED,) if later == "omitted-bindings" else ()
+    removed = () if gaps else (TopologyEdge(origin, worker, EdgeKind.BINDING, ""),)
+    assert comparison.bindings == BindingComparison(removed=removed, evidence=ComparisonEvidence(after=gaps))
+    assert comparison.bindings.indeterminate == bool(gaps)
+
+    (routing,) = comparison.routing_contracts
+    after_verdict = RoutingVerdict.UNDETERMINED if gaps else RoutingVerdict.VIOLATED
+    assert (routing.before.verdict, routing.after.verdict) == (RoutingVerdict.SATISFIED, after_verdict)
+    assert (routing.before.gaps, routing.after.gaps) == ((), gaps)
 
 
 @pytest.mark.parametrize("reject", ["status", "schema", "changed_counts", "duplicate"])
