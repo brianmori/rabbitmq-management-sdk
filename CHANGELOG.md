@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Collect cluster-wide definitions and paired queue and exchange observations
   with `RabbitMQClient.collect_audit_capture()`. Save and replay a sanitized
   bundle with a versioned acquisition manifest.
+- Compare same-cluster captures offline with `compare_captures()`, including
+  declaration and binding changes, observed policy selections, and before and
+  after routing contract outcomes.
 - `ClusterAuditor.trace_topology()` follows captured edges upstream or
   downstream from a resource and reports path ends and depth cutoffs.
 - List streams across virtual-host queue pages and update age and byte

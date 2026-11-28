@@ -90,6 +90,18 @@ def _binding_arguments_repr(b: ClusterExportBinding) -> str | None:
     return json.dumps(raw, sort_keys=True) if raw else None
 
 
+def _binding_edge(binding: ClusterExportBinding, cluster_id: str | None) -> TopologyEdge:
+    """Normalize one captured binding using the graph's complete edge identity."""
+    destination_kind = NodeKind.QUEUE if binding.destination_type == "queue" else NodeKind.EXCHANGE
+    return TopologyEdge(
+        source=NodeId(binding.vhost, binding.source, NodeKind.EXCHANGE, cluster_id),
+        target=NodeId(binding.vhost, binding.destination, destination_kind, cluster_id),
+        kind=EdgeKind.BINDING,
+        routing_key=binding.routing_key,
+        arguments=_binding_arguments_repr(binding),
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class _TopologyBuilder:
     """Build one cluster graph from normalized parser inputs."""
@@ -246,27 +258,7 @@ class _TopologyBuilder:
 
     def _binding_edges(self) -> frozenset[TopologyEdge]:
         """Build configured binding hops from the definitions export."""
-        edges = set()
-        for binding in self.response.bindings:
-            destination_kind = NodeKind.QUEUE if binding.destination_type == "queue" else NodeKind.EXCHANGE
-            edges.add(
-                TopologyEdge(
-                    source=self._node_id(
-                        vhost=binding.vhost,
-                        name=binding.source,
-                        kind=NodeKind.EXCHANGE,
-                    ),
-                    target=self._node_id(
-                        vhost=binding.vhost,
-                        name=binding.destination,
-                        kind=destination_kind,
-                    ),
-                    kind=EdgeKind.BINDING,
-                    routing_key=binding.routing_key,
-                    arguments=_binding_arguments_repr(binding),
-                )
-            )
-        return frozenset(edges)
+        return frozenset(_binding_edge(binding, self.cluster_id) for binding in self.response.bindings)
 
     def _dead_letter_route(
         self, queue: ClusterExportQueue, queue_id: NodeId, queue_type: str, observed: QueueResponse | None

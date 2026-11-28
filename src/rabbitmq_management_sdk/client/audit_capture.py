@@ -308,13 +308,18 @@ class AuditCapture:
             AuditCaptureError: If the saved evidence cannot construct a topology.
         """
         try:
-            return ClusterAuditor(
+            auditor = ClusterAuditor(
                 self._bundle.definitions.model_copy(deep=True),
                 queues=self._bundle.queues,
                 exchanges=self._bundle.exchanges,
                 in_cluster_amqp_hosts=in_cluster_amqp_hosts,
                 cluster_label=cluster_label,
             )
+            auditor._observations_scope_limited = any(
+                listing.pages[0].total_count != listing.pages[0].filtered_count
+                for listing in (self.manifest.queues, self.manifest.exchanges)
+            )
+            return auditor
         except TopologyError as exc:
             failure = type(exc).__name__
         raise AuditCaptureError(f"Could not build a topology from audit capture ({failure})")

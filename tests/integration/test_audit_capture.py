@@ -19,6 +19,7 @@ from rabbitmq_management_sdk import (
     Config,
     RabbitMQClient,
     RabbitMQVersion,
+    compare_captures,
 )
 from rabbitmq_management_sdk.http_adapter import factory
 from rabbitmq_management_sdk.http_adapter.httpx2 import Httpx2Adapter
@@ -137,6 +138,11 @@ def test_collect_multiple_pages_and_replay_existing_audit(tmp_path: Path, monkey
     assert replay.audit() == capture.to_auditor(in_cluster_amqp_hosts=hosts).audit() == reference.audit()
     assert replay.message_loop_candidates().cycles
     assert replay.quorum_delivery_configuration()
+    comparison = compare_captures(capture, loaded)
+    assert comparison.cluster_id == manifest.cluster_id
+    assert comparison.bindings.added == comparison.bindings.removed == ()
+    assert comparison.queues.added == comparison.queues.removed == ()
+    assert comparison.policy_selections.changed == ()
 
 
 @pytest.mark.parametrize("reject", ["status", "schema", "changed_counts", "duplicate"])

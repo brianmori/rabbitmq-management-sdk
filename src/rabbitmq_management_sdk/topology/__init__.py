@@ -7,6 +7,18 @@ details. Each graph edge is a configured possible message hop, not a guarantee
 that a particular message traverses it at runtime.
 """
 
+from rabbitmq_management_sdk.topology.comparison import (
+    BindingComparison,
+    CaptureComparison,
+    ComparisonEvidence,
+    ComparisonGap,
+    DeclarationChange,
+    DeclarationComparison,
+    PolicySelectionChange,
+    PolicySelectionComparison,
+    RoutingContractComparison,
+    RoutingContractOutcome,
+)
 from rabbitmq_management_sdk.topology.cycles import (
     Cycle,
     CycleSearchResult,
@@ -106,9 +118,13 @@ from rabbitmq_management_sdk.topology.vhost_permissions import (
 )
 
 __all__ = [
+    "BindingComparison",
     "BindingDurability",
     "BindingDurabilityKind",
+    "CaptureComparison",
     "ClusterTopology",
+    "ComparisonEvidence",
+    "ComparisonGap",
     "CompetingShovelConsumers",
     "ConfigurationEvidence",
     "ConfigurationSource",
@@ -121,6 +137,8 @@ __all__ = [
     "DeadLetterCoverageStatus",
     "DeadLetterRoutingIssue",
     "DeadLetterUncertainty",
+    "DeclarationChange",
+    "DeclarationComparison",
     "DirectDependencyInventory",
     "DirectReference",
     "DirectReferenceRole",
@@ -140,6 +158,8 @@ __all__ = [
     "PolicyInventory",
     "PolicyKind",
     "PolicySelection",
+    "PolicySelectionChange",
+    "PolicySelectionComparison",
     "PolicySelectionStatus",
     "QueueDeclarationCompatibility",
     "QueueDeclarationStatus",
@@ -164,6 +184,8 @@ __all__ = [
     "RoutingConditionKind",
     "RoutingConditionResult",
     "RoutingContract",
+    "RoutingContractComparison",
+    "RoutingContractOutcome",
     "RoutingContractResult",
     "RoutingIssue",
     "RoutingOriginStatus",

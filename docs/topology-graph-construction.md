@@ -140,6 +140,10 @@ Application code constructs graphs with `ClusterAuditor` from validated
 responses or captured files. For an SDK capture bundle, use
 `AuditCapture.load(path).to_auditor()`. See the
 [capture workflow](capture-contract.md#collect-save-and-replay-an-audit-capture).
+When comparing two captures, the auditor also retains definitions section
+presence and captured declaration fields separately from the graph. This lets
+the comparison distinguish exported declarations from supplemented exchanges
+and an omitted binding section from an empty section. [Capture comparison](capture-comparison.md)
 For separate Management API response files, use:
 
 ```python

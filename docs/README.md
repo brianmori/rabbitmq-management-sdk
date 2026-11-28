@@ -8,6 +8,8 @@ or [build a four-resource example graph](topology-graph-construction.md#a-small-
 
 - [Read an audit report](topology-auditing.md) and interpret structural cycles,
   possible message loops, and missing routes.
+- [Compare before and after captures](capture-comparison.md), including changes
+  to declarations, bindings, observed policy selections, and routing contracts.
 - [Trace configured paths](topology-tracing.md) upstream or downstream from a
   queue, exchange, or shovel.
 - [Check exchange routing and publication contracts](exchange-routing-coverage.md)
