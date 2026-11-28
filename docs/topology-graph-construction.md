@@ -136,8 +136,11 @@ ordering.
 
 ## Supported and internal boundaries
 
-Application code constructs graphs with `ClusterAuditor`, either from
-validated responses or captured files:
+Application code constructs graphs with `ClusterAuditor` from validated
+responses or captured files. For an SDK capture bundle, use
+`AuditCapture.load(path).to_auditor()`. See the
+[capture workflow](capture-contract.md#collect-save-and-replay-an-audit-capture).
+For separate Management API response files, use:
 
 ```python
 from pathlib import Path

@@ -1,7 +1,7 @@
 # SDK documentation
 
 For installation and management API examples, see the [SDK README](../README.md).
-To try topology auditing without a broker, [replay a saved capture](topology-auditing.md#audit-from-files)
+To try topology auditing without a broker, [replay saved responses](topology-auditing.md#audit-from-files)
 or [build a four-resource example graph](topology-graph-construction.md#a-small-runnable-example).
 
 ## Topology auditing
@@ -31,7 +31,7 @@ or [build a four-resource example graph](topology-graph-construction.md#a-small-
 
 ## Capture and implementation reference
 
-- [Collect and sanitize broker captures](capture-contract.md).
+- [Collect, save, and replay a sanitized audit capture](capture-contract.md#collect-save-and-replay-an-audit-capture).
 - [See how the SDK builds a topology graph](topology-graph-construction.md).
 - [Read known broker limitations](known-broker-limitations.md).
 - [Find implemented audit capabilities and their tests](topology-auditing.md#implemented-capabilities-and-evidence).

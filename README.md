@@ -341,17 +341,14 @@ the shovel has connected or that its source link is active.
 
 ### Topology auditing
 
-Use `ClusterAuditor` to inspect a RabbitMQ definitions export for circular
-message routes and other configuration risks. You do not need to understand
-graphs to use it.
+Collect audit inputs from an open `RabbitMQClient` to inspect circular message
+routes and other configuration risks. You can also
+[save and replay the sanitized capture](docs/capture-contract.md#collect-save-and-replay-an-audit-capture).
 
 ```python
-from rabbitmq_management_sdk import ClusterAuditor
-
-auditor = ClusterAuditor(
-    client.admin.export_definitions(),
-    queues=client.queues.list_all(disable_stats=True),
-    exchanges=client.exchanges.list_all(disable_stats=True),
+# client is an open RabbitMQClient.
+capture = client.collect_audit_capture()
+auditor = capture.to_auditor(
     cluster_label="production-eu-west-1",
     in_cluster_amqp_hosts={"rabbit-1.internal", "rabbit-2.internal"},
 )

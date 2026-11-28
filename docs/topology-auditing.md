@@ -48,7 +48,7 @@ import os
 
 from pydantic import SecretStr
 
-from rabbitmq_management_sdk import ClusterAuditor, Config, RabbitMQClient
+from rabbitmq_management_sdk import Config, RabbitMQClient
 
 config = Config(
     host=os.environ["RABBIT_HOST"],
@@ -58,11 +58,9 @@ config = Config(
 )
 
 with RabbitMQClient(config) as client:
-    definitions = client.admin.export_definitions()
-    queues = client.queues.list_all(disable_stats=True)
-    exchanges = client.exchanges.list_all(disable_stats=True)
+    capture = client.collect_audit_capture()
 
-auditor = ClusterAuditor(definitions, queues=queues, exchanges=exchanges)
+auditor = capture.to_auditor()
 
 # Limit each cycle report to at most 100 results.
 report = auditor.audit(max_cycles=100)
@@ -83,7 +81,9 @@ if report.structural_cycles.truncated:
 ```
 
 The `with` block closes the client's HTTP connections. `ClusterAuditor` then
-works with the captured values and makes no further requests. A cycle limit
+works with the captured values offline. To save the inputs and acquisition
+manifest, see [Collect, save, and replay an audit capture](capture-contract.md#collect-save-and-replay-an-audit-capture).
+A cycle limit
 bounds the output, not the time taken; see
 [Keep cycle searches bounded](#keep-cycle-searches-bounded).
 
@@ -249,6 +249,11 @@ The evidence column explains what must have been captured during construction
 to obtain the corresponding facts. Queue and exchange observations, when used,
 must be supplied as a complete pair. The [capture contract](capture-contract.md)
 explains scope, field presence, and provenance limitations.
+
+The [SDK collector](../src/rabbitmq_management_sdk/client/audit_capture.py)
+captures that pair and the cluster definitions. Its
+[integration tests](../tests/integration/test_audit_capture.py) cover
+pagination, publication, sanitization, and audit replay with saved evidence.
 
 | Facade methods / report fields | Evidence needed | Limits and uncertainty | Implementation and focused tests |
 | --- | --- | --- | --- |
@@ -704,10 +709,9 @@ inputs and loading calls.
 | `in_cluster_amqp_hosts` | Confirms which AMQP shovel hosts belong to this captured cluster. | Optional; relevant to shovels |
 
 Queue and exchange observations must be supplied together as complete lists
-from the same broker and capture window. The two API calls are sequential, not
-an atomic RabbitMQ snapshot; the auditor cannot verify their completeness or
-temporal consistency. `list_all()` obtains bounded pages across every virtual
-host.
+from the same broker and capture window. The collector and `list_all()` read
+bounded pages across visible vhosts with sequential HTTP requests. A capture's
+consistency and scope depend on broker activity and account visibility.
 
 Do not use `list_by_vhost()`, a name-filtered list, or a single page as a
 cluster-wide snapshot. Those calls can leave out evidence needed to resolve a
@@ -742,6 +746,10 @@ predeclared exchanges are not added because they cannot affect the captured
 route graph.
 
 ### Audit from files
+
+For a saved SDK bundle, use `AuditCapture.load(path).to_auditor()`.
+Use the file loader below for separately acquired definitions and observation
+arrays.
 
 For a fully offline audit, save the same three inputs as JSON and load them with
 `ClusterAuditor.from_files()`:

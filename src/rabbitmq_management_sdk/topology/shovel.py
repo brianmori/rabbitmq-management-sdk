@@ -10,7 +10,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal
-from urllib.parse import SplitResult, unquote, unquote_plus, urlsplit
+from urllib.parse import SplitResult, quote, unquote, unquote_plus, urlsplit
 
 from rabbitmq_management_sdk.topology.models import (
     EndpointAuthority,
@@ -270,6 +270,23 @@ def _parse_uri_candidate(uri: str, protocol: str) -> _UriCandidate | None:
         return _UriCandidate(vhost, authority, has_explicit_port) if valid_query else None
 
     return None
+
+
+def _capture_shovel_uri(uri: str, protocol: str) -> str:
+    """Keep the parts of a shovel URI needed to reconstruct endpoint evidence."""
+    candidate = _parse_uri_candidate(uri, protocol)
+    if candidate is None:
+        return ""
+
+    parsed = urlsplit(uri)
+    scheme = uri.partition("://")[0]
+    host_and_port = parsed.netloc.rpartition("@")[2]
+    result = f"{scheme}://{host_and_port}{parsed.path}"
+    if protocol == "amqp10" and candidate.vhost is not None:
+        # The parser interprets hostname form characters as bytes before UTF-8 decoding.
+        hostname = f"vhost:{candidate.vhost}".encode().decode("latin-1")
+        result += f"?hostname={quote(hostname, safe=':')}"
+    return result
 
 
 def vhost_from_amqp091_uri(uri: str) -> str:

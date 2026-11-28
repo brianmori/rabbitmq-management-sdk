@@ -5,11 +5,118 @@ example, a missing binding can mean a missing route, but it can also mean that
 only the first page of bindings was saved. Schema validation cannot distinguish
 those situations. Capture scope and provenance are part of interpreting results.
 
-This guide covers the existing capture workflow and contributor requirements.
-It does not introduce a capture-manifest API, completeness detector, or runtime
-telemetry model. See the [construction guide](topology-graph-construction.md)
-for translation rules and [audit guide](topology-auditing.md#audit-from-files)
-for executable loading examples.
+Use the SDK collector for a new broker capture or load existing response files
+with the [auditor](topology-auditing.md#audit-from-files). The
+[construction guide](topology-graph-construction.md) explains how the inputs
+become graph evidence.
+
+## Collect, save, and replay an audit capture
+
+Install the SDK and set `RABBIT_HOST`, `RABBIT_USER`, and `RABBIT_PASS` in
+your process environment. `RABBIT_PORT` defaults to `15672`. For TLS or
+mutual TLS, see the [client configuration examples](../README.md#authentication).
+Choose a new file path in an existing private directory.
+
+```python
+import os
+from pathlib import Path
+
+from pydantic import SecretStr
+
+from rabbitmq_management_sdk import AuditCapture, Config, RabbitMQClient
+
+config = Config(
+    host=os.environ["RABBIT_HOST"],
+    port=int(os.environ.get("RABBIT_PORT", "15672")),
+    username=os.environ["RABBIT_USER"],
+    password=SecretStr(os.environ["RABBIT_PASS"]),
+)
+
+with RabbitMQClient(config) as client:
+    capture = client.collect_audit_capture()
+
+path = Path("audit-capture.json")
+capture.save(path)
+
+saved = AuditCapture.load(path)
+print(saved.manifest.cluster_id, saved.manifest.broker_version)
+report = saved.to_auditor().audit(max_cycles=100)
+print("Message-loop candidates:", len(report.message_loop_candidates.cycles))
+```
+
+`collect_audit_capture()` reads `GET /api/definitions`, every page of
+`GET /api/queues`, then every page of `GET /api/exchanges`. It uses one
+client connection configuration and ignores the client's default virtual host
+for these cluster-wide requests. The listing queries send `page` and
+`page_size`, leaving the broker's statistics behavior unchanged to retain
+available observation fields. No name, column, or virtual-host filter is
+applied. The default page size is 100 and the supported range is 1 through 500.
+If necessary, pass
+`in_cluster_amqp_hosts` and `cluster_label` to `to_auditor()` when
+interpreting the capture.
+
+The account needs permission to export cluster definitions and to list queues
+and exchanges across the vhosts you want to audit. RabbitMQ can limit listing
+visibility to vhosts the account has access to, including for users tagged
+`administrator`. Verify access to the intended vhosts and direct the client to
+an endpoint that serves a single cluster. The collector uses the same
+configured endpoint for each request. Proxies and load balancers must supply
+consistent routing. [RabbitMQ 4.3 management permissions](https://www.rabbitmq.com/docs/4.3/management#access-and-permissions)
+
+Capture during a quiet window when possible. Topology changes and permission
+changes can occur between requests or pages. The collector checks page
+numbers, counts, and duplicate identities to detect some changes. Equal
+counts can still hide replacements or visibility gaps. A successful bundle
+records the pages returned to that account during sequential reads. It
+provides no atomic snapshot or verification of total cluster visibility.
+
+### Bundle format and publication
+
+The JSON file contains `manifest`, `definitions`, `queues`, and
+`exchanges`. The version 1 manifest records the cluster-wide request paths,
+the UTC start and finish of each endpoint read, the broker's cluster ID and
+name when available, and the broker version and its source. The manifest
+prefers the version in definitions and can fall back to version discovery
+from the client's earlier overview request. A version override supplies
+neither overview evidence nor a captured broker version. Offline audit
+semantics continue to use the version present in the definitions.
+
+Each listing's manifest records the requested page size and the broker's
+reported page number, page count, page size, total count, filtered count,
+and item count for each page. An empty listing still has a recorded first
+response, which may report zero pages. The capture uses logical API paths
+without the management host, headers, or client configuration.
+
+The collector returns only after all reads and sanitization succeed.
+`save()` writes to a private temporary file next to the destination and
+publishes it as a single complete file. The destination must support hard
+links and must be new. An interrupted process can leave a temporary file.
+`load()` checks the bundle schema and paired page evidence before replay.
+Capture failures raise `AuditCaptureError`. Failed HTTP reads identify the path
+and, when applicable, page and status without including broker response bodies.
+
+### Sanitization in the supported collector
+
+The collector retains raw resource, vhost, policy, broker node, and cluster
+identities for audit joins. It preserves presence for audit evidence, including
+explicit nulls, empty arrays or maps, and omitted sections. It replaces
+password hashes, removes descriptive vhost metadata and observation statistics,
+and retains the global identity parameters and the runtime components used by
+the audit. Grants and their patterns are retained for the permissions audit.
+
+Shovel URIs keep the authority, vhost, and failover sequence needed by the
+topology parser. Userinfo, unrelated query options, and malformed URI text
+are removed. AMQP 1.0 retains the vhost from the `hostname` query option when
+it resolves. Recognized credential values in extensible arguments and policy
+settings are masked, with distinct replacements for distinct masked binding
+values. See [sanitization code](../src/rabbitmq_management_sdk/client/_capture_sanitization.py)
+for the retained components and recognized credential fields.
+
+Treat the sanitized bundle as internal evidence. Deployment names, grants,
+patterns, and custom payloads can be sensitive, and application-specific
+secrets can be stored under arbitrary names. Review any bundle before sharing
+it outside its intended audience. Use a separate importable definitions export
+for broker backup and restore.
 
 ## Collect compatible inputs
 
@@ -27,7 +134,7 @@ membership is irrelevant. A single-vhost definitions export has a different
 shape and cannot replace the cluster-wide input. Do not widen a failed scoped
 request into a cluster-wide request as an implicit workaround.
 
-Use the managers' complete `list_all` conveniences where available, or collect
+For manually assembled inputs, use the managers' complete `list_all` conveniences, or collect
 and flatten every page yourself before file loading. An empty successful array
 is different from a failed request, a page object, or a truncated JSON document.
 Do not recover capture failures by substituting `{}` or `[]`.
@@ -116,7 +223,8 @@ For a new broker-derived fixture bundle, document:
   routing, or separately observed runtime behavior.
 
 Use a bundle README and, when useful, a provenance sidecar with artifact hashes.
-The current auditor does not load or enforce those sidecars. A projection of an
+For manually assembled inputs, `ClusterAuditor.from_files()` reads only the
+supplied response files. A projection of an
 isolated test vhost must not be described as evidence of full-cluster coverage.
 One-node captures cannot demonstrate tolerance of failures across broker nodes.
 
